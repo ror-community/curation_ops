@@ -24,13 +24,13 @@ def download_record(ror_id, geonames_id=None):
 	else:
 		ror_data = update_address.update_geonames(ror_data, geonames_id)
 	json_file_path = generate_file_path(ror_id)
-	with open(json_file_path, 'w') as f_out:
-		json.dump(ror_data, f_out)
+	with open(json_file_path, 'w', encoding='utf8') as f_out:
+		json.dump(ror_data, f_out, ensure_ascii=False)
 
 
 def export_json(json_data, json_file):
 	json_file.seek(0)
-	json.dump(json_data, json_file, indent=4)
+	json.dump(json_data, json_file, ensure_ascii=False, indent=4)
 	json_file.truncate()
 
 
