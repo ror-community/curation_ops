@@ -1,4 +1,4 @@
-# curation_ops
+# Curation Ops
 
 
 # Requests
@@ -19,13 +19,15 @@ All new and update requests should be checked with the triage tool. The triage t
 
 # Coding New Records
 
-In all issues, repeating fields should have their instances of the field separated with semicolons. For example, if a new record request has three aliases submitted, they should be represented in the aliases field as follows: alias_1; alias_2; alias_3
+In all issues, repeating fields should have their instances of the field separated with semicolons. For example, if a new record request has three aliases submitted, they should be represented in the aliases field as follows: 
+```alias_1; alias_2; alias_3```
 
-Labels must additionally be appended with an asterisk and the name of their language for each label instance. For example, if a record had a Spanish and German label, it would be represented in the labels field as follows: Spanish_label*Spanish; Japanese_label*Japanese
+Labels must additionally be appended with an asterisk and the name of their language for each label instance. For example, if a record had a Spanish and German label, it would be represented in the labels field as follows: 
+```Spanish_label*Spanish; Japanese_label*Japanese```
 
 Relationships should be represented in the relationships field using the following pattern: ror_id (relationship_type). There is no need to separate repeating instances of the relationships with semicolons, but each must be followed by the relationship type value in order to be extracted. For example, record for which three relationships needed to be added would be coded in the relationships field as follows:
 
-https://ror.org/000000001 (parent) https://ror.org/000000002 (child) https://ror.org/000000003 (related)
+```https://ror.org/000000001 (parent) https://ror.org/000000002 (child) https://ror.org/000000003 (related)```
 
 
 # Coding Update Records

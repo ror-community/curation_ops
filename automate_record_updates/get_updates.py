@@ -64,7 +64,7 @@ def create_modify_records_metadata():
             issue_text = issue_data['body']
             issue_text = normalize_text(issue_text)
             for key, value in issue_field_mappings.items():
-                search_result = find_between(issue_text, value, '\n')
+                search_result = find_between(issue_text, value, '$')
                 record_data[key] = search_result
             with open(outfile, 'a') as f_out:
                 record_entry = api_data + [record_data[k] for k in ror_fields]

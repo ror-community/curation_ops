@@ -8,7 +8,7 @@ import requests
 import jsondiff
 from time import sleep
 
-DATA_DUMP_FILE_PATH = '/Users/adambuttrick/Downloads/v1.0-2022-03-17-ror-data.json'
+DATA_DUMP_FILE_PATH = ''
 
 
 def release_files_in_data_dump():
@@ -109,4 +109,4 @@ if __name__ == '__main__':
 	release_ids = release_files_in_data_dump()
 	compare_random_data_dump_production_api(release_ids)
 	compare_old_data_dump_new_data_dump(
-		release_ids, '/Users/adambuttrick/Downloads/2021-09-23-ror-data.json')
+		release_ids, DATA_DUMP_FILE_PATH)
