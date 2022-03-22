@@ -69,17 +69,17 @@ Both scripts return CSV files containing the metadata for the new and update rec
 The new and updates records’ CSVs should be imported into Excel for review. 
 
 For the new records metadata: 
-•	Examine all entries for completeness of mandatory fields (name, type, Geonames ID).
-•	Check any missing fields against their corresponding issues to verify the completeness of extraction.
-•	Delete corporate suffixes (LLC, GmbH, Inc, etc) from the names field.
-•	Where the primary name is not English, examine the labels and aliases fields for English named. 
-o	If an English form exists, check issue to see whether a non-English primary name was required by the organization. 
-o	If no such requirement exists, switch the English name to the primary field and the current name to a label.
-•	Check repeating fields to verify that that each instance of the field is separated with semicolons. 
-•	Make sure that all labels have a language assigned. 
-•	Verify that aliases and labels are properly distinguished from one another.
-•	Verify that entries in the acronyms field are all properly represented and do not contain aliases or labels.
-•	Use Excel’s conditional formatting to highlight instances of duplicate fields and remove duplicate entries as needed. Update/close issues correspondingly.
+\* Examine all entries for completeness of mandatory fields (name, type, Geonames ID).
+\* Check any missing fields against their corresponding issues to verify the completeness of extraction.
+\* Delete corporate suffixes (LLC, GmbH, Inc, etc) from the names field.
+\* Where the primary name is not English, examine the labels and aliases fields for English named. 
+  \* If an English form exists, check issue to see whether a non-English primary name was required by the organization. 
+  \* If no such requirement exists, switch the English name to the primary field and the current name to a label.
+\* Check repeating fields to verify that that each instance of the field is separated with semicolons. 
+\* Make sure that all labels have a language assigned. 
+\* Verify that aliases and labels are properly distinguished from one another.
+\* Verify that entries in the acronyms field are all properly represented and do not contain aliases or labels.
+\* Use Excel’s conditional formatting to highlight instances of duplicate fields and remove duplicate entries as needed. Update/close issues correspondingly.
 
 
 For update records, make sure that all entries have update codings. Spot check 10-20 entries at random and verify that the coding corresponds to the changes in described in the request.
