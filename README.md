@@ -7,7 +7,7 @@ Requests are submitted via a Google Form linked on the [ROR site](https://ror.or
 
 # Triage
 
-By default, submitted requests are lumped into two categories: new and update requests. Each request type has an associated issue template with corresponding fields to which the user-submitted metadata is mapped. By default, these issues are assigned to the Metadata Curation Lead.
+By default, submitted requests are lumped into two categories: new and update requests. Each request type has an associated [issue template](https://github.com/ror-community/ror-updates/tree/master/.github/ISSUE_TEMPLATE) with corresponding fields to which the user-submitted metadata is mapped. By default, these issues are assigned to the Metadata Curation Lead.
 
 # Initial Triage
 
