@@ -3,7 +3,7 @@
 
 # Requests
 
-Requests are submitted via a Google Form linked on the ROR site. On submission, they are saved into a Google Sheet and converted into Github issues in the ror-updates repository using Zapier.
+Requests are submitted via a Google Form linked on the [ROR site](https://ror.org/contact/). On submission, they are saved into a Google Sheet and converted into Github issues in the [ror-updates](https://github.com/ror-community/ror-updates) repository using Zapier.
 
 # Triage
 
@@ -38,7 +38,7 @@ Update records are coded with an “Update:” field, changes to specified field
 
 Putting this altogether, if we wished to change an organization’s name, delete an alias, add a label, and replace it’s ISNI, it would be coded as follow:
 
-```Update: change.name==New Name; delete.aliases==Alias to Delete; add.label== New Label*Language; replace.ISNI==ISNI ID;$```
+```Update: change.name==New Name; delete.aliases==Alias to Delete; add.label== New Label*Language; replace.ISNI==ISNI_ID;$```
 
 # Approval/Denial of Requests
 
@@ -113,7 +113,7 @@ In addition, both sets of JSON should be run against [duplicate_check.py](https:
 # Committing to ror-updates repo
 
 
-Once the JSON files have been checked for integrity, the files should be committed to ror-updates in a directory named, “rc-vX.X-review,” where “X.X” corresponds to the release version. Within this directory, separate the new records into a folder called “new.” For the updates, the current version of the files must first be committed, and then their updates committed over top of them so that the diffs can be reviewed in Github.
+Once the JSON files have been checked for integrity, the files should be committed to [ror-updates](https://github.com/ror-community/ror-updates) in a directory named, “rc-vX.X-review,” where “X.X” corresponds to the release version. Within this directory, separate the new records into a folder called “new.” For the updates, the current version of the files must first be committed, and then their updates committed over top of them so that the diffs can be reviewed in Github.
 
 # Downloading records to be updated from the API
 
@@ -152,7 +152,7 @@ Once the files have been committed to ror-updates any further changes should be 
 
 # Testing Staging and Production
 
-Follow the steps outlined in the ror-records readme for publishing the release to both staging and production. At both the staging and production release testing steps, use the [release_tests_staging.py](https://github.com/ror-community/curation_scripts/tree/main/release_tests) and (release_tests_prod.py)[https://github.com/ror-community/curation_scripts/tree/main/release_tests] to test the release. Both scripts are ran inside a directory containing all the JSON files included in the release. This is easiest copied from the release branch itself in ror-records once the files have been committed. In addition, a text file containing all of the ROR IDs from the previous datadump must be included in this directory. This text file can be generated using the JSON file of the last data dump and [get_all_ror_ids.py](https://github.com/ror-community/curation_scripts/tree/main/all_ror_ids)
+Follow the steps outlined in the [ror-records readme](https://github.com/ror-community/ror-records) for publishing the release to both staging and production. At both the staging and production release testing steps, use the [release_tests_staging.py](https://github.com/ror-community/curation_scripts/tree/main/release_tests) and (release_tests_prod.py)[https://github.com/ror-community/curation_scripts/tree/main/release_tests] to test the release. Both scripts are ran inside a directory containing all the JSON files included in the release. This is easiest copied from the release branch itself in ror-records once the files have been committed. In addition, a text file containing all of the ROR IDs from the previous datadump must be included in this directory. This text file can be generated using the JSON file of the last data dump and [get_all_ror_ids.py](https://github.com/ror-community/curation_scripts/tree/main/all_ror_ids)
 
 During these steps, the data dump for each should be tested as well. Once generated, this file can be tested using (data_dump_test_staging.py)[https://github.com/ror-community/curation_scripts/tree/main/data_dump_tests] and (data_dump_test_prod.py)[https://github.com/ror-community/curation_scripts/tree/main/data_dump_tests]. Both scripts are likewise ran inside a directory containing all the JSON files included in the release and require that you add the filepath for the data dump from the prior release to them.
 
