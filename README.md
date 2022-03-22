@@ -38,7 +38,7 @@ Update records are coded with an “Update:” field, changes to specified field
 
 Putting this altogether, if we wished to change an organization’s name, delete an alias, add a label, and replace it’s ISNI, it would be coded as follow:
 
-        Update: change.name==New Name; delete.aliases==Alias to Delete; add.label== New Label*Language; replace.ISNI==ISNI_ID;$
+        Update: change.name==New Name; delete.aliases==Alias to Delete; add.labels== New Label*Language; replace.ISNI==ISNI_ID;$
 
 # Approval/Denial of Requests
 
