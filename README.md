@@ -87,7 +87,7 @@ For the new records metadata:
 For update records, make sure that all entries have update codings. Spot check 10-20 entries at random and verify that the coding corresponds to the changes in described in the request.
 
 
-Once you have complete review of the new and update records, provide your updated versions of both files to another ROR team member for review. After their review is complete, save both the new and updates metadata files in CSV format. Check both files for unprintable characters using the unprintable_csv_check.py and update the CSVs accordingly.
+Once you have complete review of the new and update records, provide your updated versions of both files to another ROR team member for review. After their review is complete, save both the new and updates metadata files in CSV format. Check both files for unprintable characters using the [unprintable_csv_check.py](https://github.com/ror-community/curation_scripts/tree/main/unprintable_csv) and update the CSVs accordingly.
 
 # Creating New and Update records
 
@@ -107,7 +107,7 @@ The relationships file can be created using [create_relationships.py](https://gi
 After the JSON has been created, it should be checked with [new_records_check_integrity.py](https://github.com/ror-community/curation_scripts/tree/main/json_integrity_checks/new_records_check) and [updates_records_check_integrity.py](https://github.com/ror-community/curation_scripts/tree/main/json_integrity_checks/updates_record_check). Both scripts take as inputs the CSV files used to generate the JSON, updated to include the JSON file names for each entry. The scripts should be run from inside the directories containing the JSON so that the files for each entry can be opened and read correctly. 
 
 In addition, both sets of JSON should be run against [duplicate_check.py](https://github.com/ror-community/curation_scripts/tree/main/json_integrity_checks/duplicate_values_check) to verify that no values have been repeated in creating the various fields in the JSON, as well as 
-(unprintable_json_check.py)[https://github.com/ror-community/curation_scripts/tree/main/unprintable_json] to make sure that no unprintable characters have been included in them.
+[unprintable_json_check.py](https://github.com/ror-community/curation_scripts/tree/main/unprintable_json) to make sure that no unprintable characters have been included in them.
 
 
 # Committing to ror-updates repo
