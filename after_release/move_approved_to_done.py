@@ -7,6 +7,7 @@ from github import Github
 GITHUB = {}
 GITHUB['TOKEN'] = ''
 
+
 def move_to_done():
     g = Github(GITHUB['TOKEN'])
     repo = g.get_repo("ror-community/ror-updates")
