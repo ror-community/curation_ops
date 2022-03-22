@@ -42,7 +42,7 @@ Putting this altogether, if we wished to change an organization’s name, delete
 
 # Approval/Denial of Requests
 
-Requests are approved and denied using the (Curator Evaluation Workflows)[https://github.com/ror-community/ror-updates/wiki] for new and update record requests. All new record requests require an additional confirmation of their approvals/denials by the curation team and so should be moved to the Second Review project column after being triaged. Update requests that can be immediately verified by the Metadata Curation Lead can be approved without secondary review and moved to the Ready for Sign Off project column. More complex updates should undergo additional review by the curation team. 
+Requests are approved and denied using the [Curator Evaluation Workflows](https://github.com/ror-community/ror-updates/wiki) for new and update record requests. All new record requests require an additional confirmation of their approvals/denials by the curation team and so should be moved to the Second Review project column after being triaged. Update requests that can be immediately verified by the Metadata Curation Lead can be approved without secondary review and moved to the Ready for Sign Off project column. More complex updates should undergo additional review by the curation team. 
 
 Every three weeks, a summary report of outstanding issues to be reviewed should be sent by the Metadata Curation Lead to the curation team. This report should identify outstanding requests by their relative complexity, specifically differentiating between requests that simply need a secondary approval/denial and those that require further consideration and review.
 
@@ -53,15 +53,15 @@ Every three weeks, a summary report of outstanding issues to be reviewed should 
 
 # Github Personal Access Token
 
-For the next steps, a Github personal access token with full repo and admin:org permissions must be (generated)[https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/creating-a-personal-access-token] and added to each of the named scripts. The same token can be used for all. Make certain that you do not commit these values back into the curation repository.
+For the next steps, a Github personal access token with full repo and admin:org permissions must be [generated](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/creating-a-personal-access-token) and added to each of the named scripts. The same token can be used for all. Make certain that you do not commit these values back into the curation repository.
 
 # Adding to Milestone
 
-Once all records for a given release have been identified, they should be added to the release milestone with (add_to_milestone.py)[https://github.com/ror-community/curation_scripts/tree/main/add_to_milestone]. This script takes as input a CSV file containing the issue numbers for everything to be included in the release, placed in a column labeled "issue_number."
+Once all records for a given release have been identified, they should be added to the release milestone with [add_to_milestone.py](https://github.com/ror-community/curation_scripts/tree/main/add_to_milestone). This script takes as input a CSV file containing the issue numbers for everything to be included in the release, placed in a column labeled "issue_number."
 
 # Extracting Metadata
 
-The metadata for creating new and update records is extracted via the Github API via two separate scripts: (get_new_records.py)[https://github.com/ror-community/curation_scripts/tree/main/automate_new_records] and (get_update_records.py)[https://github.com/ror-community/curation_scripts/tree/main/automate_record_updates]. For their metadata to be extracted, the new and update record requests must reside in the Approved column. In addition, a Github personal access token must be added to the scripts.
+The metadata for creating new and update records is extracted via the Github API via two separate scripts: [get_new_records.py](https://github.com/ror-community/curation_scripts/tree/main/automate_new_records) and [get_update_records.py](https://github.com/ror-community/curation_scripts/tree/main/automate_record_updates). For their metadata to be extracted, the new and update record requests must reside in the Approved column. In addition, a Github personal access token must be added to the scripts.
 
 Both scripts return CSV files containing the metadata for the new and update records.
 
@@ -91,23 +91,23 @@ Once you have complete review of the new and update records, provide your update
 
 # Creating New and Update records
 
-New and updated records are created with two scripts: (create_new_records.py)[https://github.com/ror-community/curation_scripts/tree/main/automate_new_records] and (update_records.py)[https://github.com/ror-community/curation_scripts/tree/main/automate_record_updates]. Both scripts take as inputs CSV files of the format output by get_new_records.py and get_update_records.py. 
+New and updated records are created with two scripts: [create_new_records.py](https://github.com/ror-community/curation_scripts/tree/main/automate_new_records) and [update_records.py](https://github.com/ror-community/curation_scripts/tree/main/automate_record_updates). Both scripts take as inputs CSV files of the format output by get_new_records.py and get_update_records.py. 
 
-The script for creating new records uses Selenium and Firefox to control Leo. Controlling Firefox with Leo requires installing Mozilla’s (geckodriver utility)[https://github.com/mozilla/geckodriver/releases], in addition to the python dependencies in the requirements.txt file. Controlling Leo via Selenium/Firefox requires browser and mouse automation, so your device will be inaccessible until the JSON creation is complete (unless the script it run inside a virtual machine or similar utility).
+The script for creating new records uses Selenium and Firefox to control Leo. Controlling Firefox with Leo requires installing Mozilla’s [geckodriver utility](https://github.com/mozilla/geckodriver/releases), in addition to the python dependencies in the requirements.txt file. Controlling Leo via Selenium/Firefox requires browser and mouse automation, so your device will be inaccessible until the JSON creation is complete (unless the script it run inside a virtual machine or similar utility).
 
 Update records are created by retrieving the record to be updated from the ROR API, applying changes to the JSON, and saving the update file.
 
 # Creating the relationships file.
 
-The relationships file can be created using create_relationships.py. It does not take inputs, but does require the personal access token, like the above.
+The relationships file can be created using [create_relationships.py](https://github.com/ror-community/curation_scripts/tree/main/create_relationships). It does not take inputs, but does require the personal access token, like the above.
 
 
 # JSON Checks
 
-After the JSON has been created, it should be checked with new_records_check_integrity.py and updates_records_check_integrity.py. Both scripts take as inputs the CSV files used to generate the JSON, updated to include the JSON file names for each entry. The scripts should be run from inside the directories containing the JSON so that the files for each entry can be opened and read correctly. 
+After the JSON has been created, it should be checked with (new_records_check_integrity.py)[https://github.com/ror-community/curation_scripts/tree/main/json_integrity_checks/new_records_check] and (updates_records_check_integrity.py)[https://github.com/ror-community/curation_scripts/tree/main/json_integrity_checks/updates_record_check]. Both scripts take as inputs the CSV files used to generate the JSON, updated to include the JSON file names for each entry. The scripts should be run from inside the directories containing the JSON so that the files for each entry can be opened and read correctly. 
 
-In addition, both sets of JSON should be run against duplicate_check.py to verify that no values have been repeated in creating the various fields in the JSON, as well as 
-unprintable_json_check.py to make sure that no unprintable characters have been included in them.
+In addition, both sets of JSON should be run against [duplicate_check.py](https://github.com/ror-community/curation_scripts/tree/main/json_integrity_checks/duplicate_values_check) to verify that no values have been repeated in creating the various fields in the JSON, as well as 
+(unprintable_json_check.py)[https://github.com/ror-community/curation_scripts/tree/main/unprintable_json] to make sure that no unprintable characters have been included in them.
 
 
 # Committing to ror-updates repo
@@ -117,7 +117,7 @@ Once the JSON files have been checked for integrity, the files should be committ
 
 # Downloading records to be updated from the API
 
-The current form of records to be updated can be downloaded using download_records.py. The input to this script is a CSV file containing the ROR IDs for the records to be updated in a column labeled “ror_id.” By default, the updates metadata CSV extracted from Github uses this naming and so can be used to download the records.
+The current form of records to be updated can be downloaded using [download_records.py](https://github.com/ror-community/curation_scripts/tree/main/download_records). The input to this script is a CSV file containing the ROR IDs for the records to be updated in a column labeled “ror_id.” By default, the updates metadata CSV extracted from Github uses this naming and so can be used to download the records.
 
 # Git CLI
 
@@ -125,18 +125,22 @@ These steps assume that you have already installed and configured git on your co
 
 
 1.	Create in new directory in the root of the ror-records repository the exact same name as the release (ex, v1.5).
+
 ```mkdir rc-1.5-review```
 
 2.	Create new and updates directories inside this directory
+
 ```mkdir rc-1.5-review/new rc-1.5-review/updates```
 
 3.	Place the JSON files for new and prior release form of the files to be updated inside the two directories you just created.
 
 4.	Add and commit the files
+
 ```git add rc-1.5-review /```
 ```git commit -m "add new and updated ROR records in release 1.5 for review"```
 
 5.	Push the files to the remote ror-updates repository
+
 ```git push origin main```
 
 6.	Copy the updated files over their prior release form and repeat steps 4-5.
@@ -148,8 +152,8 @@ Once the files have been committed to ror-updates any further changes should be 
 
 # Testing Staging and Production
 
-Follow the steps outlined in the ror-records readme for publishing the release to both staging and production. At both the staging and production release testing steps, use the release_tests_staging.py and release_tests_prod.py to test the release. Both scripts are ran inside a directory containing all the JSON files included in the release. This is easiest copied from the release branch itself in ror-records once the files have been committed. In addition, a text file containing all of the ROR IDs from the previous datadump must be included in this directory. This text file can be generated using the JSON file of the last datadump and x.py
+Follow the steps outlined in the ror-records readme for publishing the release to both staging and production. At both the staging and production release testing steps, use the [release_tests_staging.py](https://github.com/ror-community/curation_scripts/tree/main/release_tests) and (release_tests_prod.py)[https://github.com/ror-community/curation_scripts/tree/main/release_tests] to test the release. Both scripts are ran inside a directory containing all the JSON files included in the release. This is easiest copied from the release branch itself in ror-records once the files have been committed. In addition, a text file containing all of the ROR IDs from the previous datadump must be included in this directory. This text file can be generated using the JSON file of the last data dump and [get_all_ror_ids.py](https://github.com/ror-community/curation_scripts/tree/main/all_ror_ids)
 
-During these steps, the data dump for each should be tested as well. Once generated, this file can be tested using data_dump_test_staging.py and data_dump_test_prod.py. Both scripts are likewise ran inside a directory containing all the JSON files included in the release and require that you add the filepath for the data dump from the prior release to them.
+During these steps, the data dump for each should be tested as well. Once generated, this file can be tested using (data_dump_test_staging.py)[https://github.com/ror-community/curation_scripts/tree/main/data_dump_tests] and (data_dump_test_prod.py)[https://github.com/ror-community/curation_scripts/tree/main/data_dump_tests]. Both scripts are likewise ran inside a directory containing all the JSON files included in the release and require that you add the filepath for the data dump from the prior release to them.
 
 
