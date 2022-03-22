@@ -21,15 +21,15 @@ All new and update requests should be checked with the [triage tool](https://git
 
 In all issues, repeating fields should have their instances of the field separated with semicolons. For example, if a new record request has three aliases submitted, they should be represented in the aliases field as follows: 
 
-```alias_1; alias_2; alias_3```
+        alias_1; alias_2; alias_3
 
 Labels must additionally be appended with an asterisk and the name of their language for each label instance. For example, if a record had a Spanish and German label, it would be represented in the labels field as follows: 
 
-```Spanish_label*Spanish; Japanese_label*Japanese```
+        Spanish_label*Spanish; Japanese_label*Japanese
 
 Relationships should be represented in the relationships field using the following pattern: ror_id (relationship_type). There is no need to separate repeating instances of the relationships with semicolons, but each must be followed by the relationship type value in order to be extracted. For example, record for which three relationships needed to be added would be coded in the relationships field as follows:
 
-```https://ror.org/000000001 (parent) https://ror.org/000000002 (child) https://ror.org/000000003 (related)```
+        https://ror.org/000000001 (parent) https://ror.org/000000002 (child) https://ror.org/000000003 (related)
 
 
 # Coding Update Records
@@ -38,7 +38,7 @@ Update records are coded with an “Update:” field, changes to specified field
 
 Putting this altogether, if we wished to change an organization’s name, delete an alias, add a label, and replace it’s ISNI, it would be coded as follow:
 
-```Update: change.name==New Name; delete.aliases==Alias to Delete; add.label== New Label*Language; replace.ISNI==ISNI_ID;$```
+        Update: change.name==New Name; delete.aliases==Alias to Delete; add.label== New Label*Language; replace.ISNI==ISNI_ID;$
 
 # Approval/Denial of Requests
 
@@ -126,23 +126,23 @@ These steps assume that you have already installed and configured git on your co
 
 1.	Create in new directory in the root of the ror-records repository the exact same name as the release (ex, v1.5).
 
- ```mkdir rc-1.5-review```
+        mkdir rc-1.5-review
 
 2.	Create new and updates directories inside this directory
 
- ```mkdir rc-1.5-review/new rc-1.5-review/updates```
+        mkdir rc-1.5-review/new rc-1.5-review/updates
 
 3.	Place the JSON files for new and prior release form of the files to be updated inside the two directories you just created.
 
 4.	Add and commit the files
 
- ```git add rc-1.5-review /```
+        git add rc-1.5-review/
 
- ```git commit -m "add new and updated ROR records in release 1.5 for review"```
+        git commit -m "add new and updated ROR records in release 1.5 for review"
 
 5.	Push the files to the remote ror-updates repository
 
- ```git push origin main```
+        git push origin main
 
 6.	Copy the updated files over their prior release form and repeat steps 4-5.
 
