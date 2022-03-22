@@ -15,7 +15,7 @@ Submitted metadata should be reviewed, corrected and parsed to conform with RORâ
 
 # Triage Tool
 
-All new and update requests should be checked with the triage tool. The triage tool queries Wikidata, ORCID, Crossref, as well as the ROR and Github APIs for duplicate requests. The metadata it returns is generally only useful for populating fields in new record requests, but the tool should still be used for update requests to make sure that a given request has not been previously submitted.
+All new and update requests should be checked with the triage tool[https://github.com/adambuttrick/triage_tool]. The triage tool queries Wikidata, ORCID, Crossref, as well as the ROR and Github APIs for duplicate requests. The metadata it returns is generally only useful for populating fields in new record requests, but the tool should still be used for update requests to make sure that a given request has not been previously submitted.
 
 # Coding New Records
 
