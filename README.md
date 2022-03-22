@@ -91,7 +91,7 @@ Once you have complete review of the new and update records, provide your update
 
 # Creating New and Update records
 
-New and updated records are created with two scripts: [create_new_records.py](https://github.com/ror-community/curation_scripts/tree/main/automate_new_records) and [update_records.py](https://github.com/ror-community/curation_scripts/tree/main/automate_record_updates). Both scripts take as inputs CSV files of the format output by get_new_records.py and get_update_records.py. 
+New and updated records are created with two scripts: [create_new_records.py](https://github.com/ror-community/curation_scripts/tree/main/automate_new_records) and [update_records.py](https://github.com/ror-community/curation_scripts/tree/main/automate_record_updates). Both scripts take as inputs CSV files of the format output by [get_new_records.py](https://github.com/ror-community/curation_scripts/tree/main/automate_new_records) and [get_update_records.py](https://github.com/ror-community/curation_scripts/tree/main/automate_record_updates). 
 
 The script for creating new records uses Selenium and Firefox to control Leo. Controlling Firefox with Leo requires installing Mozilla’s [geckodriver utility](https://github.com/mozilla/geckodriver/releases), in addition to the python dependencies in the requirements.txt file. Controlling Leo via Selenium/Firefox requires browser and mouse automation, so your device will be inaccessible until the JSON creation is complete (unless the script it run inside a virtual machine or similar utility).
 
