@@ -15,14 +15,16 @@ Submitted metadata should be reviewed, corrected and parsed to conform with ROR�
 
 # Triage Tool
 
-All new and update requests should be checked with the triage tool[https://github.com/adambuttrick/triage_tool]. The triage tool queries Wikidata, ORCID, Crossref, as well as the ROR and Github APIs for duplicate requests. The metadata it returns is generally only useful for populating fields in new record requests, but the tool should still be used for update requests to make sure that a given request has not been previously submitted.
+All new and update requests should be checked with the [triage tool](https://github.com/adambuttrick/triage_tool). The triage tool queries Wikidata, ORCID, Crossref, as well as the ROR and Github APIs for duplicate requests. The metadata it returns is generally only useful for populating fields in new record requests, but the tool should still be used for update requests to make sure that a given request has not been previously submitted.
 
 # Coding New Records
 
 In all issues, repeating fields should have their instances of the field separated with semicolons. For example, if a new record request has three aliases submitted, they should be represented in the aliases field as follows: 
+
 ```alias_1; alias_2; alias_3```
 
 Labels must additionally be appended with an asterisk and the name of their language for each label instance. For example, if a record had a Spanish and German label, it would be represented in the labels field as follows: 
+
 ```Spanish_label*Spanish; Japanese_label*Japanese```
 
 Relationships should be represented in the relationships field using the following pattern: ror_id (relationship_type). There is no need to separate repeating instances of the relationships with semicolons, but each must be followed by the relationship type value in order to be extracted. For example, record for which three relationships needed to be added would be coded in the relationships field as follows:
@@ -40,7 +42,7 @@ Putting this altogether, if we wished to change an organization’s name, delete
 
 # Approval/Denial of Requests
 
-Requests are approved and denied using the Curator Evaluation Workflows for new and update record requests. All new record requests require an additional confirmation of their approvals/denials by the curation team and so should be moved to the Second Review project column after being triaged. Update requests that can be immediately verified by the Metadata Curation Lead can be approved without secondary review and moved to the Ready for Sign Off project column. More complex updates should undergo additional review by the curation team. 
+Requests are approved and denied using the (Curator Evaluation Workflows)[https://github.com/ror-community/ror-updates/wiki] for new and update record requests. All new record requests require an additional confirmation of their approvals/denials by the curation team and so should be moved to the Second Review project column after being triaged. Update requests that can be immediately verified by the Metadata Curation Lead can be approved without secondary review and moved to the Ready for Sign Off project column. More complex updates should undergo additional review by the curation team. 
 
 Every three weeks, a summary report of outstanding issues to be reviewed should be sent by the Metadata Curation Lead to the curation team. This report should identify outstanding requests by their relative complexity, specifically differentiating between requests that simply need a secondary approval/denial and those that require further consideration and review.
 
@@ -51,15 +53,15 @@ Every three weeks, a summary report of outstanding issues to be reviewed should 
 
 # Github Personal Access Token
 
-For the next steps, a Github personal access token with full repo and admin:org permissions must be generated and added to each of the named scripts. The same token can be used for all.
+For the next steps, a Github personal access token with full repo and admin:org permissions must be (generated)[https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/creating-a-personal-access-token] and added to each of the named scripts. The same token can be used for all. Make certain that you do not commit these values back into the curation repository.
 
 # Adding to Milestone
 
-Once all records for a given release have been identified, they should be added to the release milestone with add_to_milestone.py. This script takes as input a CSV file containing the issue numbers for everything to be included in the release, placed in a column labeled "issue_number."
+Once all records for a given release have been identified, they should be added to the release milestone with (add_to_milestone.py)[https://github.com/ror-community/curation_scripts/tree/main/add_to_milestone]. This script takes as input a CSV file containing the issue numbers for everything to be included in the release, placed in a column labeled "issue_number."
 
 # Extracting Metadata
 
-The metadata for creating new and update records is extracted via the Github API via two separate scripts: get_new_records.py and get_update_records.py. For their metadata to be extracted, the new and update record requests must reside in the Approved column. In addition, a Github personal access token with full repo and admin:org permissions must be generated and added to the scripts.
+The metadata for creating new and update records is extracted via the Github API via two separate scripts: (get_new_records.py)[https://github.com/ror-community/curation_scripts/tree/main/automate_new_records] and (get_update_records.py)[https://github.com/ror-community/curation_scripts/tree/main/automate_record_updates]. For their metadata to be extracted, the new and update record requests must reside in the Approved column. In addition, a Github personal access token must be added to the scripts.
 
 Both scripts return CSV files containing the metadata for the new and update records.
 
@@ -89,9 +91,9 @@ Once you have complete review of the new and update records, provide your update
 
 # Creating New and Update records
 
-New and updated records are created with two scripts: create_new_records.py and update_records.py. Both scripts take as inputs CSV files of the format output by get_new_records.py and get_update_records.py. 
+New and updated records are created with two scripts: (create_new_records.py)[https://github.com/ror-community/curation_scripts/tree/main/automate_new_records] and (update_records.py)[https://github.com/ror-community/curation_scripts/tree/main/automate_record_updates]. Both scripts take as inputs CSV files of the format output by get_new_records.py and get_update_records.py. 
 
-The script for creating new records uses Selenium and Firefox to control Leo. Controlling Firefox with Leo requires installing Mozilla’s geckodriver utility[https://github.com/mozilla/geckodriver/releases], in addition to the python dependencies in the requirements.txt file. Controlling Leo via Selenium/Firefox requires browser and mouse automation, so your device will be inaccessible until the JSON creation is complete (unless the script it run inside a virtual machine or similar utility).
+The script for creating new records uses Selenium and Firefox to control Leo. Controlling Firefox with Leo requires installing Mozilla’s (geckodriver utility)[https://github.com/mozilla/geckodriver/releases], in addition to the python dependencies in the requirements.txt file. Controlling Leo via Selenium/Firefox requires browser and mouse automation, so your device will be inaccessible until the JSON creation is complete (unless the script it run inside a virtual machine or similar utility).
 
 Update records are created by retrieving the record to be updated from the ROR API, applying changes to the JSON, and saving the update file.
 
