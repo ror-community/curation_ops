@@ -126,22 +126,23 @@ These steps assume that you have already installed and configured git on your co
 
 1.	Create in new directory in the root of the ror-records repository the exact same name as the release (ex, v1.5).
 
-```mkdir rc-1.5-review```
+ ```mkdir rc-1.5-review```
 
 2.	Create new and updates directories inside this directory
 
-```mkdir rc-1.5-review/new rc-1.5-review/updates```
+ ```mkdir rc-1.5-review/new rc-1.5-review/updates```
 
 3.	Place the JSON files for new and prior release form of the files to be updated inside the two directories you just created.
 
 4.	Add and commit the files
 
-```git add rc-1.5-review /```
-```git commit -m "add new and updated ROR records in release 1.5 for review"```
+ ```git add rc-1.5-review /```
+
+ ```git commit -m "add new and updated ROR records in release 1.5 for review"```
 
 5.	Push the files to the remote ror-updates repository
 
-```git push origin main```
+ ```git push origin main```
 
 6.	Copy the updated files over their prior release form and repeat steps 4-5.
 
