@@ -99,7 +99,7 @@ Update records are created by retrieving the record to be updated from the ROR A
 
 # Creating the relationships file.
 
-The relationships file can be created using [create_relationships.py](https://github.com/ror-community/curation_scripts/tree/main/create_relationships). It does not take inputs, but does require the personal access token, like the above.
+The relationships file can be created using [create_relationships.py](https://github.com/ror-community/curation_scripts/tree/main/create_relationships). To identify related records as being in the release versus production, this script requires as input a CSV the issue URL in a column labeled "html_url", the ROR ID in a column labeled "ror_id", and the name of organization in a column labeled "name." By default, the CSV output by [get_update_records.py](https://github.com/ror-community/curation_scripts/tree/main/automate_record_updates is formatted like this. For the new records metadata file output by [get_new_records.py](https://github.com/ror-community/curation_scripts/tree/main/automate_new_records), the ROR IDs for the new records must be reconciled with the file and added to it.
 
 
 # JSON Checks
