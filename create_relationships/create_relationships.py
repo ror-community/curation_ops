@@ -10,7 +10,8 @@ GITHUB = {}
 GITHUB['USER'] = ''
 GITHUB['TOKEN'] = ''
 
-
+# Input here is a CSV file containing the Github issue url, ROR ID, 
+# and name for each file in the release, both new and update records.
 def dict_from_csv(f):
     url_names_ids = {}
     release_ids = []
