@@ -34,9 +34,10 @@ def create_modify_records_metadata():
     api_fields = ['id', 'url', 'html_url']
     ror_fields = ['name', 'ror_id', 'update_field']
     issue_field_mappings = {
-        'name': 'Name of organization:',
-        'ror_id': 'ROR ID:',
-        'update_field': 'Update:'}
+        'name': ['Name of organization:', '\n'],
+        'ror_id': ['ROR ID:', '\n'],
+        'update_field': ['Update:', '$']
+        }
     with open(outfile, 'w') as f_out:
         writer = csv.writer(f_out)
         header = api_fields + ror_fields
@@ -64,7 +65,7 @@ def create_modify_records_metadata():
             issue_text = issue_data['body']
             issue_text = normalize_text(issue_text)
             for key, value in issue_field_mappings.items():
-                search_result = find_between(issue_text, value, '$')
+                search_result = find_between(issue_text, value[0], value[1])
                 record_data[key] = search_result
             with open(outfile, 'a') as f_out:
                 record_entry = api_data + [record_data[k] for k in ror_fields]
