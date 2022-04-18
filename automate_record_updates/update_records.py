@@ -163,6 +163,9 @@ def delete_external_id(json_file, field, value):
             del_index = json_data['external_ids'][field]['all'].index(value)
             del json_data['external_ids'][field]['all'][del_index]
             json_data['external_ids'][field]['preferred'] = json_data['external_ids'][field]['all'][0]
+        elif json_data['external_ids'][field]['preferred'] == None and len(json_data['external_ids'][field]['all']) > 1:
+            del_index = json_data['external_ids'][field]['all'].index(value)
+            del json_data['external_ids'][field]['all'][del_index]
         else:
             del json_data['external_ids'][field]
         export_json(json_data, json_in)
@@ -173,7 +176,7 @@ def parse_record_updates_file(f):
     record_updates = defaultdict(list)
     ror_fields = ['name', 'established', 'wikipedia_url', 'links', 'types',
                   'aliases', 'acronyms', 'Wikidata', 'ISNI', 'FundRef', 'labels', 'Geonames']
-    with open(f) as f_in:
+    with open(f, encoding='utf-8-sig') as f_in:
         reader = csv.DictReader(f_in)
         for row in reader:
             ror_id = re.sub('https://ror.org/', '', row['ror_id'])

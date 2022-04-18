@@ -10,11 +10,11 @@ def parse_record_updates_file(f):
 	record_updates = defaultdict(list)
 	ror_fields = ['name', 'established', 'wikipedia_url', 'links', 'types',
 				  'aliases', 'acronyms', 'Wikidata', 'ISNI', 'FundRef', 'labels', 'Geonames']
-	with open(f) as f_in:
+	with open(f, encoding='utf-8-sig') as f_in:
 		reader = csv.DictReader(f_in)
 		for row in reader:
 			ror_id = re.sub('https://ror.org/', '', row['ror_id'])
-			issue_url = row['issue_url']
+			issue_url = row['html_url']
 			update_field = row['update_field']
 			updates = update_field.split(';')
 			updates = [u for u in updates if u.strip() != '']
@@ -74,6 +74,8 @@ def check_if_updates_applied(f):
 				'change_type'], update['change_field'], update['change_value']
 			if '*' in change_value:
 				change_value = change_value.split('*')[0]
+			if change_field == 'Geonames':
+				change_value = int(change_value)
 			if change_type in additions:
 				if change_value not in flattened.values():
 					with open(outfile, 'a') as f_out:
