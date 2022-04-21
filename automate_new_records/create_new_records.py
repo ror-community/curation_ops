@@ -50,7 +50,8 @@ def select_org_type(org_type):
         By.CSS_SELECTOR, "div[class='v-select__selections']")
     type_dropdown.click()
     sleep(1)
-    org_type_xpath = '//div[contains(text(), "' + org_type + '")][contains(@class,"v-list-item__title")]'
+    org_type_xpath = '//div[contains(text(), "' + org_type + \
+        '")][contains(@class,"v-list-item__title")]'
     org_type_selection = driver.find_element(By.XPATH, org_type_xpath)
     org_type_selection.click()
     sleep(1)
@@ -87,7 +88,8 @@ def add_label(label_index, label, label_lang):
     label_lang_field.click()
     sleep(2)
     label_lang_field.send_keys(label_lang)
-    label_lang_xpath = '//span[contains(text(), "' + label_lang + '")][contains(@class,"v-list-item__mask")]'
+    label_lang_xpath = '//span[contains(text(), "' + \
+        label_lang + '")][contains(@class,"v-list-item__mask")]'
     label_lang_selection = driver.find_element(By.XPATH, label_lang_xpath)
     label_lang_selection.click()
     click_off()
@@ -156,7 +158,7 @@ def add_external_identifiers(identifier_type, identifier_value):
 def download_file():
     download_xpath = "//span[contains(text(), 'Download')]"
     download_button = driver.find_element(By.XPATH, download_xpath)
-    download_button.click()
+    driver.execute_script("arguments[0].click();", download_button)
     sleep(3)
     # Specific to local instance of Firefox. Update to accomodate your download modal.
     pyautogui.moveTo(485, 548)
@@ -173,6 +175,12 @@ def convert_field_to_list(data):
         return [data]
 
 
+def get_ror_id():
+    ror_id_input_field = driver.find_element(By.ID, '#/properties/id-input')
+    ror_id = ror_id_input_field.get_attribute('value')
+    return ror_id
+
+
 def parse_csv(f):
     csv_orgs = []
     prepared_orgs = []
@@ -187,6 +195,7 @@ def parse_csv(f):
                     entry[field] = row[field].strip()
                 else:
                     entry[field] = null
+            entry['csv_row'] = [v for v in row.values()]
             csv_orgs.append(entry)
     for org in csv_orgs:
         if org['name'] is None or org['types'] is None or org['geonames_id'] is None:
@@ -198,7 +207,10 @@ def parse_csv(f):
                 org[repeating_field] = convert_field_to_list(
                     org[repeating_field])
         if org['wikipedia_url'] is not None:
-            org['wikipedia_url'] = urllib.parse.unquote(org['wikipedia_url'])
+            wikipedia_url = org['wikipedia_url']
+            if urllib.parse.unquote(wikipedia_url) == wikipedia_url:
+                wikipedia_url = wikipedia_url[0:30] + urllib.parse.quote(wikipedia_url[30:])
+            org['wikipedia_url'] = wikipedia_url
         labels = org['labels']
         if labels is not None:
             if ';' in labels:
@@ -223,7 +235,17 @@ def parse_csv(f):
     return prepared_orgs
 
 
-def create_record(org_data):
+def create_outfile():
+    outfile = os.getcwd() + '/new_records_metadata_w_ror_ids.csv'
+    with open(outfile, 'w') as f_out:
+        writer = csv.writer(f_out)
+        header = ['id', 'url', 'html_url', 'name', 'types', 'aliases', 'labels', 'acronyms', 'links',
+                  'established', 'wikipedia_url', 'isni', 'grid', 'wikidata', 'fundref', 'city', 'country', 'geonames_id', 'ror_id']
+        writer.writerow(header)
+    return outfile
+
+
+def create_record(org_data, outfile):
     external_identifers = ['isni', 'grid', 'wikidata', 'fundref']
     # ROR Record editor URL
     driver.get('https://leo.dev.ror.org')
@@ -242,9 +264,15 @@ def create_record(org_data):
             add_external_identifiers(
                 external_identifier, org_data[external_identifier])
     download_file()
+    ror_id = get_ror_id()
+    with open(outfile, 'a') as f_out:
+        writer = csv.writer(f_out)
+        row = org_data['csv_row'] + [ror_id]
+        writer.writerow(row)
 
 
 if __name__ == '__main__':
+    outfile = create_outfile()
     records = parse_csv(sys.argv[1])
     for record in records:
-        create_record(record)
+        create_record(record, outfile)

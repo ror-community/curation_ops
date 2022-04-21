@@ -54,6 +54,12 @@ def fix_types(record_data):
         record_data['types'] = types
     return record_data
 
+def fix_wikipedia_url(record_data):
+    wikipedia_url = record_data['wikipedia_url']
+    if wikipedia_url != '' and urllib.parse.unquote(wikipedia_url) == wikipedia_url:
+        wikipedia_url = wikipedia_url[0:30] + urllib.parse.quote(wikipedia_url[30:])
+    return wikipedia_url
+
 
 def create_new_records_metadata():
     # Assumes less than 200 approved records. Add additional pages for each hundred, if needed.
@@ -118,6 +124,7 @@ def create_new_records_metadata():
                     search_results = search_results[0]
                     record_data[key] = search_results
             record_data = fix_types(record_data)
+            record_data = fix_wikipedia_url(record_data)
             with open(outfile, 'a') as f_out:
                 record_entry = api_data + [record_data[k] for k in ror_fields]
                 writer = csv.writer(f_out)
