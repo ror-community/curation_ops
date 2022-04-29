@@ -82,10 +82,10 @@ def compare_random(ids_in_file):
         all_ror_ids = [line.strip() for line in f_in]
     all_ror_ids = [ror_id for ror_id in all_ror_ids if ror_id not in ids_in_file]
     random_ror_ids = []
-    for _ in range(50):
+    for _ in range(500):
         random_ror_ids.append(random.choice(all_ror_ids))
     for ror_id in random_ror_ids:
-        api_url = "https://api.staging.org/organizations/" + ror_id
+        api_url = "https://api.staging.ror.org/organizations/" + ror_id
         test_api_url = "https://api.ror.org/organizations/" + ror_id
         print("Comparing staging and production for", ror_id, "...")
         r1 = requests.get(api_url).json()
