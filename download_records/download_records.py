@@ -12,7 +12,7 @@ def download_record(ror_id, json_file_path):
 	api_url = 'https://api.ror.org/organizations/' + ror_id
 	ror_data = requests.get(api_url).json()
 	with open(json_file_path, 'w', encoding='utf8') as f_out:
-		json.dump(ror_data, f_out, indent=4)
+		json.dump(ror_data, f_out, indent=4, ensure_ascii=False)
 
 def parse_and_download(f):
 	now = datetime.now()
