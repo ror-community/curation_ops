@@ -49,7 +49,7 @@ Every three weeks, a summary report of outstanding issues to be reviewed should 
 
 # Preparing Requests for Metadata Extraction
 
-Request that have been approved and moved to the "Ready for sign off/metadata QA" column should have their metadata verified for correctness/completion. Verify that all fields correspond to that of the organization, changes mentioned in the comments of the issue are reflected in its main body, relationships are properly represented, and links (including those to external identifiers), resolve. Once the metadata in the request has been verified, it should be moved to the Approved column.
+Requests that have been approved and moved to the "Ready for sign off/metadata QA" column should have their metadata verified for correctness/completion. Verify that all fields correspond to that of the organization, changes mentioned in the comments of the issue are reflected in its main body, relationships are properly represented, and links (including those to external identifiers), resolve. Once the metadata in the request has been verified, it should be moved to the Approved column.
 
 # Github Personal Access Token
 
