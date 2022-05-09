@@ -93,17 +93,16 @@ The script for creating new records uses Selenium and Firefox to control Leo. Co
 
 Update records are created by retrieving the record to be updated from the ROR API, applying changes to the JSON, and saving the update file.
 
-# Creating the relationships file.
-
-The relationships file can be created using [create_relationships.py](https://github.com/ror-community/curation_scripts/tree/main/create_relationships). To identify related records as being in the release versus production, this script requires as input a CSV the issue URL in a column labeled "html_url", the ROR ID in a column labeled "ror_id", and the name of organization in a column labeled "name." By default, the CSV output by [get_update_records.py](https://github.com/ror-community/curation_scripts/tree/main/automate_record_updates) is formatted like this. For the new records metadata file output by [get_new_records.py](https://github.com/ror-community/curation_scripts/tree/main/automate_new_records), the ROR IDs for the new records must be reconciled with the file and added to it.
-
-
 # JSON Checks
 
 After the JSON has been created, it should be checked with [new_records_check_integrity.py](https://github.com/ror-community/curation_scripts/tree/main/json_integrity_checks/new_records_check) and [updates_records_check_integrity.py](https://github.com/ror-community/curation_scripts/tree/main/json_integrity_checks/updates_record_check). Both scripts take as inputs the CSV files used to generate the JSON, updated to include the JSON file names for each entry. The scripts should be run from inside the directories containing the JSON so that the files for each entry can be opened and read correctly. 
 
 In addition, both sets of JSON should be run against [duplicate_check.py](https://github.com/ror-community/curation_scripts/tree/main/json_integrity_checks/duplicate_values_check) to verify that no values have been repeated in creating the various fields in the JSON, as well as 
 [unprintable_json_check.py](https://github.com/ror-community/curation_scripts/tree/main/unprintable_json) to make sure that no unprintable characters have been included in them.
+
+# Creating the relationships file.
+
+The relationships file can be created using [create_relationships.py](https://github.com/ror-community/curation_scripts/tree/main/create_relationships). To identify related records as being in the release versus production, this script requires as input a CSV the issue URL in a column labeled "html_url", the ROR ID in a column labeled "ror_id", and the name of organization in a column labeled "name." By default, the CSV output by [get_update_records.py](https://github.com/ror-community/curation_scripts/tree/main/automate_record_updates) is formatted like this. For the new records metadata file output by [get_new_records.py](https://github.com/ror-community/curation_scripts/tree/main/automate_new_records), the ROR IDs for the new records must be reconciled with the file and added to it.
 
 
 # Committing to ror-updates repo
