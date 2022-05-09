@@ -108,38 +108,37 @@ The relationships file can be created using [create_relationships.py](https://gi
 # Committing to ror-updates repo
 
 
-Once the JSON files have been checked for integrity, the files should be committed to [ror-updates](https://github.com/ror-community/ror-updates) in a directory named, “rc-vX.X-review,” where “X.X” corresponds to the release version. Within this directory, separate the new records into a folder called “new.” For the updates, the current version of the files must first be committed, and then their updates committed over top of them so that the diffs can be reviewed in Github.
-
-# Downloading records to be updated from the API
-
-The current form of records to be updated can be downloaded using [download_records.py](https://github.com/ror-community/curation_scripts/tree/main/download_records). The input to this script is a CSV file containing the ROR IDs for the records to be updated in a column labeled “ror_id.” By default, the updates metadata CSV extracted from Github uses this naming and so can be used to download the records.
+Once the JSON files have been checked for integrity, the files should be committed to [ror-updates](https://github.com/ror-community/ror-updates). For each release, create a branch and corresponding directory on that branch, both named, “rc-vX.X,” where “X.X” corresponds to the release version. Within this directory, create separate directories for the new and update records, labeled “new” and "updates." 
 
 # Git CLI
 
 These steps assume that you have already installed and configured git on your computer, and that you have cloned the ror-updates repository locally.
 
 
-1.	Create in new directory in the root of the ror-records repository the exact same name as the release (ex, v1.5).
+1.	Create a new branch in the repository with the exact same name as the release (ex, v1.5).
 
-        mkdir rc-1.5-review
+        git checkout -b rc-1.5
+        
+2.	Create in new directory in the root of the ror-records repository the exact same name as the release (ex, v1.5).
 
-2.	Create new and updates directories inside this directory
+        mkdir rc-1.5
 
-        mkdir rc-1.5-review/new rc-1.5-review/updates
+3.	Create new and updates directories inside this directory
 
-3.	Place the JSON files for new and prior release form of the files to be updated inside the two directories you just created.
+        mkdir rc-1.5/new rc-1.5/updates
 
-4.	Add and commit the files
+4.	Place the JSON files for new and prior release form of the files to be updated inside the two directories you just created.
 
-        git add rc-1.5-review/
+5.	Add and commit the files
+
+        git add rc-1.5/
 
         git commit -m "add new and updated ROR records in release 1.5 for review"
 
-5.	Push the files to the remote ror-updates repository
+6.	Push the files to the branch on remote ror-updates repository
 
-        git push origin main
+        git push origin rc-1.5
 
-6.	Copy the updated files over their prior release form and repeat steps 4-5.
 
 # Further Changes to Release JSON
 
