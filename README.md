@@ -49,15 +49,11 @@ Every three weeks, a summary report of outstanding issues to be reviewed should 
 
 # Preparing Requests for Metadata Extraction
 
-3 weeks prior to the release, all requests in the Ready for Sign Off column should be reviewed and their metadata verified for correctness/completion. Verify that all fields correspond to that of the organization, changes mentioned in the comments of the issue are reflected in its main body, relationships are properly represented, and links (including those to external identifiers), resolve. Once the metadata in the request has been verified, it should be moved to the Approved column.
+Request that have been approved and moved to the "Ready for sign off/metadata QA" column should have their metadata verified for correctness/completion. Verify that all fields correspond to that of the organization, changes mentioned in the comments of the issue are reflected in its main body, relationships are properly represented, and links (including those to external identifiers), resolve. Once the metadata in the request has been verified, it should be moved to the Approved column.
 
 # Github Personal Access Token
 
 For the next steps, a Github personal access token with full repo and admin:org permissions must be [generated](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/creating-a-personal-access-token) and added to each of the named scripts. The same token can be used for all. Make certain that you do not commit these values back into the curation repository.
-
-# Adding to Milestone
-
-Once all records for a given release have been identified, they should be added to the release milestone with [add_to_milestone.py](https://github.com/ror-community/curation_scripts/tree/main/add_to_milestone). This script takes as input a CSV file containing the issue numbers for everything to be included in the release, placed in a column labeled "issue_number."
 
 # Extracting Metadata
 
@@ -149,6 +145,10 @@ These steps assume that you have already installed and configured git on your co
 # Further Changes to Release JSON
 
 Once the files have been committed to ror-updates any further changes should be made by cloning the repository, changing the files, committing, and pushing them back up to the repo. This will guarantee a single point of reference for the release.
+
+# Adding to Milestone
+
+Once all records for a given release have been identified, they should be added to the release milestone with [add_to_milestone.py](https://github.com/ror-community/curation_scripts/tree/main/add_to_milestone). This script takes as input a CSV file containing the issue numbers for everything to be included in the release, placed in a column labeled "issue_number."
 
 
 # Testing Staging and Production
