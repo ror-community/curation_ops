@@ -44,7 +44,6 @@ def update_related():
             if relationships != []:
                 for relationship in relationships:
                     related_id = relationship['id']
-                    related_name = relationship['label']
                     short_related_filename = re.sub('https://ror.org/', '', related_id) + '.json'
                     if short_related_filename in json_files:
                         related_file_path = os.getcwd() + '/' + short_related_filename
