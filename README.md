@@ -127,7 +127,7 @@ These steps assume that you have already installed and configured git on your co
 
         mkdir rc-1.5/new rc-1.5/updates
 
-4.	Place the JSON files for new and prior release form of the files to be updated inside the two directories you just created.
+4.	Place the JSON files for new and update records inside the two directories you just created.
 
 5.	Add and commit the files
 
