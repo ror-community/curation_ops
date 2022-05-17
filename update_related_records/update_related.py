@@ -9,6 +9,8 @@ import requests
 JSON_FILES = [re.sub('updates/', '', file)
               for file in glob.glob("updates/*.json")]
 RELEASE_FILES = copy.deepcopy(JSON_FILES)
+API_URL = "http://api.ror.org/organizations/"
+UPDATED_RECORDS_PATH = "updates/"
 
 
 def export_json(json_data, json_file):
@@ -33,9 +35,9 @@ def update_release_file(release_file, related_id, related_name):
 
 
 def check_update_production_file(ror_id, related_id, related_name):
-    api_url = 'https://api.ror.org/organizations/' + ror_id
+    api_record = API_URL + ror_id
     short_id = re.sub('https://ror.org/', '', ror_id)
-    prod_record = requests.get(api_url).json()
+    prod_record = requests.get(api_record).json()
     relationships = prod_record['relationships']
     for index, relationship in enumerate(relationships):
         if relationship['id'] == related_id:
@@ -45,15 +47,15 @@ def check_update_production_file(ror_id, related_id, related_name):
                       [index]['label'], '- Updated Name:', related_name)
                 prod_record['relationships'][index]['label'] = related_name
                 json_file = short_id + '.json'
-                json_file_path = os.getcwd() + '/updates/' + json_file
+                json_file_path = UPDATED_RECORDS_PATH + json_file
                 with open(json_file_path, 'w', encoding='utf8') as f_out:
                     json.dump(prod_record, f_out, ensure_ascii=False, indent=2)
                     RELEASE_FILES.append(json_file)
 
 
 def check_name_production(ror_id, related_name):
-    api_url = 'https://api.ror.org/organizations/' + ror_id
-    prod_record = requests.get(api_url).json()
+    api_record = API_URL + ror_id
+    prod_record = requests.get(api_record).json()
     if prod_record['name'] == related_name:
         return True
     return False
@@ -76,7 +78,7 @@ def update_related():
                     short_related_filename = re.sub(
                         'https://ror.org/', '', related_id) + '.json'
                     if short_related_filename in RELEASE_FILES:
-                        related_file_path = os.getcwd() + '/updates/' + short_related_filename
+                        related_file_path = UPDATED_RECORDS_PATH + short_related_filename
                         update_release_file(related_file_path, ror_id, name)
                     else:
                         check_update_production_file(related_id, ror_id, name)
