@@ -1,23 +1,16 @@
 import os
 import re
-import sys
 import json
-import glob
-import copy
 import requests
 
-JSON_FILES = [re.sub('updates/', '', file)
-              for file in glob.glob("updates/*.json")]
-RELEASE_FILES = copy.deepcopy(JSON_FILES)
 API_URL = "http://api.ror.org/organizations/"
 UPDATED_RECORDS_PATH = "updates/"
-
+updated_file_report = []
 
 def export_json(json_data, json_file):
     json_file.seek(0)
     json.dump(json_data, json_file, ensure_ascii=False, indent=2)
     json_file.truncate()
-
 
 def update_release_file(release_file, related_id, related_name):
     with open(release_file, 'r+', encoding='utf8') as json_in:
@@ -32,7 +25,7 @@ def update_release_file(release_file, related_id, related_name):
                           [index]['label'], '- Updated Name:', related_name)
                     release_file_data['relationships'][index]['label'] = related_name
                     export_json(release_file_data, json_in)
-
+                    updated_file_report.append(['release', release_file, related_id, related_name])
 
 def check_update_production_file(ror_id, related_id, related_name):
     api_record = API_URL + ror_id
@@ -50,7 +43,7 @@ def check_update_production_file(ror_id, related_id, related_name):
                 json_file_path = UPDATED_RECORDS_PATH + json_file
                 with open(json_file_path, 'w', encoding='utf8') as f_out:
                     json.dump(prod_record, f_out, ensure_ascii=False, indent=2)
-                    RELEASE_FILES.append(json_file)
+                updated_file_report.append(['production', ror_id, related_id, related_name])
 
 
 def check_name_production(ror_id, related_name):
@@ -60,11 +53,16 @@ def check_name_production(ror_id, related_name):
         return True
     return False
 
+def get_files():
+    filepaths = []
+    for dirpath, dirs, files in os.walk(UPDATED_RECORDS_PATH, topdown=True):
+        for file in files:
+            filepaths.append(os.path.join(dirpath, file))
+    return filepaths
 
-def update_related():
-    for json_file in JSON_FILES:
-        json_file_path = os.getcwd() + '/updates/' + json_file
-        with open(json_file_path, 'r+', encoding='utf8') as json_in:
+def update_related(initial_release_files):
+    for json_file in initial_release_files:
+        with open(json_file, 'r', encoding='utf8') as json_in:
             json_data = json.load(json_in)
             ror_id = json_data['id']
             name = json_data['name']
@@ -77,12 +75,14 @@ def update_related():
                     related_id = relationship['id']
                     short_related_filename = re.sub(
                         'https://ror.org/', '', related_id) + '.json'
-                    if short_related_filename in RELEASE_FILES:
-                        related_file_path = UPDATED_RECORDS_PATH + short_related_filename
+                    current_release_files = get_files()
+                    if any(short_related_filename in file for file in current_release_files):
+                        related_file_path = [file for file in current_release_files if short_related_filename in file][0]
                         update_release_file(related_file_path, ror_id, name)
                     else:
                         check_update_production_file(related_id, ror_id, name)
 
-
 if __name__ == '__main__':
-    update_related()
+    update_related(get_files())
+    print(str(len(updated_file_report)) + " relationships updated")
+    print(updated_file_report)
