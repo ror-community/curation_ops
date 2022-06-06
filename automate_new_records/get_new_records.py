@@ -72,7 +72,7 @@ def create_new_records_metadata():
     issue_ror_mappings = {
         'name': ['Name of organization:', 'Name of organization to be added |'],
         'types': ['Organization type:', 'Type:'],
-        'aliases': ['Other names for the organization:'],
+        'aliases': ['Other names for the organization:',"Aliases:", "Alias:"],
         'labels': ['Label:', 'Labels:'],
         'acronyms': ['Acronym/abbreviation:', 'Acronym:'],
         'links': ['Website:', 'Organization website |'],
@@ -89,7 +89,7 @@ def create_new_records_metadata():
     with open(outfile, 'w') as f_out:
         writer = csv.writer(f_out)
         writer.writerow(api_fields + ror_fields)
-    approved_column_url = 'https://api.github.com/projects/columns/13954326/cards'
+    approved_column_url = 'https://api.github.com/projects/columns/12055464/cards'
     for page in pages:
         params = {'page': page, 'per_page': 100}
         cards = requests.get(approved_column_url, auth=(
