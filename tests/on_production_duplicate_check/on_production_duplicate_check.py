@@ -52,7 +52,6 @@ def ror_search(org_name):
                             match_type = 'relationship'
                             ror_matches.append([relationship['id'], relationship['label'], match_type])
     ror_matches = list(ror_matches for ror_matches,_ in itertools.groupby(ror_matches))
-    print(ror_matches)
     return ror_matches
 
 def search_json():
@@ -66,7 +65,6 @@ def search_json():
             all_names += json_file['aliases']
         if json_file['labels'] != []:
             all_names += [label['label'] for label in json_file['labels']]
-        print(all_names)
         for name in all_names:
             ror_search(name)
 
