@@ -5,7 +5,6 @@ import os
 import urllib.parse
 from time import sleep
 from collections import defaultdict
-import pyautogui
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
@@ -160,10 +159,6 @@ def download_file():
     download_button = driver.find_element(By.XPATH, download_xpath)
     driver.execute_script("arguments[0].click();", download_button)
     sleep(3)
-    # Specific to local instance of Firefox. Update to accomodate your download modal.
-    pyautogui.moveTo(485, 548)
-    pyautogui.click()
-    pyautogui.press('enter')
 
 
 def convert_field_to_list(data):
