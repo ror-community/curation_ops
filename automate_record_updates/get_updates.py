@@ -43,7 +43,7 @@ def create_modify_records_metadata():
         header = api_fields + ror_fields
         writer.writerow(header)
     # approved column url
-    url = 'https://api.github.com/projects/columns/13954326/cards'
+    url = 'https://api.github.com/projects/columns/12055464/cards'
     for page in pages:
         params = {'page': page, 'per_page': 100}
         cards = requests.get(url, auth=(
