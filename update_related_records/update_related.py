@@ -25,7 +25,6 @@ def update_release_file(release_file, related_id, related_name):
                     print('Current name:', release_file_data['relationships']
                           [index]['label'], '- Updated Name:', related_name)
                     release_file_data['relationships'][index]['label'] = related_name
-                    release_file_data = update_address.update_geonames(release_file_data)
                     export_json(release_file_data, json_in)
                     updated_file_report.append(['release', release_file, related_id, related_name])
 
@@ -41,6 +40,7 @@ def check_update_production_file(ror_id, related_id, related_name):
                 print('Current name:', prod_record['relationships']
                       [index]['label'], '- Updated Name:', related_name)
                 prod_record['relationships'][index]['label'] = related_name
+                prod_record = update_address.update_geonames(prod_record)
                 json_file = short_id + '.json'
                 json_file_path = UPDATED_RECORDS_PATH + json_file
                 with open(json_file_path, 'w', encoding='utf8') as f_out:
