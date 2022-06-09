@@ -2,6 +2,7 @@ import os
 import re
 import json
 import requests
+import update_address
 
 API_URL = "http://api.ror.org/organizations/"
 UPDATED_RECORDS_PATH = "updates/"
@@ -24,6 +25,7 @@ def update_release_file(release_file, related_id, related_name):
                     print('Current name:', release_file_data['relationships']
                           [index]['label'], '- Updated Name:', related_name)
                     release_file_data['relationships'][index]['label'] = related_name
+                    release_file_data = update_address.update_geonames(release_file_data)
                     export_json(release_file_data, json_in)
                     updated_file_report.append(['release', release_file, related_id, related_name])
 
