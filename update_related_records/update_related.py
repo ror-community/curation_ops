@@ -55,9 +55,9 @@ def check_name_production(ror_id, related_name):
         return True
     return False
 
-def get_files():
+def get_files(top):
     filepaths = []
-    for dirpath, dirs, files in os.walk(UPDATED_RECORDS_PATH, topdown=True):
+    for dirpath, dirs, files in os.walk(top, topdown=True):
         for file in files:
             filepaths.append(os.path.join(dirpath, file))
     return filepaths
@@ -69,6 +69,7 @@ def update_related(initial_release_files):
             ror_id = json_data['id']
             name = json_data['name']
             relationships = json_data['relationships']
+            print("Checking prod name for: " + ror_id + " " + name)
             same_name_check = check_name_production(ror_id, name)
             if relationships != [] and same_name_check == False:
                 print("Checking", str(len(relationships)),
@@ -77,7 +78,8 @@ def update_related(initial_release_files):
                     related_id = relationship['id']
                     short_related_filename = re.sub(
                         'https://ror.org/', '', related_id) + '.json'
-                    current_release_files = get_files()
+                    print("Checking record location for: " + related_id)
+                    current_release_files = get_files(".")
                     if any(short_related_filename in file for file in current_release_files):
                         related_file_path = [file for file in current_release_files if short_related_filename in file][0]
                         update_release_file(related_file_path, ror_id, name)
@@ -85,6 +87,6 @@ def update_related(initial_release_files):
                         check_update_production_file(related_id, ror_id, name)
 
 if __name__ == '__main__':
-    update_related(get_files())
+    update_related(get_files(UPDATED_RECORDS_PATH))
     print(str(len(updated_file_report)) + " relationships updated")
     print(updated_file_report)
