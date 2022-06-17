@@ -95,10 +95,13 @@ Update records are created by retrieving the record to be updated from the ROR A
 
 # JSON Checks
 
-After the JSON has been created, it should be checked with [new_records_check_integrity.py](https://github.com/ror-community/curation_scripts/tree/main/json_integrity_checks/new_records_check) and [updates_records_check_integrity.py](https://github.com/ror-community/curation_scripts/tree/main/json_integrity_checks/updates_record_check). Both scripts take as inputs the CSV files used to generate the JSON, updated to include the JSON file names for each entry. The scripts should be run from inside the directories containing the JSON so that the files for each entry can be opened and read correctly. 
+After the JSON has been created, it should be checked with a series of scripts in the "tests" directory.
 
-In addition, both sets of JSON should be run against [duplicate_check.py](https://github.com/ror-community/curation_scripts/tree/main/json_integrity_checks/duplicate_values_check) to verify that no values have been repeated in creating the various fields in the JSON, as well as 
-[unprintable_json_check.py](https://github.com/ror-community/curation_scripts/tree/main/unprintable_json) to make sure that no unprintable characters have been included in them.
+* [new_records_check_integrity.py](https://github.com/ror-community/curation_scripts/tree/main/json_integrity_checks/new_records_check) and [updates_records_check_integrity.py](https://github.com/ror-community/curation_scripts/tree/main/json_integrity_checks/updates_record_check) verify that the JSON files created correspond to the CSVs used to create them. Both scripts take as inputs the CSV files used to generate the JSON, updated to include the JSON file names for each entry. The scripts should be run from inside the directories containing the JSON so that the files for each entry can be opened and read correctly.
+* [leading_trailing](https://github.com/ror-community/curation_ops/tree/main/tests/leading_trailing) verifies that there are no leading or trailing punctuation, whitespace, or similar characters in the records. The script is run inside the directory containing the release files.
+*  [duplicate_check.py](https://github.com/ror-community/curation_scripts/tree/main/json_integrity_checks/duplicate_values_check) verifies that no values have been repeated in creating the various fields in the JSON.
+*  [in_release_duplicate_check.py](https://github.com/ror-community/curation_ops/tree/main/tests/in_release_duplicate_check) and [on_production_duplicate_check](https://github.com/ror-community/curation_ops/tree/main/tests/on_production_duplicate_check) respectively verify that there are no files duplicated in the release and that no files in the release already exist on production. They should both be run in the directory containing the new records for a given release.
+* [unprintable_json_check.py](https://github.com/ror-community/curation_scripts/tree/main/unprintable_json) to make sure that no unprintable characters have been included in them.
 
 # Creating the relationships file.
 
