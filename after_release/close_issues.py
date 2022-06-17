@@ -6,10 +6,11 @@ from github import Github
 
 GITHUB = {}
 GITHUB['TOKEN'] = ''
+#Assign for each release
+RELEASE_NUMBER = None
 
 
 def update_issues_for_release(f):
-    release_number = "v1.0"
     g = Github(GITHUB['TOKEN'])
     with open(f, encoding='utf-8-sig') as f_in:
         reader = csv.DictReader(f_in)
@@ -20,9 +21,9 @@ def update_issues_for_release(f):
             record_type = row['record_type']
             issue = repo.get_issue(number=issue_number)
             if record_type == 'new':
-                comment = 'Assigned ROR ID %s in release %s.' % (ror_id, release_number)
+                comment = 'Assigned ROR ID %s in release %s.' % (ror_id, RELEASE_NUMBER)
             else:
-                comment = 'Record updated in release %s.' % (release_number)
+                comment = 'Record updated in release %s.' % (RELEASE_NUMBER)
             issue.create_comment(body=comment)
             issue.edit(state="closed")
 

@@ -14,7 +14,7 @@ def move_to_done():
     project = repo.get_projects()[0]
     columns = project.get_columns()
     approved_column = [column for column in columns if column.name ==
-                       'Approved (ready for metadata prep)'][0]
+                       'Ready for production release'][0]
     done_column = [column for column in columns if column.name ==
                    'Done (released on production)'][0]
     approved_cards = approved_column.get_cards()
