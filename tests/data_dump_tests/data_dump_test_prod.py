@@ -8,6 +8,7 @@ import requests
 import jsondiff
 from time import sleep
 
+OLD_DATA_DUMP_FILE_PATH = ''
 DATA_DUMP_FILE_PATH = ''
 
 
@@ -109,4 +110,4 @@ if __name__ == '__main__':
 	release_ids = release_files_in_data_dump()
 	compare_random_data_dump_production_api(release_ids)
 	compare_old_data_dump_new_data_dump(
-		release_ids, DATA_DUMP_FILE_PATH)
+		release_ids, OLD_DATA_DUMP_FILE_PATH)
