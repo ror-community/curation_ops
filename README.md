@@ -69,7 +69,7 @@ The new and updates records’ CSVs should be imported into Excel for review.
 For the new records metadata: 
 * Examine all entries for completeness of mandatory fields (name, type, Geonames ID).
 * Check any missing fields against their corresponding issues to verify the completeness of extraction.
-* Delete corporate suffixes (LLC, GmbH, Inc, etc) from the names field.
+* Delete corporate suffixes (LLC, GmbH, Inc, etc) from all name fields.
 * Where the primary name is not English, examine the labels and aliases fields for English named. 
   * If an English form exists, check issue to see whether a non-English primary name was required by the organization. 
   * If no such requirement exists, switch the English name to the primary field and the current name to a label.
