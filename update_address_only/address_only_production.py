@@ -13,7 +13,7 @@ def download_record(ror_id, json_dir):
 	ror_data = update_address.update_geonames(ror_data)
 	json_file_path = json_dir + ror_id + '.json'
 	with open(json_file_path, 'w', encoding='utf8') as f_out:
-		json.dump(ror_data, f_out, ensure_ascii=False, indent=4)
+		json.dump(ror_data, f_out, ensure_ascii=False, indent=2)
 
 
 def update_address_only(f):
