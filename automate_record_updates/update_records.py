@@ -19,9 +19,9 @@ def generate_json_dir():
 
 
 def download_record(ror_id, json_dir, geonames_id=None):
-    api_url = 'https://api.ror.org/organizations/' + ror_id
+    api_url = 'http://localhost:9292/organizations/' + ror_id
     json_file_path = json_dir + ror_id + '.json'
-    ror_data = requests.get(api_url).json()
+    ror_data = requests.get(api_url, verify=False).json()
     if geonames_id == None:
         ror_data = update_address.update_geonames(ror_data)
     else:
@@ -139,9 +139,23 @@ def delete_label(json_file, value):
 def add_external_id(json_file, field, value):
     with open(json_file, 'r+') as json_in:
         json_data = json.load(json_in)
+        preferred = False
+        if "preferred" in value:
+            value = value.split("*")[0]
+            preferred = True
         if field in json_data['external_ids'].keys():
-            json_data['external_ids'][field]['preferred'] = value
-            json_data['external_ids'][field]['all'].append(value)
+            if json_data['external_ids'][field]['preferred'] != None:
+                if preferred == True:
+                    json_data['external_ids'][field]['preferred'] = value
+                    json_data['external_ids'][field]['all'].append(value)
+                else:
+                    json_data['external_ids'][field]['all'].append(value)
+            else:
+                if preferred == True:
+                    json_data['external_ids'][field]['preferred'] = value
+                    json_data['external_ids'][field]['all'].append(value)
+                else:
+                    json_data['external_ids'][field]['all'].append(value)
         else:
             json_data['external_ids'][field] = {
                 'preferred': value, 'all': [value]}
@@ -166,6 +180,9 @@ def delete_external_id(json_file, field, value):
         elif json_data['external_ids'][field]['preferred'] == None and len(json_data['external_ids'][field]['all']) > 1:
             del_index = json_data['external_ids'][field]['all'].index(value)
             del json_data['external_ids'][field]['all'][del_index]
+        elif json_data['external_ids'][field]['preferred'] != None and len(json_data['external_ids'][field]['all']) > 1:
+            del_index = json_data['external_ids'][field]['all'].index(value)
+            del json_data['external_ids'][field]['all'][del_index]
         else:
             del json_data['external_ids'][field]
         export_json(json_data, json_in)
@@ -184,6 +201,7 @@ def parse_record_updates_file(f):
             updates = update_field.split(';')
             updates = [u for u in updates if u.strip() != '']
             for update in updates:
+                print(update)
                 change_type = update.split('.')[0].strip()
                 change_field = re.search(
                     r'(?<=\.)(.*)(?=\=\=)', update).group(1)
