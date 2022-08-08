@@ -9,7 +9,7 @@ from datetime import datetime
 
 
 def download_record(ror_id, json_file_path):
-	api_url = 'https://api.ror.org/organizations/' + ror_id
+	api_url = 'http://localhost:9292/organizations/' + ror_id
 	ror_data = requests.get(api_url).json()
 	with open(json_file_path, 'w', encoding='utf8') as f_out:
 		json.dump(ror_data, f_out, indent=4, ensure_ascii=False)
