@@ -17,7 +17,7 @@ def get_diffs():
 		with open(file, 'r+') as f_in:
 			json_file = json.load(f_in)
 		ror_id = json_file['id']
-		api_url  = 'https://api.ror.org/organizations/' + ror_id
+		api_url  = 'http://localhost:9292/organizations/' + ror_id
 		api_json = requests.get(api_url).json()
 		file_api_diffs = jsondiff.diff(api_json, json_file, syntax='symmetric')
 		if type(file_api_diffs) == list:
