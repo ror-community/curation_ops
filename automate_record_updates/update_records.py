@@ -201,7 +201,6 @@ def parse_record_updates_file(f):
             updates = update_field.split(';')
             updates = [u for u in updates if u.strip() != '']
             for update in updates:
-                print(update)
                 change_type = update.split('.')[0].strip()
                 change_field = re.search(
                     r'(?<=\.)(.*)(?=\=\=)', update).group(1)
