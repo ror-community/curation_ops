@@ -243,7 +243,7 @@ def create_outfile():
 def create_record(org_data, outfile):
     external_identifers = ['isni', 'grid', 'wikidata', 'fundref']
     # ROR Record editor URL
-    driver.get('https://leo.dev.ror.org')
+    driver.get('https://leo.ror.org')
     sleep(3)
     driver.find_element(By.ID, "#new").click()
     sleep(3)
