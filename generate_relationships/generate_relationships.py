@@ -143,7 +143,7 @@ def get_related_name(related_id):
         except Exception as e:
             logging.error(f"Reading {filepath}: {e}")
     else:
-        get_related_name_api(related_id)
+        name = get_related_name_api(related_id)
     return name
 
 def process_one_relationship(relationship):
