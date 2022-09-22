@@ -1,3 +1,4 @@
+from curses import noecho
 import json
 import os
 import logging
@@ -22,14 +23,16 @@ def remove_relationships_from_file(inactive_id, related_filepath):
                 updated_relationships = [r for r in original_relationships if not(r['id'] == inactive_id)]
                 file_data['relationships'] = updated_relationships
                 json.dump(file_data, f, ensure_ascii=False, indent=2)
-                removed_relationships.update({file_data['id'], [r for r in original_relationships if not(r['id'] not in updated_relationships)]})
+                removed_relationships.update({file_data['id']: [r for r in original_relationships if r not in updated_relationships]})
     except Exception as e:
-        logging.error(f"Erorr opening file {filepath}: {e}")
+        logging.error(f"Error opening file {related_filepath}: {e}")
     return removed_relationships
 
-def get_record(id, filename):
+def get_record(id, filename, inactive_id):
     filepath = ''
     download_url=API_URL + id
+    if not os.path.exists(UPDATED_RECORDS_PATH):
+        os.makedirs(UPDATED_RECORDS_PATH)
     try:
         rsp = requests.get(download_url)
     except requests.exceptions.RequestException as e:
@@ -37,12 +40,15 @@ def get_record(id, filename):
 
     try:
         response = rsp.json()
-        updated_record = ua.update_geonames(response)
-        with open(UPDATED_RECORDS_PATH + filename, "w", encoding='utf8') as f:
-            json.dump(updated_record, f,  ensure_ascii=False)
-        filepath = check_file(filename)
+        if (response['status'] =='active') and len(response['relationships']) > 0:
+            inactive_relationships = [r for r in response['relationships'] if r['id'] == inactive_id]
+            if len(inactive_relationships) > 0:
+                updated_record = ua.update_geonames(response)
+                with open(UPDATED_RECORDS_PATH + filename, "w", encoding='utf8') as f:
+                    json.dump(updated_record, f,  ensure_ascii=False)
+                filepath = check_file(filename)
     except Exception as e:
-        logging.error(f"Writing {filename}: {e}")
+        logging.error(f"Error writing {filename}: {e}")
     return filepath
 
 def check_file(file):
@@ -55,33 +61,47 @@ def check_file(file):
 def get_inactive_ids_relationships():
     inactive_ids_relationships = {}
     for root, dirs, files in os.walk(".", topdown=True):
-        filepath = (os.path.join(root, file))
-        try:
-            with open(filepath, 'r+') as f:
-                file_data = json.load(f)
-                if file_data['status'] in INACTIVE_STATUSES and len(file_data['relationships']) > 0:
-                    inactive_ids_relationships.update({file_data['id'], file_data['relationships']})
-        except Exception as e:
-            logging.error(f"Erorr opening file {filepath}: {e}")
+        for file in files:
+            filename, file_extension = os.path.splitext(file)
+            if file_extension == '.json':
+                filepath = (os.path.join(root, file))
+                try:
+                    with open(filepath, 'r+') as f:
+                        file_data = json.load(f)
+                        if file_data['status'] in INACTIVE_STATUSES and len(file_data['relationships']) > 0:
+                            inactive_ids_relationships.update({file_data['id']: file_data['relationships']})
+                except Exception as e:
+                    logging.error(f"Error opening file {filepath}: {e}")
     return inactive_ids_relationships
 
 def remove_relationships():
     all_removed_relationships = []
+    no_relationship_in_related_file = []
     inactive_ids_relationships = get_inactive_ids_relationships()
+    print("Found relationship(s) in " + str(len(inactive_ids_relationships)) + " inactive record(s):")
+    print(inactive_ids_relationships)
     for inactive_id, relationships in inactive_ids_relationships.items():
         for relationship in relationships:
-            related_filename = urlparse.urlparse(relationship['id']).path + ".json"
+            related_filename = urlparse(relationship['id']).path + ".json"
+            related_filename = related_filename.strip("/")
             related_filepath = check_file(related_filename)
+            if related_filepath == '':
+                related_filepath = get_record(relationship['id'], related_filename, inactive_id)
             if related_filepath != '':
-                related_filepath = get_record(relationship['id'], related_filename)
-            removed_relationships = remove_relationships_from_file(inactive_id, related_filepath)
-            all_removed_relationships.append(removed_relationships)
-    return all_removed_relationships
+                removed_relationships = remove_relationships_from_file(inactive_id, related_filepath)
+                all_removed_relationships.append(removed_relationships)
+            else:
+                no_relationship_in_related_file.append([inactive_id, relationship])
+    return all_removed_relationships, no_relationship_in_related_file
 
 def main():
-    removed_relationships = remove_relationships()
-    print("Relationships removed from " + str(len(removed_relationships)) " records:")
-    print(removed_relationships)
+    removed_relationships, no_relationship_in_related_file = remove_relationships()
+    print(str(len(removed_relationships)) + " relationship(s) removed")
+    if len(removed_relationships) > 0:
+        print(removed_relationships)
+    if len(no_relationship_in_related_file) > 0:
+        print(str(len(no_relationship_in_related_file)) + " relationship(s) in inactive record(s) were not found in correspoding related record(s), so were not removed")
+        print(no_relationship_in_related_file)
     file_size = os.path.getsize(ERROR_LOG)
     if (file_size == 0):
         os.remove(ERROR_LOG)
