@@ -85,8 +85,11 @@ def remove_relationships():
             related_filename = urlparse(relationship['id']).path + ".json"
             related_filename = related_filename.strip("/")
             related_filepath = check_file(related_filename)
+            # download record if it's not already in updates dir
+            # get_record() checks if relationship actually exists in record before downloading
             if related_filepath == '':
                 related_filepath = get_record(relationship['id'], related_filename, inactive_id)
+            # get_record() returns empty string if record not downloaded bc relationship doesn't exist
             if related_filepath != '':
                 removed_relationships = remove_relationships_from_file(inactive_id, related_filepath)
                 all_removed_relationships.append(removed_relationships)
