@@ -22,7 +22,9 @@ def remove_relationships_from_file(inactive_id, related_filepath):
                 original_relationships = file_data['relationships']
                 updated_relationships = [r for r in original_relationships if not(r['id'] == inactive_id)]
                 file_data['relationships'] = updated_relationships
+                f.seek(0)
                 json.dump(file_data, f, ensure_ascii=False, indent=2)
+                f.truncate()
                 removed_relationships.update({file_data['id']: [r for r in original_relationships if r not in updated_relationships]})
     except Exception as e:
         logging.error(f"Error opening file {related_filepath}: {e}")
