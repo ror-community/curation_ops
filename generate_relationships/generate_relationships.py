@@ -24,18 +24,26 @@ def get_relationships_from_file(file):
             relationships = DictReader(rel)
             for row in relationships:
                 check_record_id = parse_record_id(row['Record ID'])
+                check_record_status = get_record_status(check_record_id)
                 check_related_id = parse_record_id(row['Related ID'])
+                check_related_id_status = get_record_status(check_related_id)
                 if (check_record_id and check_related_id):
-                    rel_dict['short_record_id'] = check_record_id
-                    rel_dict['short_related_id'] = check_related_id
-                    rel_dict['record_name'] = row['Name of org in Record ID']
-                    rel_dict['record_id'] = row['Record ID']
-                    rel_dict['related_id'] = row['Related ID']
-                    rel_dict['related_name'] = row['Name of org in Related ID']
-                    rel_dict['record_relationship'] = row['Relationship of Related ID to Record ID'].title()
-                    rel_dict['related_location'] = row['Current location of Related ID'].title()
-                    relation.append(rel_dict.copy())
-                    relationship_count += 1
+                    if check_record_status == 'active' and check_related_id_status == 'active':
+                        rel_dict['short_record_id'] = check_record_id
+                        rel_dict['short_related_id'] = check_related_id
+                        rel_dict['record_name'] = row['Name of org in Record ID']
+                        rel_dict['record_id'] = row['Record ID']
+                        rel_dict['related_id'] = row['Related ID']
+                        rel_dict['related_name'] = row['Name of org in Related ID']
+                        rel_dict['record_relationship'] = row['Relationship of Related ID to Record ID'].title()
+                        rel_dict['related_location'] = row['Current location of Related ID'].title()
+                        relation.append(rel_dict.copy())
+                        relationship_count += 1
+                    else:
+                        if check_record_status != 'active':
+                            logging.error(f"Record ID from CSV: {check_record_id} has a status other than active. Relationship row will not be processed")
+                        if check_related_id_status != 'active':
+                            logging.error(f"Related ID from CSV: {check_related_id} has a status other than active. Relationship row will not be processed")
                 row_count += 1
         print(str(row_count)+ " rows found")
         print(str(relationship_count)+ " valid relationships found")
@@ -59,6 +67,26 @@ def parse_record_id(id):
     else:
         logging.error(f"ROR ID: {id} does not match format: {pattern}. Record will not be processed")
     return parsed_id
+
+def get_record_status(record_id):
+    status = ''
+    filepath = check_file(record_id + ".json")
+    if filepath:
+        try:
+            with open(filepath, 'r') as f:
+                file_data = json.load(f)
+                status = file_data['status']
+        except Exception as e:
+            logging.error(f"Error reading {filepath}: {e}")
+    else:
+        download_url=API_URL + record_id
+        try:
+            rsp = requests.get(download_url)
+            response = rsp.json()
+            status = response['status']
+        except requests.exceptions.RequestException as e:
+            logging.error(f"Request for {download_url}: {e}")
+    return status
 
 def get_record(id, filename):
     download_url=API_URL + id
