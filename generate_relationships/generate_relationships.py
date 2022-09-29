@@ -24,12 +24,11 @@ def get_relationships_from_file(file):
             relationships = DictReader(rel)
             for row in relationships:
                 check_record_id = parse_record_id(row['Record ID'])
-                check_record_status = get_record_status(check_record_id)
                 check_related_id = parse_record_id(row['Related ID'])
                 # check that related ID is an active record
                 check_related_id_status = get_record_status(check_related_id)
                 if (check_record_id and check_related_id):
-                    if check_record_status == 'active' and check_related_id_status == 'active':
+                    if check_related_id_status == 'active':
                         rel_dict['short_record_id'] = check_record_id
                         rel_dict['short_related_id'] = check_related_id
                         rel_dict['record_name'] = row['Name of org in Record ID']
@@ -41,10 +40,7 @@ def get_relationships_from_file(file):
                         relation.append(rel_dict.copy())
                         relationship_count += 1
                     else:
-                        if check_record_status != 'active':
-                            logging.error(f"Record ID from CSV: {check_record_id} has a status other than active. Relationship row will not be processed")
-                        if check_related_id_status != 'active':
-                            logging.error(f"Related ID from CSV: {check_related_id} has a status other than active. Relationship row will not be processed")
+                        logging.error(f"Related ID from CSV: {check_related_id} has a status other than active. Relationship row {row_count} will not be processed")
                 row_count += 1
         print(str(row_count)+ " rows found")
         print(str(relationship_count)+ " valid relationships found")
@@ -210,7 +206,7 @@ def generate_relationships(file):
             relationships_missing_files_removed = check_missing_files(relationships)
             process_relationships(relationships_missing_files_removed)
         else:
-            logging.error(f"No relationships found in {file}")
+            logging.error(f"No valid relationships found in {file}")
     else:
         logging.error(f"{file} must exist to process relationship records")
 
