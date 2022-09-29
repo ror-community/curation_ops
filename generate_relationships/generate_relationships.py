@@ -41,7 +41,7 @@ def get_relationships_from_file(file):
                         relation.append(rel_dict.copy())
                         relationship_count += 1
                     else:
-                        logging.error(f"Related ID from CSV: {check_related_id} has a status other than active. Relationship row {row_count} will not be processed")
+                        logging.error(f"Related ID from CSV: {check_related_id} has a status other than active. Relationship row {row_count} cannot be processed")
         print(str(row_count)+ " rows found")
         print(str(relationship_count)+ " valid relationships found")
     except IOError as e:
