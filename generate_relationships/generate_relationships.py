@@ -23,6 +23,7 @@ def get_relationships_from_file(file):
         with open(file, 'r') as rel:
             relationships = DictReader(rel)
             for row in relationships:
+                row_count += 1
                 check_record_id = parse_record_id(row['Record ID'])
                 check_related_id = parse_record_id(row['Related ID'])
                 # check that related ID is an active record
@@ -41,7 +42,6 @@ def get_relationships_from_file(file):
                         relationship_count += 1
                     else:
                         logging.error(f"Related ID from CSV: {check_related_id} has a status other than active. Relationship row {row_count} will not be processed")
-                row_count += 1
         print(str(row_count)+ " rows found")
         print(str(relationship_count)+ " valid relationships found")
     except IOError as e:
