@@ -26,6 +26,7 @@ def get_relationships_from_file(file):
                 check_record_id = parse_record_id(row['Record ID'])
                 check_record_status = get_record_status(check_record_id)
                 check_related_id = parse_record_id(row['Related ID'])
+                # check that related ID is an active record
                 check_related_id_status = get_record_status(check_related_id)
                 if (check_record_id and check_related_id):
                     if check_record_status == 'active' and check_related_id_status == 'active':
