@@ -73,7 +73,7 @@ def check_update_inactive_prod(related_id, name):
     if len(response['items']) > 0:
         for item in response['items']:
             if item['status'] in INACTIVE_STATUSES and len(item['relationships']) > 0:
-                for r in in item['relationships']:
+                for r in item['relationships']:
                     if r['id'] == related_id:
                         count += 1
                         check_update_production_file(related_id, item['id'], name)
