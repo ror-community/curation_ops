@@ -88,7 +88,7 @@ def check_update_inactive_release(related_id, name):
         with open(file, 'r+') as f:
             file_data = json.load(f)
             if file_data['status'] in INACTIVE_STATUSES and len(file_data['relationships']) > 0:
-                for r in in file_data['relationships']:
+                for r in file_data['relationships']:
                     if r['id'] == related_id:
                         count += 1
                         update_release_file(file, name)
