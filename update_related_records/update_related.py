@@ -85,7 +85,9 @@ def check_update_inactive_release(related_id, name):
     print("Checking for inactive records to update in release")
     count = 0
     for file in get_files("."):
+        print(file)
         filename, file_extension = os.path.splitext(file)
+        print(file_extension)
         if file_extension == '.json':
             with open(file, 'r+') as f:
                 file_data = json.load(f)
