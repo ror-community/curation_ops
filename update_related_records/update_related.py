@@ -85,13 +85,15 @@ def check_update_inactive_release(related_id, name):
     print("Checking for inactive records to update in release")
     count = 0
     for file in get_files("."):
-        with open(file, 'r+') as f:
-            file_data = json.load(f)
-            if file_data['status'] in INACTIVE_STATUSES and len(file_data['relationships']) > 0:
-                for r in file_data['relationships']:
-                    if r['id'] == related_id:
-                        count += 1
-                        update_release_file(file, name)
+        filename, file_extension = os.path.splitext(file)
+        if file_extension == '.json':
+            with open(file, 'r+') as f:
+                file_data = json.load(f)
+                if file_data['status'] in INACTIVE_STATUSES and len(file_data['relationships']) > 0:
+                    for r in file_data['relationships']:
+                        if r['id'] == related_id:
+                            count += 1
+                            update_release_file(file, name)
     print("Found " + str(count) + " relationships to " + related_id + " in inactive release records")
 
 def update_related(initial_release_files):
