@@ -69,6 +69,7 @@ def check_update_inactive_prod(related_id, name):
     query_url = API_URL + '?query.advanced=status:inactive+OR+status:withdrawn+AND+relationships.id:' + related_id
     escaped_query_url = urllib.parse.urlencode(query_url.replace('https://ror.org/', 'https\:\/\/ror.org\/'))
     response = requests.get(escaped_query_url).json()
+    print(response)
     count = 0
     if len(response['items']) > 0:
         for item in response['items']:
