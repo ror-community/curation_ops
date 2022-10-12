@@ -95,7 +95,7 @@ def check_update_inactive_release(related_id, name):
                     for r in file_data['relationships']:
                         if r['id'] == related_id:
                             count += 1
-                            update_release_file(file, name)
+                            update_release_file(file, related_id, name)
     print("Found " + str(count) + " relationships to " + related_id + " in inactive release records")
 
 def update_related(initial_release_files):
