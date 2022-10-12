@@ -66,9 +66,9 @@ def get_files(top):
 def check_update_inactive_prod(related_id, name):
     # check for inactive prod records with relationships(s) to record with updated name
     print("Checking for inactive records to update in prod")
-    query_url = API_URL + '?query.advanced=status:inactive+OR+status:withdrawn+AND+relationships.id:' + related_id
-    escaped_query_url = urllib.parse.quote(query_url.replace('https://ror.org/', 'https\:\/\/ror.org\/'))
-    response = requests.get(escaped_query_url).json()
+    query = '?query.advanced=status:inactive+OR+status:withdrawn+AND+relationships.id:' + related_id
+    escaped_query = urllib.parse.quote(query.replace('https://ror.org/', 'https\:\/\/ror.org\/'))
+    response = requests.get(API_URL + escaped_query).json()
     print(response)
     count = 0
     if len(response['items']) > 0:
