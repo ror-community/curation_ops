@@ -45,7 +45,7 @@ def get_record(id, filename, inactive_id):
     try:
         response = rsp.json()
         if (response['status'] =='active') and len(response['relationships']) > 0:
-            inactive_relationships = [r for r in response['relationships'] if (r['id'] == inactive_id and r['type'] != 'Predecessor']
+            inactive_relationships = [r for r in response['relationships'] if (r['id'] == inactive_id and r['type'] != 'Predecessor')]
             if len(inactive_relationships) > 0:
                 updated_record = ua.update_geonames(response)
                 with open(UPDATED_RECORDS_PATH + filename, "w", encoding='utf8') as f:
