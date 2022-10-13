@@ -20,7 +20,7 @@ def remove_relationships_from_file(inactive_id, related_filepath):
             file_data = json.load(f)
             if (file_data['status'] =='active') and len(file_data['relationships']) > 0:
                 original_relationships = file_data['relationships']
-                updated_relationships = [r for r in original_relationships if not(r['id'] == inactive_id)]
+                updated_relationships = [r for r in original_relationships if ((not r['id'] == inactive_id) or (r['id'] == inactive_id and r['type'] == 'Predecessor')]
                 file_data['relationships'] = updated_relationships
                 f.seek(0)
                 json.dump(file_data, f, ensure_ascii=False, indent=2)
@@ -43,7 +43,7 @@ def get_record(id, filename, inactive_id):
     try:
         response = rsp.json()
         if (response['status'] =='active') and len(response['relationships']) > 0:
-            inactive_relationships = [r for r in response['relationships'] if r['id'] == inactive_id]
+            inactive_relationships = [r for r in response['relationships'] if (r['id'] == inactive_id and r['type' != 'Predecessor']]
             if len(inactive_relationships) > 0:
                 updated_record = ua.update_geonames(response)
                 with open(UPDATED_RECORDS_PATH + filename, "w", encoding='utf8') as f:
