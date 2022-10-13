@@ -103,6 +103,7 @@ def get_record(id, filename):
         logging.error(f"Writing {filename}: {e}")
 
 def has_inverse_rel_csv(current_rel, all_rels):
+    print("Checking inverse relationship for " + current_rel['short_related_id'])
     has_inverse = False
     for r in all_rels:
         if ['short_record_id'] == current_rel['short_related_id'] and r['record_relationship'] == REL_INVERSE[current_rel['record_relationship']]:
