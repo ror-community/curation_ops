@@ -108,6 +108,7 @@ def has_inverse_rel_csv(current_rel, all_rels):
     for r in all_rels:
         if ['short_record_id'] == current_rel['short_related_id'] and r['record_relationship'] == REL_INVERSE[current_rel['record_relationship']]:
             has_inverse = True
+    print("Has inverse is " + str(has_inverse))
     return has_inverse
 
 def download_records(relationships):
