@@ -12,6 +12,8 @@ logging.basicConfig(filename=ERROR_LOG,level=logging.ERROR, filemode='w')
 API_URL = "http://api.ror.org/organizations/"
 UPDATED_RECORDS_PATH = "updates/"
 INVERSE_TYPES = ('Parent', 'Child', 'Related')
+REL_INVERSE = {'Parent': 'Child', 'Child': 'Parent', 'Related': 'Related',
+                'Successor': 'Predecessor', 'Predecessor': 'Successor'}
 
 def get_relationships_from_file(file):
     print("PROCESSING CSV")
@@ -100,6 +102,13 @@ def get_record(id, filename):
     except Exception as e:
         logging.error(f"Writing {filename}: {e}")
 
+def has_inverse_rel_csv(current_rel, all_rels):
+    has_inverse = False
+    for r in all_rels:
+        if ['short_record_id'] == current_rel['short_related_id'] and r['record_relationship'] == REL_INVERSE[current_rel['record_relationship']]:
+            has_inverse = True
+    return has_inverse
+
 def download_records(relationships):
     print("DOWNLOADING PRODUCTION RECORDS")
     downloaded_records_count = 0
@@ -107,7 +116,7 @@ def download_records(relationships):
         os.makedirs(UPDATED_RECORDS_PATH)
     # download all records that are labeled as in production
     for r in relationships:
-        if r['related_location'] == "Production" and r['record_relationship'] in INVERSE_TYPES:
+        if r['related_location'] == "Production" and (r['record_relationship'] in INVERSE_TYPES or has_inverse_rel_csv(r, relationships)):
             filename = r['short_related_id'] + ".json"
             if not(check_file(filename)):
                 get_record(r['short_related_id'], filename)
