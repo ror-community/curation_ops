@@ -106,6 +106,10 @@ def has_inverse_rel_csv(current_rel, all_rels):
     print("Checking inverse relationship for " + current_rel['short_related_id'])
     has_inverse = False
     for r in all_rels:
+        print(r['short_record_id'])
+        print(current_rel['short_related_id'])
+        print(r['record_relationship'])
+        print(REL_INVERSE[current_rel['record_relationship']])
         if r['short_record_id'] == current_rel['short_related_id'] and r['record_relationship'] == REL_INVERSE[current_rel['record_relationship']]:
             has_inverse = True
     print("Has inverse is " + str(has_inverse))
