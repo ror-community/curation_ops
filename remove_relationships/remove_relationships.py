@@ -20,7 +20,7 @@ def remove_relationships_from_file(inactive_id, related_filepath):
             file_data = json.load(f)
             if (file_data['status'] =='active') and len(file_data['relationships']) > 0:
                 original_relationships = file_data['relationships']
-                updated_relationships = [r for r in original_relationships if ((not r['id'] == inactive_id) or (r['id'] == inactive_id and r['type'] == 'Predecessor')]
+                updated_relationships = [r for r in original_relationships if ((not r['id'] == inactive_id) or (r['id'] == inactive_id and r['type'] == 'Predecessor'))]
                 file_data['relationships'] = updated_relationships
                 f.seek(0)
                 json.dump(file_data, f, ensure_ascii=False, indent=2)
