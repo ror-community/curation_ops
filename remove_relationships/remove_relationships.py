@@ -100,7 +100,8 @@ def remove_relationships():
                 all_removed_relationships.append(removed_relationships)
             else:
                 no_relationship_in_related_file.append([inactive_id, relationship])
-    return all_removed_relationships, no_relationship_in_related_file
+    all_removed_relationships_pruned = [r for r in removed_relationships if r]
+    return all_removed_relationships_pruned, no_relationship_in_related_file
 
 def main():
     removed_relationships, no_relationship_in_related_file = remove_relationships()
