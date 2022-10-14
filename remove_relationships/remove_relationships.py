@@ -28,9 +28,10 @@ def remove_relationships_from_file(inactive_id, related_filepath):
                 json.dump(file_data, f, ensure_ascii=False, indent=2)
                 f.truncate()
                 removed_relationships.update({file_data['id']: [r for r in original_relationships if r not in updated_relationships]})
+        removed_relationships_pruned = {k:v for k,v in removed_relationships.items() if v}
     except Exception as e:
         logging.error(f"Error opening file {related_filepath}: {e}")
-    return removed_relationships
+    return removed_relationships_pruned
 
 def get_record(id, filename, inactive_id):
     filepath = ''
