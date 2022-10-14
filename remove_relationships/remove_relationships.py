@@ -20,7 +20,7 @@ def remove_relationships_from_file(inactive_id, related_filepath):
             file_data = json.load(f)
             if (file_data['status'] =='active') and len(file_data['relationships']) > 0:
                 original_relationships = file_data['relationships']
-                updated_relationships = [r for r in original_relationships if not (r['id'] == inactive_id and r['type'] != 'Predecessor')]
+                updated_relationships = [r for r in original_relationships if ((not r['id'] == inactive_id) or (r['id'] == inactive_id and r['type'] == 'Predecessor'))]
                 print("Updated relationships for file " + related_filepath)
                 print(updated_relationships)
                 file_data['relationships'] = updated_relationships
@@ -107,7 +107,7 @@ def main():
     if len(removed_relationships) > 0:
         print(removed_relationships)
     if len(no_relationship_in_related_file) > 0:
-        print(str(len(no_relationship_in_related_file)) + " relationship(s) in inactive record(s) were not found in correspoding related record(s), so were not removed")
+        print(str(len(no_relationship_in_related_file)) + " relationship(s) in inactive record(s) were not found in correspoding related record(s) or were of type Predecessor, so were not removed")
         print(no_relationship_in_related_file)
     file_size = os.path.getsize(ERROR_LOG)
     if (file_size == 0):
