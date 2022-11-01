@@ -3,6 +3,7 @@ import re
 import sys
 import csv
 import json
+import urllib.parse
 import requests
 
 GITHUB = {}
@@ -58,7 +59,8 @@ def fix_wikipedia_url(record_data):
     wikipedia_url = record_data['wikipedia_url']
     if wikipedia_url != '' and urllib.parse.unquote(wikipedia_url) == wikipedia_url:
         wikipedia_url = wikipedia_url[0:30] + urllib.parse.quote(wikipedia_url[30:])
-    return wikipedia_url
+        record_data['wikipedia_url'] = wikipedia_url
+    return record_data
 
 
 def create_new_records_metadata():
