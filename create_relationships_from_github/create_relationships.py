@@ -108,7 +108,7 @@ def extract_relationships(f):
                 with open(outfile, 'a') as f_out:
                     locations = ['Release', 'Release'] if related_ror_id in release_ids else ['Production', 'Release']
                     rel_type_mappings = {'Parent': 'Child', 'Child': 'Parent',
-                                         'Related': 'Related'}
+                                         'Related': 'Related', 'Successor':'Predecessor'}
                     entry = [issue_number, issue_html_url, issue_title, org_name,
                              org_ror_id, related_ror_id, related_name, relationship_type, locations[0]]
                     try:
