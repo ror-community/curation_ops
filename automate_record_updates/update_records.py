@@ -191,7 +191,7 @@ def delete_external_id(json_file, field, value):
 def parse_record_updates_file(f):
     # See test data for update string examples related to this parsing.
     record_updates = defaultdict(list)
-    ror_fields = ['name', 'established', 'wikipedia_url', 'links', 'types',
+    ror_fields = ['name', 'status','established', 'wikipedia_url', 'links', 'types',
                   'aliases', 'acronyms', 'Wikidata', 'ISNI', 'FundRef', 'labels', 'Geonames']
     with open(f, encoding='utf-8-sig') as f_in:
         reader = csv.DictReader(f_in)
@@ -216,7 +216,7 @@ def parse_record_updates_file(f):
 
 
 def update_records(record_updates):
-    non_repeating_fields = ['name', 'established', 'wikipedia_url']
+    non_repeating_fields = ['name', 'status','established', 'wikipedia_url']
     repeating_fields = ['links', 'types', 'aliases', 'acronyms']
     external_ids = ['Wikidata', 'ISNI', 'FundRef']
     json_dir = generate_json_dir()
