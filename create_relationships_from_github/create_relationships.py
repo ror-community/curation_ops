@@ -10,7 +10,8 @@ GITHUB = {}
 GITHUB['USER'] = ''
 GITHUB['TOKEN'] = ''
 
-# Input here is a CSV file containing the Github issue url, ROR ID, 
+
+# Input here is a CSV file containing the Github issue url, ROR ID,
 # and name for each file in the release, both new and update records.
 def dict_from_csv(f):
     ids_k_names_v, names_k_ids_v = {}, {}
@@ -64,7 +65,7 @@ def extract_relationships(f):
     with open(outfile, 'w') as f_out:
         writer = csv.writer(f_out)
         writer.writerow(header)
-    # approved column url
+    # Ready for production release column url
     url = 'https://api.github.com/projects/columns/18464412/cards'
     for page in pages:
         params = {'page': page, 'per_page': 100}
@@ -84,11 +85,11 @@ def extract_relationships(f):
             get_issue_comments(api_url + '/comments')
         issue_html_url = issue_data['html_url']
         rel_pattern = re.compile(
-            r'[https]{0,5}\:\/\/ror\.org\/[a-z0-9]{9}\s+\([a-zA-Z]{0,}\)')
+            r'[https]{0,5}\:\/\/ror\.org\/[a-z0-9]{9}\s+\([a-zA-Z\-]{0,}\)')
         relationships = rel_pattern.findall(issue_text)
         if relationships != []:
             org_ror_id = find_between(issue_body, 'ROR ID:', '\n')
-            org_name = find_between(issue_body, 'Name of organization:','\n')
+            org_name = find_between(issue_body, 'Name of organization:', '\n')
             if org_ror_id == '':
                 org_ror_id = names_k_ids_v[org_name]
             for relationship in relationships:
@@ -106,20 +107,30 @@ def extract_relationships(f):
                 else:
                     related_name = get_ror_name(related_ror_id)
                 with open(outfile, 'a') as f_out:
-                    locations = ['Release', 'Release'] if related_ror_id in release_ids else ['Production', 'Release']
-                    rel_type_mappings = {'Parent': 'Child', 'Child': 'Parent',
-                                         'Related': 'Related', 'Successor':'Predecessor'}
+                    writer = csv.writer(f_out)
+                    locations = ['Release', 'Release'] if related_ror_id in release_ids else [
+                        'Production', 'Release']
                     entry = [issue_number, issue_html_url, issue_title, org_name,
                              org_ror_id, related_ror_id, related_name, relationship_type, locations[0]]
-                    try:
-                        inverted_entry = [issue_number, issue_html_url, issue_title, related_name,
-                                          related_ror_id, org_ror_id, org_name, rel_type_mappings[relationship_type], locations[1]]
-                    except KeyError:
-                        inverted_entry = [issue_number, issue_html_url, issue_title, related_name,
-                                          related_ror_id, org_ror_id, org_name, 'Error', 'Error']
-                    writer = csv.writer(f_out)
-                    writer.writerow(entry)
-                    writer.writerow(inverted_entry)
+                    rel_type_mappings = {'Parent': 'Child', 'Child': 'Parent', 'Successor': 'Predecessor', 
+                        'Predecessor':'Successor','Related': 'Related'}
+                    if relationship_type == 'Successor-np':
+                        entry = [issue_number, issue_html_url, issue_title, org_name,
+                                 org_ror_id, related_ror_id, related_name, 'Successor', locations[0]]
+                        writer.writerow(entry)
+                    elif relationship_type == 'Predecessor-ns':
+                        entry = [issue_number, issue_html_url, issue_title, org_name,
+                                 org_ror_id, related_ror_id, related_name, 'Predecessor', locations[0]]
+                        writer.writerow(entry)
+                    else:
+                        try:
+                            inverted_entry = [issue_number, issue_html_url, issue_title, related_name,
+                                              related_ror_id, org_ror_id, org_name, rel_type_mappings[relationship_type], locations[1]]
+                        except KeyError:
+                            inverted_entry = [issue_number, issue_html_url, issue_title, related_name,
+                                              related_ror_id, org_ror_id, org_name, 'Error', 'Error']
+                        writer.writerow(entry)
+                        writer.writerow(inverted_entry)
 
 
 if __name__ == '__main__':
