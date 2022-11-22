@@ -154,7 +154,7 @@ def check_missing_files(relationships):
     return relationships
 
 def check_relationship(former_relationship, current_relationship_id, current_relationship_type):
-    return [r for r in former_relationship if (not (r['id'] == current_relationship_id) and not (r['type'] == current_relationship_type))]
+    return [r for r in former_relationship if ((not r['id'] == current_relationship_id) or (r['id'] == current_relationship_id and (not r['type'] == current_relationship_type)))]
 
 def get_related_name_api(related_id):
     name = None
