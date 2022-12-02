@@ -1,10 +1,12 @@
 import os
 import re
 import json
+import urllib
 import requests
 import update_address
 
-API_URL = "http://api.ror.org/organizations/"
+API_URL = "https://api.ror.org/organizations"
+INACTIVE_STATUSES = ('inactive', 'withdrawn')
 UPDATED_RECORDS_PATH = "updates/"
 updated_file_report = []
 
@@ -29,7 +31,7 @@ def update_release_file(release_file, related_id, related_name):
                     updated_file_report.append(['release', release_file, related_id, related_name])
 
 def check_update_production_file(ror_id, related_id, related_name):
-    api_record = API_URL + ror_id
+    api_record = API_URL + '/' + ror_id
     short_id = re.sub('https://ror.org/', '', ror_id)
     prod_record = requests.get(api_record).json()
     relationships = prod_record['relationships']
@@ -47,9 +49,8 @@ def check_update_production_file(ror_id, related_id, related_name):
                     json.dump(prod_record, f_out, ensure_ascii=False, indent=2)
                 updated_file_report.append(['production', ror_id, related_id, related_name])
 
-
 def check_name_production(ror_id, related_name):
-    api_record = API_URL + ror_id
+    api_record = API_URL + '/' + ror_id
     prod_record = requests.get(api_record).json()
     if prod_record['name'] == related_name:
         return True
@@ -62,6 +63,43 @@ def get_files(top):
             filepaths.append(os.path.join(dirpath, file))
     return filepaths
 
+def check_update_inactive_prod(related_id, name):
+    # check for inactive prod records with relationships(s) to record with updated name
+    print("Checking for inactive records to update in prod")
+    query = 'status:inactive OR status:withdrawn AND relationships.id:' + related_id
+    escaped_query = urllib.parse.quote_plus(query.replace('https://ror.org/', 'https\:\/\/ror.org\/'))
+    params = {'query.advanced': escaped_query}
+    response = requests.get(API_URL, params=params).json()
+    print(response)
+    count = 0
+    if len(response['items']) > 0:
+        for item in response['items']:
+            if item['status'] in INACTIVE_STATUSES and len(item['relationships']) > 0:
+                for r in item['relationships']:
+                    if r['id'] == related_id:
+                        count += 1
+                        check_update_production_file(related_id, item['id'], name)
+    print("Found " + str(count) + " relationships to " + related_id + " in inactive prod records")
+
+
+def check_update_inactive_release(related_id, name):
+    # check for inactive release records with relationships(s) to record with updated name
+    print("Checking for inactive records to update in release")
+    count = 0
+    for file in get_files("."):
+        print(file)
+        filename, file_extension = os.path.splitext(file)
+        print(file_extension)
+        if file_extension == '.json':
+            with open(file, 'r+') as f:
+                file_data = json.load(f)
+                if file_data['status'] in INACTIVE_STATUSES and len(file_data['relationships']) > 0:
+                    for r in file_data['relationships']:
+                        if r['id'] == related_id:
+                            count += 1
+                            update_release_file(file, related_id, name)
+    print("Found " + str(count) + " relationships to " + related_id + " in inactive release records")
+
 def update_related(initial_release_files):
     for json_file in initial_release_files:
         with open(json_file, 'r', encoding='utf8') as json_in:
@@ -71,20 +109,24 @@ def update_related(initial_release_files):
             relationships = json_data['relationships']
             print("Checking prod name for: " + ror_id + " " + name)
             same_name_check = check_name_production(ror_id, name)
-            if relationships != [] and same_name_check == False:
-                print("Checking", str(len(relationships)),
-                      "relationships for ROR ID:", ror_id, '-', name)
-                for relationship in relationships:
-                    related_id = relationship['id']
-                    short_related_filename = re.sub(
-                        'https://ror.org/', '', related_id) + '.json'
-                    print("Checking record location for: " + related_id)
-                    current_release_files = get_files(".")
-                    if any(short_related_filename in file for file in current_release_files):
-                        related_file_path = [file for file in current_release_files if short_related_filename in file][0]
-                        update_release_file(related_file_path, ror_id, name)
-                    else:
-                        check_update_production_file(related_id, ror_id, name)
+            if same_name_check == False:
+                if relationships != []:
+                    print("Checking", str(len(relationships)),
+                        "relationships for ROR ID:", ror_id, '-', name)
+                    for relationship in relationships:
+                        related_id = relationship['id']
+                        short_related_filename = re.sub(
+                            'https://ror.org/', '', related_id) + '.json'
+                        print("Checking record location for: " + related_id)
+                        current_release_files = get_files(".")
+                        if any(short_related_filename in file for file in current_release_files):
+                            related_file_path = [file for file in current_release_files if short_related_filename in file][0]
+                            update_release_file(related_file_path, ror_id, name)
+                        else:
+                            check_update_production_file(related_id, ror_id, name)
+                print("Checking inactive records for relationships to record:", ror_id, '-', name)
+                check_update_inactive_release(ror_id, name)
+                check_update_inactive_prod(ror_id, name)
 
 if __name__ == '__main__':
     update_related(get_files(UPDATED_RECORDS_PATH))

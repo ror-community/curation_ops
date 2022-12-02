@@ -20,15 +20,16 @@ def remove_relationships_from_file(inactive_id, related_filepath):
             file_data = json.load(f)
             if (file_data['status'] =='active') and len(file_data['relationships']) > 0:
                 original_relationships = file_data['relationships']
-                updated_relationships = [r for r in original_relationships if not(r['id'] == inactive_id)]
+                updated_relationships = [r for r in original_relationships if ((not r['id'] == inactive_id) or (r['id'] == inactive_id and r['type'] == 'Predecessor'))]
                 file_data['relationships'] = updated_relationships
                 f.seek(0)
                 json.dump(file_data, f, ensure_ascii=False, indent=2)
                 f.truncate()
                 removed_relationships.update({file_data['id']: [r for r in original_relationships if r not in updated_relationships]})
+        removed_relationships_pruned = {k:v for k,v in removed_relationships.items() if v}
     except Exception as e:
         logging.error(f"Error opening file {related_filepath}: {e}")
-    return removed_relationships
+    return removed_relationships_pruned
 
 def get_record(id, filename, inactive_id):
     filepath = ''
@@ -43,7 +44,7 @@ def get_record(id, filename, inactive_id):
     try:
         response = rsp.json()
         if (response['status'] =='active') and len(response['relationships']) > 0:
-            inactive_relationships = [r for r in response['relationships'] if r['id'] == inactive_id]
+            inactive_relationships = [r for r in response['relationships'] if (r['id'] == inactive_id and r['type'] != 'Predecessor')]
             if len(inactive_relationships) > 0:
                 updated_record = ua.update_geonames(response)
                 with open(UPDATED_RECORDS_PATH + filename, "w", encoding='utf8') as f:
@@ -97,7 +98,8 @@ def remove_relationships():
                 all_removed_relationships.append(removed_relationships)
             else:
                 no_relationship_in_related_file.append([inactive_id, relationship])
-    return all_removed_relationships, no_relationship_in_related_file
+    all_removed_relationships_pruned = [r for r in all_removed_relationships if r]
+    return all_removed_relationships_pruned, no_relationship_in_related_file
 
 def main():
     removed_relationships, no_relationship_in_related_file = remove_relationships()
@@ -105,7 +107,7 @@ def main():
     if len(removed_relationships) > 0:
         print(removed_relationships)
     if len(no_relationship_in_related_file) > 0:
-        print(str(len(no_relationship_in_related_file)) + " relationship(s) in inactive record(s) were not found in correspoding related record(s), so were not removed")
+        print(str(len(no_relationship_in_related_file)) + " relationship(s) in inactive record(s) were not found in correspoding related record(s) or were of type Predecessor, so were not removed")
         print(no_relationship_in_related_file)
     file_size = os.path.getsize(ERROR_LOG)
     if (file_size == 0):
