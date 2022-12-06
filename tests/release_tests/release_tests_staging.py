@@ -43,8 +43,8 @@ def compare_api(ror_id):
     return "same"
 
 def search_name_api(org_name):
-    api_url = "https://api.staging.ror.org/organizations?query=" + \
-        urllib.parse.quote(org_name)
+    api_url = 'https://api.staging.ror.org/organizations?query="' + \
+        urllib.parse.quote(org_name) + '"' + "&all_status=True"
     r = requests.get(api_url)
     results = r.json()["items"]
     for result in results:

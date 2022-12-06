@@ -56,8 +56,8 @@ def retrieve_from_ui(ror_id):
 
 
 def search_name_api(org_name):
-    api_url = "https://api.ror.org/organizations?query=" + \
-        urllib.parse.quote(org_name)
+    api_url = 'https://api.ror.org/organizations?query="' + \
+        urllib.parse.quote(org_name) + '"&all_status=True' 
     r = requests.get(api_url)
     results = r.json()["items"]
     for result in results:
@@ -67,11 +67,11 @@ def search_name_api(org_name):
 
 
 def search_name_ui(org_name):
-    ui_url = "https://ror.org/search?query=" + urllib.parse.quote(org_name)
+    ui_url = 'https://ror.org/search?filter=status:active,status:inactive,status:withdrawn&query="' + urllib.parse.quote(org_name) + '"'
     driver.get(ui_url)
     sleep(2)
     soup = BeautifulSoup(driver.page_source, features="html.parser")
-    name_in_ui = soup.find('h4', text=org_name)
+    name_in_ui = soup.find('h2', text=org_name)
     if name_in_ui is not None:
         return "retrieved"
     return "failed"
@@ -110,20 +110,23 @@ def check_release_files():
     ids_in_file = []
     for file in glob.glob("*.json"):
         with open(file, 'r+', encoding='utf8') as f_in:
-            json_file = json.load(f_in)
-            ids_in_file.append(json_file["id"])
-            ror_id = re.sub('https://ror.org/', '', json_file["id"])
-            org_name = json_file["name"]
-            print("Testing -", org_name, "- ROR ID:", ror_id, "...")
-            retrieve_check = retrieve_api(ror_id)
-            compare_check = compare_api(ror_id)
-            retrieve_from_ui_check = retrieve_from_ui(ror_id)
-            search_name_api_check = search_name_api(org_name)
-            search_name_ui_check = search_name_ui(org_name)
-            with open(release_tests_outfile, 'a') as f_out:
-                writer = csv.writer(f_out)
-                writer.writerow([ror_id, org_name, retrieve_check, compare_check, retrieve_from_ui_check,
-                                search_name_api_check, search_name_ui_check])
+            try:
+                json_file = json.load(f_in)
+                ids_in_file.append(json_file["id"])
+                ror_id = re.sub('https://ror.org/', '', json_file["id"])
+                org_name = json_file["name"]
+                print("Testing -", org_name, "- ROR ID:", ror_id, "...")
+                retrieve_check = retrieve_api(ror_id)
+                compare_check = compare_api(ror_id)
+                retrieve_from_ui_check = retrieve_from_ui(ror_id)
+                search_name_api_check = search_name_api(org_name)
+                search_name_ui_check = search_name_ui(org_name)
+                with open(release_tests_outfile, 'a') as f_out:
+                    writer = csv.writer(f_out)
+                    writer.writerow([ror_id, org_name, retrieve_check, compare_check, retrieve_from_ui_check,
+                                    search_name_api_check, search_name_ui_check])
+            except Exception:
+                print('Unable to test', file, '- test manually.')
     compare_random_check = compare_random(ids_in_file)
     if compare_random_check is not None:
         print(compare_random_check,
