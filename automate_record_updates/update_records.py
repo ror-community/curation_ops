@@ -19,7 +19,7 @@ def generate_json_dir():
 
 
 def download_record(ror_id, json_dir, geonames_id=None):
-    api_url = 'http://localhost:9292/organizations/' + ror_id
+    api_url = 'https://api.ror.org/organizations/' + ror_id
     json_file_path = json_dir + ror_id + '.json'
     ror_data = requests.get(api_url, verify=False).json()
     if geonames_id == None:
@@ -136,6 +136,21 @@ def delete_label(json_file, value):
             export_json(json_data, json_in)
 
 
+def delete_relationships(json_file, related_id):
+    with open(json_file, 'r+') as json_in:
+        json_data = json.load(json_in)
+        del_index = ''
+        for index, relationship in enumerate(json_data['relationships']):
+            if related_id in relationship['id']:
+                del_index = index
+        if del_index == '':
+            logging.error('Error:', related_id, 'not found in relationships.')
+            sys.exit()
+        else:
+            del json_data['relationships'][del_index]
+            export_json(json_data, json_in)
+
+
 def add_external_id(json_file, field, value):
     with open(json_file, 'r+') as json_in:
         json_data = json.load(json_in)
@@ -191,8 +206,8 @@ def delete_external_id(json_file, field, value):
 def parse_record_updates_file(f):
     # See test data for update string examples related to this parsing.
     record_updates = defaultdict(list)
-    ror_fields = ['name', 'status','established', 'wikipedia_url', 'links', 'types',
-                  'aliases', 'acronyms', 'Wikidata', 'ISNI', 'FundRef', 'labels', 'Geonames']
+    ror_fields = ['name', 'status', 'established', 'wikipedia_url', 'links', 'types',
+                  'aliases', 'acronyms', 'Wikidata', 'ISNI', 'FundRef', 'labels', 'relationships', 'Geonames']
     with open(f, encoding='utf-8-sig') as f_in:
         reader = csv.DictReader(f_in)
         for row in reader:
@@ -210,13 +225,15 @@ def parse_record_updates_file(f):
                         change_field, "is not a valid field. Please check coding on", row['html_url'])
                     sys.exit()
                 change_value = update.split('==')[1].strip()
+                if 'https://ror.org/' in change_value:
+                    change_value = re.sub('https://ror.org/', '', change_value)
                 record_updates[ror_id].append(
                     {'change_type': change_type, 'change_field': change_field, 'change_value': change_value})
     return record_updates
 
 
 def update_records(record_updates):
-    non_repeating_fields = ['name', 'status','established', 'wikipedia_url']
+    non_repeating_fields = ['name', 'status', 'established', 'wikipedia_url']
     repeating_fields = ['links', 'types', 'aliases', 'acronyms']
     external_ids = ['Wikidata', 'ISNI', 'FundRef']
     json_dir = generate_json_dir()
@@ -228,6 +245,11 @@ def update_records(record_updates):
             geonames_change = record_changes[geonames_index]
             geonames_id = geonames_change['change_value']
             download_record(ror_id, json_dir, geonames_id)
+        elif 'relationships' in all_change_fields:
+            download_record(ror_id, json_dir)
+            related_ids = [update['change_value'] for update in record_changes if update['change_field'] == 'relationships']
+            for related_id in related_ids:
+                download_record(related_id, json_dir)
         else:
             download_record(ror_id, json_dir)
         json_file_path = json_dir + ror_id + '.json'
@@ -255,6 +277,11 @@ def update_records(record_updates):
                 if record_change['change_type'] == 'delete':
                     delete_label(json_file_path,
                                  record_change['change_value'])
+            if record_change['change_field'] == 'relationships':
+                related_id = record_change['change_value']
+                related_file_path = json_dir + related_id + '.json'
+                delete_relationships(json_file_path, related_id)
+                delete_relationships(related_file_path, ror_id)
             if record_change['change_field'] in external_ids:
                 if record_change['change_type'] == 'add':
                     add_external_id(
