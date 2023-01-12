@@ -5,11 +5,12 @@ import logging
 import requests
 import sys
 
-ZENODO_API_URL = "https://sandbox.zenodo.org/api/"
+ZENODO_API_URL_SANDBOX = "https://sandbox.zenodo.org/api/"
+ZENODO_API_URL_PROD = "https://zenodo.org/api/"
+ZENODO_API_URL = ""
 ZENODO_TOKEN = os.environ['ZENODO_TOKEN']
 GITHUB_API_URL = "https://api.github.com/repos/ror-community/ror-updates/releases/tags/"
-GITHUB_RELEASE_URL = "https://github.com/ror-community/ror-updates/releases/tag/"
-DUMP_FILE_DIR = "/Users/ekrznarich/git/ror-data/"
+DUMP_FILE_DIR = "./"
 HEADERS = {"Content-Type": "application/json"}
 
 
@@ -221,9 +222,15 @@ def get_release_data(release_name, parent_id):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('-r', '--releasename', type=str)
-    parser.add_argument('-p', '--parentrecord', type=str)
+    parser.add_argument('-r', '--releasename', type=str, required=True)
+    parser.add_argument('-p', '--parentrecord', type=str, required=True)
+    parser.add_argument('-e', '--zenodoenv', type=str, choices=['prod', 'sandbox'], required=True)
     args = parser.parse_args()
+    if args.zenodoenv == 'prod':
+        ZENODO_API_URL = ZENODO_API_URL_PROD
+    else:
+        ZENODO_API_URL = ZENODO_API_URL_SANDBOX
+
     release_data = get_release_data(args.releasename, args.parentrecord)
 
     if check_release_data(release_data):
