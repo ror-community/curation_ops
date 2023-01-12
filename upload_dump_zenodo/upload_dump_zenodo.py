@@ -8,7 +8,7 @@ import sys
 ZENODO_API_URL_SANDBOX = "https://sandbox.zenodo.org/api/"
 ZENODO_API_URL_PROD = "https://zenodo.org/api/"
 ZENODO_API_URL = ""
-ZENODO_TOKEN = os.environ['ZENODO_TOKEN']
+ZENODO_TOKEN = ""
 GITHUB_API_URL = "https://api.github.com/repos/ror-community/ror-updates/releases/tags/"
 DUMP_FILE_DIR = "./"
 HEADERS = {"Content-Type": "application/json"}
@@ -195,6 +195,7 @@ def check_release_data(release_data):
 def get_previous_version_doi(parent_record_id):
     "Getting DOI for previous version"
     doi = None
+    print(ZENODO_API_URL)
     try:
         r = requests.get(ZENODO_API_URL + 'records/' + parent_record_id, params={'access_token': ZENODO_TOKEN})
         r.raise_for_status()
@@ -226,10 +227,19 @@ def main():
     parser.add_argument('-p', '--parentrecord', type=str, required=True)
     parser.add_argument('-e', '--zenodoenv', type=str, choices=['prod', 'sandbox'], required=True)
     args = parser.parse_args()
+
+    global ZENODO_API_URL
+    global ZENODO_API_URL_PROD
+    global ZENODO_TOKEN
+
     if args.zenodoenv == 'prod':
         ZENODO_API_URL = ZENODO_API_URL_PROD
+        ZENODO_TOKEN = os.environ['ZENODO_TOKEN_PROD']
     else:
         ZENODO_API_URL = ZENODO_API_URL_SANDBOX
+        ZENODO_TOKEN = os.environ['ZENODO_TOKEN_SANDBOX']
+
+    print(ZENODO_API_URL)
 
     release_data = get_release_data(args.releasename, args.parentrecord)
 
