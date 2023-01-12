@@ -35,7 +35,7 @@ def get_release_notes_data(release):
             if "- **Records added**" in line:
                 notes_data['added'] = line.split(":")[1].strip()
             if "- **Records updated**" in line:
-                notes_data['updated'] = line.split(":")[1].strip()s
+                notes_data['updated'] = line.split(":")[1].strip()
     except requests.exceptions.HTTPError as e:
         raise SystemExit(e)
     except requests.exceptions.RequestException as e:
@@ -104,7 +104,7 @@ def publish_version(version_url):
         r.raise_for_status()
         if r.status_code == 202:
             print("Data dump published successfully!")
-            print(r.json())
+            print("DOI is " + r.json()['doi'])
     except requests.exceptions.HTTPError as e:
         raise SystemExit(e)
     except requests.exceptions.RequestException as e:
@@ -119,11 +119,9 @@ def upload_new_file(version_url, release_data):
         r = requests.post(version_url + '/files', params={'access_token': ZENODO_TOKEN}, data=data, files=files)
         r.raise_for_status()
         if r.status_code == 201:
-            "File " + r.json()['filename'] + " uploaded successfully"
+            print("File " + r.json()['filename'] + " uploaded successfully")
             return r.json()
     except requests.exceptions.HTTPError as e:
-        raise SystemExit(e)
-    except requests.exceptions.RequestException as e:
         raise SystemExit(e)
 
 
@@ -138,7 +136,7 @@ def delete_existing_files(version_url):
                 r = requests.delete(version_url + '/files/' + file['id'], params={'access_token': ZENODO_TOKEN})
                 r.raise_for_status()
                 if r.status_code == 204:
-                    print("File " + file['id'] + " deleted successfully")
+                    print("File " + file['filename'] + " deleted successfully")
             except requests.exceptions.HTTPError as e:
                 raise SystemExit(e)
             except requests.exceptions.RequestException as e:
@@ -148,9 +146,9 @@ def delete_existing_files(version_url):
             r.raise_for_status()
             return r.json()
         except requests.exceptions.HTTPError as e:
-                raise SystemExit(e)
-            except requests.exceptions.RequestException as e:
-                raise SystemExit(e)
+            raise SystemExit(e)
+        except requests.exceptions.RequestException as e:
+            raise SystemExit(e)
     except requests.exceptions.HTTPError as e:
         raise SystemExit(e)
     except requests.exceptions.RequestException as e:
@@ -158,17 +156,18 @@ def delete_existing_files(version_url):
 
 
 def create_zenodo_version(release_data):
+    print("Creating new Zenodo version")
     id = release_data['previous_version_doi'].rsplit(".", 1)[1]
     try:
         r = requests.post(ZENODO_API_URL + 'deposit/depositions/' + id + '/actions/newversion', params={'access_token': ZENODO_TOKEN})
         r.raise_for_status()
-        if r.json() == 201:
+        if r.status_code == 201:
             new_version_url = r.json()['links']['latest_draft']
             print("New version created. URL is " + new_version_url)
             existing_files = delete_existing_files(new_version_url)
             if len(existing_files) == 0:
                 new_file = upload_new_file(new_version_url, release_data)
-                if len(new_file) == 1:
+                if new_file['filename'] == release_data['filename']:
                     update_metadata(new_version_url, release_data)
                     publish_version(new_version_url)
     except requests.exceptions.HTTPError as e:
@@ -197,7 +196,7 @@ def get_previous_version_doi(parent_record_id):
     doi = None
     try:
         r = requests.get(ZENODO_API_URL + 'records/' + parent_record_id, params={'access_token': ZENODO_TOKEN})
-        r.raise_for_stats()
+        r.raise_for_status()
         if r.status_code == 200:
             doi = r.json()['doi']
         return doi
@@ -205,6 +204,7 @@ def get_previous_version_doi(parent_record_id):
         raise SystemExit(e)
     except requests.exceptions.RequestException as e:
         raise SystemExit(e)
+
 
 def get_release_data(release_name, parent_id):
     release_data = {}
@@ -217,6 +217,7 @@ def get_release_data(release_name, parent_id):
     if 'updated' in notes_data:
         release_data['updated'] = notes_data['updated']
     return release_data
+
 
 def main():
     parser = argparse.ArgumentParser()
