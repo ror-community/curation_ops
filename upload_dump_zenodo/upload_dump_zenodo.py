@@ -46,7 +46,7 @@ def get_release_notes_data(release):
 
 def format_description(release_data):
     description = '<p>Data dump from the Research Organization Registry (ROR), a community-led registry \
-            of open identifiers \for research organizations.</p>\n\n<p>Release ' + release_data['filename'].split('-', 1)[0] + '&nbsp;contains ROR IDs and metadata \
+            of open identifiers for research organizations.</p>\n\n<p>Release ' + release_data['filename'].split('-', 1)[0] + ' contains ROR IDs and metadata \
             for ' + release_data['total'] + '&nbsp;research organizations in JSON format. '
     if 'updated' in release_data or 'added' in release_data:
         description += 'This includes '
@@ -57,8 +57,8 @@ def format_description(release_data):
             description += 'the addition of ' + release_data['added'] + ' new records.'
         if 'updated' in release_data and 'added' not in release_data:
             description += 'metadata updates to ' + release_data['updated'] + ' existing records.'
-    description += '&nbsp;<a href=\"https://github.com/ror-community/ror-updates/releases/tag/' + release_data['filename'].split('-', 1)[0] + '\"> \
-            See the release notes</a>.</p>\n\n<p>Beginning with its&nbsp;<a href=\"https://doi.org/10.5281/zenodo.6347575\">\
+    description += '<a href=\"https://github.com/ror-community/ror-updates/releases/tag/' + release_data['filename'].split('-', 1)[0] + '\"> \
+            See the release notes</a>.</p>\n\n<p>Beginning with its <a href=\"https://doi.org/10.5281/zenodo.6347575\">\
             March 2022 release</a>, ROR is curated independently from GRID. Semantic versioning beginning with v1.0 was added \
             to reflect this departure from GRID. The existing data structure was not changed.</p>\n\n<p>From March 2022 onward, \
             data releases are versioned as follows:</p>\n\n<ul>\n\t<li><strong>Minor versions (ex 1.1, 1.2, 1.3):</strong>&nbsp; \
@@ -195,7 +195,6 @@ def check_release_data(release_data):
 def get_previous_version_doi(parent_record_id):
     "Getting DOI for previous version"
     doi = None
-    print(ZENODO_API_URL)
     try:
         r = requests.get(ZENODO_API_URL + 'records/' + parent_record_id, params={'access_token': ZENODO_TOKEN})
         r.raise_for_status()
@@ -238,8 +237,6 @@ def main():
     else:
         ZENODO_API_URL = ZENODO_API_URL_SANDBOX
         ZENODO_TOKEN = os.environ['ZENODO_TOKEN_SANDBOX']
-
-    print(ZENODO_API_URL)
 
     release_data = get_release_data(args.releasename, args.parentrecord)
 
