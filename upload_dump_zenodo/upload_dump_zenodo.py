@@ -12,17 +12,21 @@ GITHUB_RELEASE_URL = "https://github.com/ror-community/ror-updates/releases/tag/
 DUMP_FILE_DIR = "/Users/ekrznarich/git/ror-data/"
 HEADERS = {"Content-Type": "application/json"}
 
-# Get data dump file
+
 def get_dump_file(release):
+    "Getting dump filename"
     for file in os.listdir(DUMP_FILE_DIR):
         if file.split("-", 1)[0] == release:
             return file
     return None
 
+
 def get_release_notes_data(release):
+    "Getting release notes data from Github"
     notes_data = {}
-    r = requests.get(GITHUB_API_URL + release)
-    if r.status_code == 200:
+    try:
+        r = requests.get(GITHUB_API_URL + release)
+        r.raise_for_status()
         notes_data['url'] = r.json()['html_url']
         body = r.json()['body']
         for line in body.splitlines():
@@ -31,8 +35,13 @@ def get_release_notes_data(release):
             if "- **Records added**" in line:
                 notes_data['added'] = line.split(":")[1].strip()
             if "- **Records updated**" in line:
-                notes_data['updated'] = line.split(":")[1].strip()
+                notes_data['updated'] = line.split(":")[1].strip()s
+    except requests.exceptions.HTTPError as e:
+        raise SystemExit(e)
+    except requests.exceptions.RequestException as e:
+        raise SystemExit(e)
     return notes_data
+
 
 def format_description(release_data):
     description = '<p>Data dump from the Research Organization Registry (ROR), a community-led registry \
@@ -59,64 +68,114 @@ def format_description(release_data):
             </li>\n</ul>\n\n<p>For convenience, the date is also include in the release file name, ex: v1.0-2022-03-15-ror-data.zip.</p>'
     return description
 
-# Update metadata
+
 def update_metadata(version_url, release_data):
     print("Updating metadata")
-    updated_description = format_description(release_data)
-    r = requests.get(version_url, params={'access_token': ZENODO_TOKEN})
-    metadata = r.json()['metadata']
-    related_ids = metadata['related_identifiers']
-    related_ids.append({'identifier': release_data['previous_version_doi'], 'relation': 'isNewVersionOf', 'resource_type': 'dataset', 'scheme': 'doi'})
-    metadata['publication_date'] = release_data['filename'].split('-', 1)[1].split('-ror-data.zip')[0]
-    metadata['version'] = release_data['filename'].split('-', 1)[0]
-    metadata['description'] = updated_description
-    metadata['related_identifiers'] = related_ids
-    updated_metadata = {'metadata': metadata}
-    r = requests.put(version_url, params={'access_token': ZENODO_TOKEN}, data=json.dumps(updated_metadata), headers=HEADERS)
-    print(r.status_code)
+    try:
+        r = requests.get(version_url, params={'access_token': ZENODO_TOKEN})
+        r.raise_for_status()
+        metadata = r.json()['metadata']
+        related_ids = metadata['related_identifiers']
+        related_ids.append({'identifier': release_data['previous_version_doi'], 'relation': 'isNewVersionOf', 'resource_type': 'dataset', 'scheme': 'doi'})
+        metadata['publication_date'] = release_data['filename'].split('-', 1)[1].split('-ror-data.zip')[0]
+        metadata['version'] = release_data['filename'].split('-', 1)[0]
+        metadata['description'] = format_description(release_data)
+        metadata['related_identifiers'] = related_ids
+        updated_metadata = {'metadata': metadata}
+        try:
+            r = requests.put(version_url, params={'access_token': ZENODO_TOKEN}, data=json.dumps(updated_metadata), headers=HEADERS)
+            r.raise_for_status()
+            if r.status_code == 200:
+                "Metadata updated successfully"
+        except requests.exceptions.HTTPError as e:
+            raise SystemExit(e)
+        except requests.exceptions.RequestException as e:
+            raise SystemExit(e)
+    except requests.exceptions.HTTPError as e:
+        raise SystemExit(e)
+    except requests.exceptions.RequestException as e:
+        raise SystemExit(e)
 
-# Publish
+
 def publish_version(version_url):
     print("Publishing new version")
-    r = requests.post(version_url + '/actions/publish', params={'access_token': ZENODO_TOKEN})
-    print(r.status_code)
-    print(r.json())
-    return r.status_code
+    try:
+        r = requests.post(version_url + '/actions/publish', params={'access_token': ZENODO_TOKEN})
+        r.raise_for_status()
+        if r.status_code == 202:
+            print("Data dump published successfully!")
+            print(r.json())
+    except requests.exceptions.HTTPError as e:
+        raise SystemExit(e)
+    except requests.exceptions.RequestException as e:
+        raise SystemExit(e)
 
-# Add new file to new version
+
 def upload_new_file(version_url, release_data):
     print("Uploading new file")
     data = {'name': release_data['filename']}
     files = {'file': open(DUMP_FILE_DIR + release_data['filename'], 'rb')}
-    r = requests.post(version_url + '/files', params={'access_token': ZENODO_TOKEN}, data=data, files=files)
-    r = requests.get(version_url + '/files', params={'access_token': ZENODO_TOKEN})
-    return r.json()
+    try:
+        r = requests.post(version_url + '/files', params={'access_token': ZENODO_TOKEN}, data=data, files=files)
+        r.raise_for_status()
+        if r.status_code == 201:
+            "File " + r.json()['filename'] + " uploaded successfully"
+            return r.json()
+    except requests.exceptions.HTTPError as e:
+        raise SystemExit(e)
+    except requests.exceptions.RequestException as e:
+        raise SystemExit(e)
 
-# Delete existing files for new version
+
 def delete_existing_files(version_url):
     print("Deleting existing files")
-    r = requests.get(version_url + '/files', params={'access_token': ZENODO_TOKEN})
-    files = r.json()
-    for file in files:
-        r = requests.delete(version_url + '/files/' + file['id'], params={'access_token': ZENODO_TOKEN})
-    r = requests.get(version_url + '/files', params={'access_token': ZENODO_TOKEN})
-    return r.json()
+    try:
+        r = requests.get(version_url + '/files', params={'access_token': ZENODO_TOKEN})
+        r.raise_for_status()
+        files = r.json()
+        for file in files:
+            try:
+                r = requests.delete(version_url + '/files/' + file['id'], params={'access_token': ZENODO_TOKEN})
+                r.raise_for_status()
+                if r.status_code == 204:
+                    print("File " + file['id'] + " deleted successfully")
+            except requests.exceptions.HTTPError as e:
+                raise SystemExit(e)
+            except requests.exceptions.RequestException as e:
+                raise SystemExit(e)
+        try:
+            r = requests.get(version_url + '/files', params={'access_token': ZENODO_TOKEN})
+            r.raise_for_status()
+            return r.json()
+        except requests.exceptions.HTTPError as e:
+                raise SystemExit(e)
+            except requests.exceptions.RequestException as e:
+                raise SystemExit(e)
+    except requests.exceptions.HTTPError as e:
+        raise SystemExit(e)
+    except requests.exceptions.RequestException as e:
+        raise SystemExit(e)
+
 
 def create_zenodo_version(release_data):
     id = release_data['previous_version_doi'].rsplit(".", 1)[1]
-    r = requests.post(ZENODO_API_URL + 'deposit/depositions/' + id + '/actions/newversion', params={'access_token': ZENODO_TOKEN})
-    new_version_url = r.json()['links']['latest_draft']
-    print("New version created. URL is " + new_version_url)
-    existing_files = delete_existing_files(new_version_url)
-    if len(existing_files) == 0:
-        new_file = upload_new_file(new_version_url, release_data)
-        if len(new_file) == 1:
-            update_metadata(new_version_url, release_data)
-            status_code = publish_version(new_version_url)
-            if status_code == 202:
-                print("Data dump published!")
-            else:
-                print("Publishing failed. Status code: " + str(status_code))
+    try:
+        r = requests.post(ZENODO_API_URL + 'deposit/depositions/' + id + '/actions/newversion', params={'access_token': ZENODO_TOKEN})
+        r.raise_for_status()
+        if r.json() == 201:
+            new_version_url = r.json()['links']['latest_draft']
+            print("New version created. URL is " + new_version_url)
+            existing_files = delete_existing_files(new_version_url)
+            if len(existing_files) == 0:
+                new_file = upload_new_file(new_version_url, release_data)
+                if len(new_file) == 1:
+                    update_metadata(new_version_url, release_data)
+                    publish_version(new_version_url)
+    except requests.exceptions.HTTPError as e:
+        raise SystemExit(e)
+    except requests.exceptions.RequestException as e:
+        raise SystemExit(e)
+
 
 def check_release_data(release_data):
     file_present = "ror-data.zip" in release_data['filename']
@@ -134,11 +193,18 @@ def check_release_data(release_data):
         return False
 
 def get_previous_version_doi(parent_record_id):
+    "Getting DOI for previous version"
     doi = None
-    r = requests.get(ZENODO_API_URL + 'records/' + parent_record_id, params={'access_token': ZENODO_TOKEN})
-    if r.status_code == 200:
-        doi = r.json()['doi']
-    return doi
+    try:
+        r = requests.get(ZENODO_API_URL + 'records/' + parent_record_id, params={'access_token': ZENODO_TOKEN})
+        r.raise_for_stats()
+        if r.status_code == 200:
+            doi = r.json()['doi']
+        return doi
+    except requests.exceptions.HTTPError as e:
+        raise SystemExit(e)
+    except requests.exceptions.RequestException as e:
+        raise SystemExit(e)
 
 def get_release_data(release_name, parent_id):
     release_data = {}
