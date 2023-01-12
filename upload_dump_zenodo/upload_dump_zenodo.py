@@ -1,0 +1,154 @@
+import argparse
+import json
+import os
+import logging
+import requests
+import sys
+
+ZENODO_API_URL = "https://sandbox.zenodo.org/api/"
+# ZENODO_TOKEN = os.environ['ZENODO_TOKEN']
+GITHUB_API_URL = "https://api.github.com/repos/ror-community/ror-updates/releases/tags/"
+GITHUB_RELEASE_URL = "https://github.com/ror-community/ror-updates/releases/tag/"
+DUMP_FILE_DIR = "/Users/ekrznarich/git/ror-data/"
+
+# Get data dump file
+def get_dump_file(release):
+    for file in os.listdir(DUMP_FILE_DIR):
+        if file.split("-", 1)[0] == release:
+            return file
+    return None
+
+def get_release_notes_data(release):
+    notes_data = {}
+    r = requests.get(GITHUB_API_URL + release)
+    if r.status_code == 200:
+        release_data['url'] = r.json()['html_url']
+        body = r.json()['body']
+        for line in body.splitlines():
+            if "- **Total organizations**" in line:
+                notes_data['total'] = line.split(":")[1].strip()
+            if "- **Records added**" in line:
+                notes_data['added'] = line.split(":")[1].strip()
+            if "- **Records updated**" in line:
+                notes_data['updated'] = line.split(":").strip()
+    return notes_data
+
+def format_description(release_data):
+    description = '<p>Data dump from the Research Organization Registry (ROR), a community-led registry \
+            of open identifiers \for research organizations.</p>\n\n<p>Release v1.17&nbsp;contains ROR IDs and metadata \
+            for ' + release_data['total'] + '&nbsp;research organizations in JSON format. '
+    if release_data['updated'] or release_data['added']:
+        description += 'This includes '
+        if release_data['added'] and release_data['updated']:
+            description += 'the addition of ' + release_data['added'] + ' new records and metadata updates to ' \
+                + release_data['updated'] + ' existing records.'
+        if release_data['added'] and not release_data['updated']:
+            description += 'the addition of ' + release_data['added'] + ' new records.'
+        if release_data['updated'] and not release_data['added']:
+            description += 'metadata updates to ' + release_data['updated'] + ' existing records.'
+    description += '&nbsp;<a href=\"https://github.com/ror-community/ror-updates/releases/tag/' + release_data['filename'].split('-', 1)[0] + '\"> \
+            See the release notes</a>.</p>\n\n<p>Beginning with its&nbsp;<a href=\"https://doi.org/10.5281/zenodo.6347575\"> \
+            March 2022 release</a>, ROR is curated independently from GRID. Semantic versioning beginning with v1.0 was added \
+            to reflect this departure from GRID. The existing data structure was not changed.</p>\n\n<p>From March 2022 onward, \
+            data releases are versioned as follows:</p>\n\n<ul>\n\t<li><strong>Minor versions (ex 1.1, 1.2, 1.3):</strong>&nbsp; \
+            Contain changes to data, such as a new records and updates to existing records. No changes to the data model/structure.\
+            </li>\n\t<li><strong>Patch versions (ex 1.0.1):</strong>&nbsp;Used infrequently to correct errors in a release. \
+            No changes to the data model/structure.</li>\n\t<li><strong>Major versions (ex 1.x, 2.x, 3.x):</strong>&nbsp; \
+            Contains changes to data model/structure, as well as the data itself. Major versions will be released with significant advance notice. \
+            </li>\n</ul>\n\n<p>For convenience, the date is also include in the release file name, ex: v1.0-2022-03-15-ror-data.zip.</p>'
+    return description
+
+# Update metadata
+def update_metadata(version_url, release_data):
+    updated_description = format_description(release_data)
+    r = requests.get(version_url, params={'access_token': ZENODO_TOKEN})
+    if r.status_code == 200:
+        metadata = r.json()['metadata']
+        related_ids = metadata['related_identifiers']
+        related_ids.append({'identifier': release_data['previous_version_doi'], 'relation': 'isNewVersionOf', 'resource_type': 'dataset', 'scheme': 'doi'})
+        metadata['publication_date'] = release_data['filename'].split('-', 1)[1].split('-ror-data.zip')[0]
+        metadata['version'] = release_data['filename'].split('-', 1)[0]
+        metadata['description'] = updated_description
+        metadata['related_identifiers'] = related_ids
+        r = requests.put(version_url, params={'access_token': ZENODO_TOKEN}, data=json.dumps(metadata), headers=headers)
+
+# Publish
+def publish_version(version_url):
+    r = requests.post(version_url + '/actions/publish', params={'access_token': ZENODO_TOKEN})
+    return r.status_code
+
+# Add new file to new version
+def upload_new_file(release_data, version_url):
+    data = {'name': release_data['filename']}
+    files = {'file': open(DUMP_FILE_DIR + release_data['filename'], 'rb')}
+    r = requests.post(version_url + '/files', params={'access_token': ZENODO_TOKEN}, data=data, files=files)
+    r = requests.get(version_url + '/files', params={'access_token': ZENODO_TOKEN})
+    return r.json()
+
+# Delete existing files for new version
+def delete_existing_files(version_url):
+    r = requests.get(version_url + '/files', params={'access_token': ZENODO_TOKEN})
+    files = r.json()
+    for file in files:
+        r = requests.delete(version_url + '/files' + file['id'], params={'access_token': ZENODO_TOKEN})
+    r = requests.get(version_url + '/files', params={'access_token': ZENODO_TOKEN})
+    return r.json()
+
+def create_zenodo_version(parent_record_id, release_data):
+    r = requests.post(ZENODO_API_URL + 'deposit/depositions/' + parent_record_id + '/actions/newversion', params={'access_token': ZENODO_TOKEN})
+    if r.status_code == 200:
+        new_version_url = r.json()['links']['lastest_draft']
+        if r.status_code == 200:
+            existing_files = delete_existing_files(new_version_url)
+            if len(existing_files) == 0:
+                new_file = upload_new_file(new_version_url, release_data)
+                if len(new_file) == 1:
+                    update_metadata(new_version_url, release_data)
+
+
+def check_release_data(release_data):
+    file_present = "ror-data.zip" in release_data['filename']
+    previous_version_doi_present = "doi.org" in release_data['previous_version_doi']
+    total_present = (len(release_data['total']) is not None) and (len(release_data['total']) > 0)
+    if file_present and previous_version_doi_present and total_present:
+        return True
+    else:
+        if not file_present:
+            print("Dump file not found in ror-data")
+        if not previous_version_doi_present:
+            print("Previous version DOI not found in Zenodo")
+        if not total_present:
+            print("Total orgs count not found in release notes")
+        return False
+
+def get_previous_version_doi(parent_record_id):
+    doi = None
+    r = requests.get(ZENODO_API_URL + 'records/' + parent_record_id, params={'access_token': ZENODO_TOKEN})
+    if r.status_code == 200:
+        doi = r.json()['doi']
+    return doi
+
+def get_release_data(release_name, parent_id):
+    release_data = {}
+    release_data['filename'] = get_dump_file(args.releasename)
+    release_data['previous_version_doi'] = get_previous_version_doi(parent_id)
+    notes_data = get_release_notes_data(release_name)
+    release_data['total'] = notes_data['total']
+    release_data['added'] = notes_data['added']
+    release_data['updated'] = notes_data['updated']
+    return release_data
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-r', '--releasename', type=str)
+    parser.add_argument('-p', '--parentrecord', type=str)
+    args = parser.parse_args()
+    release_data = get_release_data(args.releasename, args.parentrecord)
+
+    if check_release_data(release_data):
+        create_zenodo_version(args.parentrecord, release_data)
+    else:
+        print("Dump file name, previous version record or release notes could not be found")
+
+if __name__ == "__main__":
+    main()
