@@ -179,7 +179,7 @@ def create_zenodo_version(release_data):
 
 def check_release_data(release_data):
     file_present = "ror-data.zip" in release_data['filename']
-    previous_version_doi_present = "10.5072/zenodo" in release_data['previous_version_doi']
+    previous_version_doi_present = "/zenodo" in release_data['previous_version_doi']
     total_present = (len(release_data['total']) is not None) and (len(release_data['total']) > 0)
     if file_present and previous_version_doi_present and total_present:
         return True
@@ -245,7 +245,7 @@ def main():
         print(release_data)
         create_zenodo_version(release_data)
     else:
-        print("Dump file name, previous version record or release notes could not be found")
+        raise Exception("Dump file name, previous version record or release notes could not be found")
 
 if __name__ == "__main__":
     main()
