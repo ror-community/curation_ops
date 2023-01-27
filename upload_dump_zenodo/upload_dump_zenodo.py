@@ -10,6 +10,8 @@ ZENODO_API_URL_PROD = "https://zenodo.org/api/"
 ZENODO_API_URL = ""
 ZENODO_TOKEN = ""
 GITHUB_API_URL = "https://api.github.com/repos/ror-community/ror-updates/releases/tags/"
+GITHUB_USER = os.environ['PERSONAL_ACCESS_TOKEN_USER']
+GITHUB_TOKEN = os.environ['PERSONAL_ACCESS_TOKEN']
 DUMP_FILE_DIR = "./"
 HEADERS = {"Content-Type": "application/json"}
 
@@ -26,7 +28,8 @@ def get_release_notes_data(release):
     "Getting release notes data from Github"
     notes_data = {}
     try:
-        r = requests.get(GITHUB_API_URL + release)
+        r = requests.get(GITHUB_API_URL + release, auth=(
+            GITHUB_USER, GITHUB_TOKEN))
         r.raise_for_status()
         notes_data['url'] = r.json()['html_url']
         body = r.json()['body']
