@@ -97,12 +97,18 @@ def create_new_dump(release_name):
         logging.error("Error creating new dump: {e}")
 
 def main():
-    convert_to_csv.get_all_data('v1.20-2023-02-28-ror-data.json')
-    '''
     parser = argparse.ArgumentParser()
     parser.add_argument('-r', '--releasedirname', type=str)
     parser.add_argument('-e', '--existingdumpname', type=str)
+    parser.add_argument('-i', '--inputpath', type=str, default='.')
+    parser.add_argument('-o', '--outputpath', type=str, default='.')
     args = parser.parse_args()
+    global INPUT_PATH
+    global OUTPUT_PATH
+
+    INPUT_PATH = args.inputpath + '/'
+    OUTPUT_PATH = args.inputpath + '/'
+
     input_dir = INPUT_PATH + args.releasedirname + "/"
     existing_dump_zip_path = OUTPUT_PATH + args.existingdumpname + ".zip"
     if os.path.exists(input_dir):
@@ -119,7 +125,6 @@ def main():
         with open(ERROR_LOG, 'r') as f:
             print(f.read())
         sys.exit(1)
-    '''
 
 if __name__ == "__main__":
     main()
