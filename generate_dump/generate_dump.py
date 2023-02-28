@@ -5,6 +5,9 @@ import logging
 import sys
 from zipfile import ZipFile, ZIP_DEFLATED
 from datetime import datetime
+import sys
+sys.path.append('../utilities/data_dump_to_csv')
+import convert_to_csv
 
 NOW = datetime.now()
 ERROR_LOG = "errors.log"
@@ -44,10 +47,12 @@ def remove_existing_records(ror_ids, existing_dump_zip_path):
     indexes = []
     records_to_remove = []
     with ZipFile(existing_dump_zip_path, "r") as zf:
-        if len(zf.namelist())==1:
+        json_files_count = sum('.json' in s for s in zf.namelist())
+        if json_files_count == 1:
             for name in zf.namelist():
-                # assumes ror-data zip will only contain 1 file
-                existing_dump_unzipped = zf.extract(name, INPUT_PATH)
+                # assumes ror-data zip will only contain 1 JSON file
+                if '.json' in name:
+                    existing_dump_unzipped = zf.extract(name, INPUT_PATH)
         else:
             print("Dump zip contains multiple files. Something is wrong.")
     try:
@@ -84,12 +89,16 @@ def create_new_dump(release_name):
         open(INPUT_PATH + release_name + NEW_DUMP_SUFFIX + ".json", "w").write(
             json.dumps(temp_dump_updated_records_removed_json, indent=4, separators=(',', ': '))
         )
+        convert_to_csv.get_all_data(INPUT_PATH + release_name + NEW_DUMP_SUFFIX + ".json")
         with ZipFile(OUTPUT_PATH + release_name + NEW_DUMP_SUFFIX + ".zip", 'w', ZIP_DEFLATED) as myzip:
             myzip.write(INPUT_PATH + release_name + NEW_DUMP_SUFFIX + ".json")
+            myzip.write(INPUT_PATH + release_name + NEW_DUMP_SUFFIX + ".csv")
     except Exception as e:
         logging.error("Error creating new dump: {e}")
 
 def main():
+    convert_to_csv.get_all_data('v1.20-2023-02-28-ror-data.json')
+    '''
     parser = argparse.ArgumentParser()
     parser.add_argument('-r', '--releasedirname', type=str)
     parser.add_argument('-e', '--existingdumpname', type=str)
@@ -110,6 +119,7 @@ def main():
         with open(ERROR_LOG, 'r') as f:
             print(f.read())
         sys.exit(1)
+    '''
 
 if __name__ == "__main__":
     main()
