@@ -91,8 +91,8 @@ def create_new_dump(release_name):
         )
         convert_to_csv.get_all_data(INPUT_PATH + release_name + NEW_DUMP_SUFFIX + ".json")
         with ZipFile(OUTPUT_PATH + release_name + NEW_DUMP_SUFFIX + ".zip", 'w', ZIP_DEFLATED) as myzip:
-            myzip.write(INPUT_PATH + release_name + NEW_DUMP_SUFFIX + ".json")
-            myzip.write(INPUT_PATH + release_name + NEW_DUMP_SUFFIX + ".csv")
+            myzip.write(INPUT_PATH + release_name + NEW_DUMP_SUFFIX + ".json", release_name + NEW_DUMP_SUFFIX + ".json")
+            myzip.write(INPUT_PATH + release_name + NEW_DUMP_SUFFIX + ".csv", release_name + NEW_DUMP_SUFFIX + ".csv")
     except Exception as e:
         logging.error("Error creating new dump: {e}")
 
