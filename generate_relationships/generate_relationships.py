@@ -81,6 +81,7 @@ def get_record_status(record_id):
         download_url=API_URL + record_id
         try:
             rsp = requests.get(download_url)
+            rsp.raise_for_status()
             response = rsp.json()
             status = response['status']
         except requests.exceptions.RequestException as e:
@@ -91,6 +92,7 @@ def get_record(id, filename):
     download_url=API_URL + id
     try:
         rsp = requests.get(download_url)
+        rsp.raise_for_status()
     except requests.exceptions.RequestException as e:
         logging.error(f"Request for {download_url}: {e}")
 
@@ -157,6 +159,7 @@ def get_related_name_api(related_id):
     download_url=API_URL + related_id
     try:
         rsp = requests.get(download_url)
+        rsp.raise_for_status()
     except requests.exceptions.RequestException as e:
         logging.error(f"Request for {download_url}: {e}")
 
