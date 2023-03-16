@@ -9,28 +9,54 @@ def get_all_data(f):
 	outfile = f.split('.json')[0]+ '.csv'
 	with open(outfile, 'w') as f_out:
 		writer = csv.writer(f_out)
-		writer.writerow(['ror_id', 'name', 'type', 'status', 'links', 'aliases', 'labels', 'acronyms', 'wikipedia_url', 'established',
-						 'lat', 'lng', 'city', 'city_id', 'admin1','admin1_id', 'admin2','admin2_id', 'country_code',
-						 'country_name', 'grid_id_preferred', 'grid_id_all', 'isni_id_preferred', 'isni_id_preferred',
-						 'funder_id_preferred','funder_id_all', 'wikidata_id_preferred', 'wikidata_id_all', 'related_ror_ids'])
+		writer.writerow(['id', 'name', 'types', 'status', 'links', 'aliases', 'labels', 'acronyms', 'wikipedia_url', 'established',
+						 'addresses[0].lat', 'addresses[0].lng', 'addresses[0].geonames_city.name', 'addresses[0].geonames_city.id',
+						 'addresses[0].geonames_city.geonames_admin1.name','addresses[0].geonames_city.geonames_admin1.code',
+						 'addresses[0].geonames_city.geonames_admin2.name','addresses[0].geonames_city.geonames_admin2.code',
+						 'country.country_code', 'country.country_name', 'external_ids.GRID.preferred', 'external_ids.GRID.all',
+						 'external_ids.ISNI.preferred', 'external_ids.ISNI.all', 'external_ids.FundRef.preferred', 'external_ids.FundRef.all',
+						 'external_ids.Wikidata.preferred', 'external_ids.Wikidata.all', 'relationships'])
 	with open(f, 'r+', encoding='utf8') as f_in:
 		json_file = json.load(f_in)
 	for record in json_file:
 		ror_id = record['id']
 		primary_name = record['name']
-		org_type = record['types'][0] if record['types'] != [] else None
 		status = record['status']
 		links = record['links'][0] if record['links'] != [] else None
-		aliases, labels, acronyms = record['aliases'], record['labels'], record['acronyms']
+		types, aliases, acronyms = record['types'], record['aliases'], record['acronyms']
+		types = '; '.join(types) if types != [] else None
 		aliases = '; '.join(aliases) if aliases != [] else None
-		labels = '; '.join([label['label'] for label in labels]) if labels != [] else None
+		labels = record['labels']
+		labels_dict = {}
+		if len(labels) > 0:
+			lang_codes = [label['iso639'] for label in labels]
+			for code in lang_codes:
+				labels_dict[code] = []
+				for label in labels:
+					if label['iso639'] == code:
+						labels_dict[code].append(label['label'])
+		labels_str = str()
+		for code in labels_dict:
+			labels_str += code + ": " + ", ".join(labels_dict[code]) + "; "
+		labels_str = labels_str.rstrip('; ')
 		acronyms = '; '.join(acronyms) if acronyms != [] else None
 		country_code = record['country']['country_code']
 		country_name = record['country']['country_name']
 		wikipedia_url = record['wikipedia_url']
 		established = record['established']
 		relationships = record['relationships']
-		related_ids = '; '.join([relationship['id'] for relationship in relationships]) if relationships != [] else None
+		relationships_dict = {}
+		if len(relationships) > 0:
+			rel_types = [rel['type'] for rel in relationships]
+			for rel_type in rel_types:
+				relationships_dict[rel_type] = []
+				for rel in relationships:
+					if rel['type'] == rel_type:
+						relationships_dict[rel_type].append(rel['id'])
+		rels_str = str()
+		for rel_type in relationships_dict:
+			rels_str += rel_type + ": " + ", ".join(relationships_dict[rel_type]) + "; "
+		rels_str = rels_str.rstrip('; ')
 		address = record['addresses'][0]
 		lat = address['lat'] if 'lat' in address.keys() else None
 		lng = address['lng'] if 'lng' in address.keys() else None
@@ -74,10 +100,10 @@ def get_all_data(f):
 				wikidata_id_all = ';'.join(external_ids['Wikidata']['all'])
 		with open(outfile, 'a') as f_out:
 			writer = csv.writer(f_out)
-			writer.writerow([ror_id, primary_name, org_type, status, links, aliases, labels, acronyms, wikipedia_url, established, lat,
-							 lng, city, city_id, admin1, admin1_id, admin2, admin2_id, country_code, country_name, grid_id_preferred, 
-							 grid_id_all, isni_id_preferred, isni_id_all, funder_id_preferred, funder_id_all, wikidata_id_preferred, 
-							 wikidata_id_all, related_ids])
+			writer.writerow([ror_id, primary_name, types, status, links, aliases, labels_str, acronyms, wikipedia_url, established, lat,
+							 lng, city, city_id, admin1, admin1_id, admin2, admin2_id, country_code, country_name, grid_id_preferred,
+							 grid_id_all, isni_id_preferred, isni_id_all, funder_id_preferred, funder_id_all, wikidata_id_preferred,
+							 wikidata_id_all, rels_str])
 
 
 if __name__ == '__main__':
