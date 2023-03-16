@@ -4,7 +4,6 @@ import sys
 import csv
 import json
 import random
-from urllib.parse import unquote
 
 
 def count_csv_lines(filename):
