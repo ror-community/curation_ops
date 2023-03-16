@@ -60,7 +60,7 @@ def format_description(release_data):
             description += 'the addition of ' + release_data['added'] + ' new records.'
         if 'updated' in release_data and 'added' not in release_data:
             description += 'metadata updates to ' + release_data['updated'] + ' existing records.'
-    description += '<a href=\"https://github.com/ror-community/ror-updates/releases/tag/' + release_data['filename'].split('-', 1)[0] + '\"> \
+    description += '<a href=\"https://github.com/ror-community/ror-updates/releases/tag/' + release_data['filename'].split('-', 1)[0] + '\">\
             See the release notes</a>.</p>\n\n<p>Beginning with its <a href=\"https://doi.org/10.5281/zenodo.6347575\">\
             March 2022 release</a>, ROR is curated independently from GRID. Semantic versioning beginning with v1.0 was added \
             to reflect this departure from GRID. The existing data structure was not changed.</p>\n\n<p>From March 2022 onward, \
