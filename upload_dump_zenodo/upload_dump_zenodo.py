@@ -50,7 +50,7 @@ def get_release_notes_data(release):
 def format_description(release_data):
     description = '<p>Data dump from the Research Organization Registry (ROR), a community-led registry \
             of open identifiers for research organizations.</p>\n\n<p>Release ' + release_data['filename'].split('-', 1)[0] + ' contains ROR IDs and metadata \
-            for ' + release_data['total'] + '&nbsp;research organizations in JSON format. '
+            for ' + release_data['total'] + '&nbsp;research organizations in JSON and CSV format. '
     if 'updated' in release_data or 'added' in release_data:
         description += 'This includes '
         if 'added' in release_data and 'updated' in release_data:
@@ -69,7 +69,9 @@ def format_description(release_data):
             </li>\n\t<li><strong>Patch versions (ex 1.0.1):</strong>&nbsp;Used infrequently to correct errors in a release. \
             No changes to the data model/structure.</li>\n\t<li><strong>Major versions (ex 1.x, 2.x, 3.x):</strong>&nbsp; \
             Contains changes to data model/structure, as well as the data itself. Major versions will be released with significant advance notice. \
-            </li>\n</ul>\n\n<p>For convenience, the date is also include in the release file name, ex: v1.0-2022-03-15-ror-data.zip.</p>'
+            </li>\n</ul>\n\n<p>For convenience, the date is also include in the release file name, ex: v1.0-2022-03-15-ror-data.zip.</p> \
+            <p>Beginning with the 16 Mar 2023 release, a CSV file is included in addition to the canonical JSON. The CSV contains a subset \
+            of fields from the JSON file, some of which have been flattened for easier parsing. The JSON file remains the version of record.</p>'
     return description
 
 
