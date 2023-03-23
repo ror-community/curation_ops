@@ -4,7 +4,6 @@ import os
 import logging
 import requests
 import sys
-import update_address as ua
 from urllib.parse import urlparse
 
 ERROR_LOG = "relationship_errors.log"
@@ -46,9 +45,8 @@ def get_record(id, filename, inactive_id):
         if (response['status'] =='active') and len(response['relationships']) > 0:
             inactive_relationships = [r for r in response['relationships'] if (r['id'] == inactive_id and r['type'] != 'Predecessor')]
             if len(inactive_relationships) > 0:
-                updated_record = ua.update_geonames(response)
                 with open(UPDATED_RECORDS_PATH + filename, "w", encoding='utf8') as f:
-                    json.dump(updated_record, f,  ensure_ascii=False)
+                    json.dump(response, f,  ensure_ascii=False)
                 filepath = check_file(filename)
     except Exception as e:
         logging.error(f"Error writing {filename}: {e}")

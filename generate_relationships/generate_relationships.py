@@ -5,7 +5,6 @@ import requests
 from csv import DictReader
 import re
 import sys
-import update_address as ua
 
 ERROR_LOG = "relationship_errors.log"
 logging.basicConfig(filename=ERROR_LOG,level=logging.ERROR, filemode='w')
@@ -98,9 +97,8 @@ def get_record(id, filename):
 
     try:
         response = rsp.json()
-        updated_record = ua.update_geonames(response)
         with open(UPDATED_RECORDS_PATH + filename, "w", encoding='utf8') as f:
-            json.dump(updated_record, f,  ensure_ascii=False)
+            json.dump(response, f,  ensure_ascii=False)
     except Exception as e:
         logging.error(f"Writing {filename}: {e}")
 

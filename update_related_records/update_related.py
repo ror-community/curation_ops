@@ -3,7 +3,6 @@ import re
 import json
 import urllib
 import requests
-import update_address
 
 API_URL = "https://api.ror.org/organizations"
 INACTIVE_STATUSES = ('inactive', 'withdrawn')
@@ -42,7 +41,6 @@ def check_update_production_file(ror_id, related_id, related_name):
                 print('Current name:', prod_record['relationships']
                       [index]['label'], '- Updated Name:', related_name)
                 prod_record['relationships'][index]['label'] = related_name
-                prod_record = update_address.update_geonames(prod_record)
                 json_file = short_id + '.json'
                 json_file_path = UPDATED_RECORDS_PATH + json_file
                 with open(json_file_path, 'w', encoding='utf8') as f_out:
