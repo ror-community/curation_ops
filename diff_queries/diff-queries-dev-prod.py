@@ -1,19 +1,14 @@
-import urllib.parse
 import argparse
-import csv
 import requests
 from os import path
-from datetime import datetime
 from deepdiff import DeepDiff
 
 ROR_API_ENDPOINT_DEV = "https://api.dev.ror.org/organizations"
 ROR_API_ENDPOINT_PROD = "https://api.dev.ror.org/organizations"
 INPUT_DIR = "input/"
-OUTPUT_DIR = "output/"
+#OUTPUT_DIR = "output/"
 
 def process_file(input_file):
-    now = datetime.now()
-    output_file = OUTPUT_DIR + now.strftime("%Y-%m-%d") + "_search_results_affiliation_matching.csv"
     with open(input_file) as file:
         for line in file:
             try:
