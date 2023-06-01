@@ -17,7 +17,7 @@ HEADERS = {"Content-Type": "application/json"}
 
 
 def get_dump_file(release):
-    "Getting dump filename"
+    print("Getting dump filename")
     for file in os.listdir(DUMP_FILE_DIR):
         if file.split("-", 1)[0] == release:
             return file
@@ -25,7 +25,7 @@ def get_dump_file(release):
 
 
 def get_release_notes_data(release):
-    "Getting release notes data from Github"
+    print("Getting release notes data from Github")
     notes_data = {}
     try:
         r = requests.get(GITHUB_API_URL + release, auth=(
@@ -198,7 +198,7 @@ def check_release_data(release_data):
         return False
 
 def get_previous_version_doi(parent_record_id):
-    "Getting DOI for previous version"
+    print("Getting DOI for previous version")
     doi = None
     try:
         r = requests.get(ZENODO_API_URL + 'records/' + parent_record_id, params={'access_token': ZENODO_TOKEN})
