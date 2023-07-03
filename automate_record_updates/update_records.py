@@ -13,21 +13,25 @@ from datetime import datetime
 
 def generate_json_dir():
     now = datetime.now()
-    json_dir = os.getcwd() + '/' + now.strftime("%Y%m%d_%H%M%S") + '/'
+    json_dir = f'{os.getcwd()}/{now.strftime("%Y%m%d_%H%M%S")}/'
     os.makedirs(json_dir)
     return json_dir
 
 
 def download_record(ror_id, json_dir, geonames_id=None):
-    api_url = 'https://api.ror.org/organizations/' + ror_id
-    json_file_path = json_dir + ror_id + '.json'
-    ror_data = requests.get(api_url, verify=False).json()
-    if geonames_id == None:
-        ror_data = update_address.update_geonames(ror_data)
+    json_file_path = os.path.join(json_dir, f'{ror_id}.json')
+    if not os.path.exists(json_file_path):
+        api_url = f'https://api.ror.org/organizations/{ror_id}'
+        ror_data = requests.get(api_url, verify=False).json()
+        if geonames_id is None:
+            ror_data = update_address.update_geonames(ror_data)
+        else:
+            ror_data = update_address.update_geonames(ror_data, geonames_id)
+
+        with open(json_file_path, 'w', encoding='utf8') as f_out:
+            json.dump(ror_data, f_out, ensure_ascii=False, indent=2)
     else:
-        ror_data = update_address.update_geonames(ror_data, geonames_id)
-    with open(json_file_path, 'w', encoding='utf8') as f_out:
-        json.dump(ror_data, f_out, ensure_ascii=False, indent=2)
+        print(f"File {json_file_path} already exists. Skipping download.")
 
 
 def export_json(json_data, json_file):
@@ -136,6 +140,18 @@ def delete_label(json_file, value):
             export_json(json_data, json_in)
 
 
+def check_in_relationships(json_file, related_id):
+    with open(json_file, 'r+') as json_in:
+        json_data = json.load(json_in)
+        relationships = json_data['relationships']
+        if relationships != []:
+            related_ids = [relationship['id']
+                           for relationship in relationships]
+            if related_id in related_ids:
+                return True
+    return False
+
+
 def delete_relationships(json_file, related_id):
     with open(json_file, 'r+') as json_in:
         json_data = json.load(json_in)
@@ -188,6 +204,9 @@ def replace_external_id(json_file, field, value):
 def delete_external_id(json_file, field, value):
     with open(json_file, 'r+') as json_in:
         json_data = json.load(json_in)
+        all_values = json_data['external_ids'][field]['all']
+        if isinstance(all_values, str):
+            json_data['external_ids'][field]['all'] = [all_values]
         if value == json_data['external_ids'][field]['preferred'] and len(json_data['external_ids'][field]['all']) > 1:
             del_index = json_data['external_ids'][field]['all'].index(value)
             del json_data['external_ids'][field]['all'][del_index]
@@ -207,7 +226,7 @@ def parse_record_updates_file(f):
     # See test data for update string examples related to this parsing.
     record_updates = defaultdict(list)
     ror_fields = ['name', 'status', 'established', 'wikipedia_url', 'links', 'types',
-                  'aliases', 'acronyms', 'Wikidata', 'ISNI', 'FundRef', 'labels', 'relationships', 'Geonames']
+                  'aliases', 'acronyms', 'Wikidata', 'ISNI', 'FundRef', 'GRID', 'labels', 'relationships', 'Geonames']
     with open(f, encoding='utf-8-sig') as f_in:
         reader = csv.DictReader(f_in)
         for row in reader:
@@ -235,7 +254,7 @@ def parse_record_updates_file(f):
 def update_records(record_updates):
     non_repeating_fields = ['name', 'status', 'established', 'wikipedia_url']
     repeating_fields = ['links', 'types', 'aliases', 'acronyms']
-    external_ids = ['Wikidata', 'ISNI', 'FundRef']
+    external_ids = ['Wikidata', 'ISNI', 'FundRef', 'GRID']
     json_dir = generate_json_dir()
     for ror_id, record_changes in record_updates.items():
         print('Updating', ror_id, '...')
@@ -247,7 +266,8 @@ def update_records(record_updates):
             download_record(ror_id, json_dir, geonames_id)
         elif 'relationships' in all_change_fields:
             download_record(ror_id, json_dir)
-            related_ids = [update['change_value'] for update in record_changes if update['change_field'] == 'relationships']
+            related_ids = [update['change_value']
+                           for update in record_changes if update['change_field'] == 'relationships']
             for related_id in related_ids:
                 download_record(related_id, json_dir)
         else:
@@ -279,9 +299,11 @@ def update_records(record_updates):
                                  record_change['change_value'])
             if record_change['change_field'] == 'relationships':
                 related_id = record_change['change_value']
-                related_file_path = json_dir + related_id + '.json'
-                delete_relationships(json_file_path, related_id)
-                delete_relationships(related_file_path, ror_id)
+                related_file_path = f'{json_dir}{related_id}.json'
+                full_related_id, full_ror_id = f'https://ror.org/{related_id}', f'https://ror.org/{ror_id}'
+                delete_relationships(json_file_path, full_related_id)
+                if check_in_relationships(related_file_path, full_ror_id):
+                    delete_relationships(related_file_path, full_ror_id)
             if record_change['change_field'] in external_ids:
                 if record_change['change_type'] == 'add':
                     add_external_id(
