@@ -1,0 +1,77 @@
+{
+    "locations": [
+        {
+            "geonames_id": 4180439,
+            "geonames_details": {
+                "country_code": "US",
+                "country_name": "United States",
+                "lat": 33.935833,
+                "lng": -84.355556,
+                "name": "Atlanta"
+            }
+        }
+    ],
+    "established": 1949,
+    "external_ids": [
+        {
+            "type": "isni",
+            "all": [
+                "0000 0004 0530 1398"
+            ],
+            "preferred": null
+        },
+        {
+            "type": "wikidata",
+            "all": [
+                "Q4796885"
+            ],
+            "preferred": null
+        },
+        {
+            "type": "grid",
+            "all": [
+                "grid.465772.5"
+            ],
+            "preferred": "grid.465772.5"
+        }
+    ],
+    "id": "https://ror.org/04vwgk321",
+    "domains": [],
+    "links": [
+        {
+            "type": "website",
+            "value": "https://www.artinstitutes.edu/atlanta/"
+        }
+    ],
+    "names": [
+        {
+            "value": "Art Institute of Atlanta",
+            "types": [
+                "ror_display",
+                "label"
+            ],
+            "lang": null
+        }
+    ],
+    "relationships": [
+        {
+            "label": "The Art Institutes",
+            "type": "parent",
+            "id": "https://ror.org/01p2ej961"
+        }
+    ],
+    "status": "active",
+    "types": [
+        "education"
+    ],
+    "admin": {
+        "created": {
+            "date": "2023-07-28",
+            "schema_version": "1.0"
+        },
+        "last_modified": {
+            "date": "2023-07-28",
+            "schema_version": "2.0"
+        }
+    }
+}

@@ -1,0 +1,82 @@
+{
+    "locations": [
+        {
+            "geonames_id": 2983990,
+            "geonames_details": {
+                "country_code": "FR",
+                "country_name": "France",
+                "lat": 48.11198,
+                "lng": -1.67429,
+                "name": "Rennes"
+            }
+        }
+    ],
+    "established": 2002,
+    "external_ids": [
+        {
+            "type": "wikidata",
+            "all": [
+                "Q51781079"
+            ],
+            "preferred": "Q51781079"
+        },
+        {
+            "type": "grid",
+            "all": [
+                "grid.503157.5"
+            ],
+            "preferred": "grid.503157.5"
+        }
+    ],
+    "id": "https://ror.org/02baj6743",
+    "domains": [],
+    "links": [
+        {
+            "type": "website",
+            "value": "http://cic.chu-rennes.net/?q=accueil"
+        }
+    ],
+    "names": [
+        {
+            "value": "CIC Rennes",
+            "types": [
+                "ror_display",
+                "label"
+            ],
+            "lang": null
+        },
+        {
+            "value": "Centre d'Investigation Clinique de Rennes",
+            "types": [
+                "label"
+            ],
+            "lang": "fr"
+        }
+    ],
+    "relationships": [
+        {
+            "label": "Centre Hospitalier Universitaire de Rennes",
+            "type": "parent",
+            "id": "https://ror.org/05qec5a53"
+        },
+        {
+            "label": "University of Rennes 1",
+            "type": "parent",
+            "id": "https://ror.org/015m7wh34"
+        }
+    ],
+    "status": "active",
+    "types": [
+        "facility"
+    ],
+    "admin": {
+        "created": {
+            "date": "2023-07-28",
+            "schema_version": "1.0"
+        },
+        "last_modified": {
+            "date": "2023-07-28",
+            "schema_version": "2.0"
+        }
+    }
+}

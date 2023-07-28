@@ -1,0 +1,75 @@
+{
+    "locations": [
+        {
+            "geonames_id": 5206379,
+            "geonames_details": {
+                "country_code": "US",
+                "country_name": "United States",
+                "lat": 40.44062,
+                "lng": -79.99589,
+                "name": "Pittsburgh"
+            }
+        }
+    ],
+    "established": 1969,
+    "external_ids": [
+        {
+            "type": "grid",
+            "all": [
+                "grid.466685.f"
+            ],
+            "preferred": "grid.466685.f"
+        }
+    ],
+    "id": "https://ror.org/01p2ej961",
+    "domains": [],
+    "links": [
+        {
+            "type": "website",
+            "value": "https://www.artinstitutes.edu/"
+        }
+    ],
+    "names": [
+        {
+            "value": "The Art Institutes",
+            "types": [
+                "ror_display",
+                "label"
+            ],
+            "lang": null
+        },
+        {
+            "value": "Ai",
+            "types": [
+                "acronym"
+            ],
+            "lang": null
+        }
+    ],
+    "relationships": [
+        {
+            "label": "Art Institute of Atlanta",
+            "type": "child",
+            "id": "https://ror.org/04vwgk321"
+        },
+        {
+            "label": "Art Institute of Houston",
+            "type": "child",
+            "id": "https://ror.org/01pc4rp54"
+        }
+    ],
+    "status": "active",
+    "types": [
+        "education"
+    ],
+    "admin": {
+        "created": {
+            "date": "2023-07-28",
+            "schema_version": "1.0"
+        },
+        "last_modified": {
+            "date": "2023-07-28",
+            "schema_version": "2.0"
+        }
+    }
+}

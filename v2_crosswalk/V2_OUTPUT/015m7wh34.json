@@ -1,0 +1,96 @@
+{
+    "locations": [
+        {
+            "geonames_id": 2983990,
+            "geonames_details": {
+                "country_code": "FR",
+                "country_name": "France",
+                "lat": 48.11198,
+                "lng": -1.67429,
+                "name": "Rennes"
+            }
+        }
+    ],
+    "established": 1970,
+    "external_ids": [
+        {
+            "type": "isni",
+            "all": [
+                "0000 0001 2191 9284"
+            ],
+            "preferred": null
+        },
+        {
+            "type": "fundref",
+            "all": [
+                "501100007525"
+            ],
+            "preferred": null
+        },
+        {
+            "type": "wikidata",
+            "all": [
+                "Q726595"
+            ],
+            "preferred": null
+        },
+        {
+            "type": "grid",
+            "all": [
+                "grid.410368.8"
+            ],
+            "preferred": "grid.410368.8"
+        }
+    ],
+    "id": "https://ror.org/015m7wh34",
+    "domains": [],
+    "links": [
+        {
+            "type": "website",
+            "value": "https://www.univ-rennes1.fr/english/home/"
+        }
+    ],
+    "names": [
+        {
+            "value": "University of Rennes 1",
+            "types": [
+                "ror_display",
+                "label"
+            ],
+            "lang": null
+        },
+        {
+            "value": "Universit\u00e9 de Rennes I",
+            "types": [
+                "label"
+            ],
+            "lang": "fr"
+        }
+    ],
+    "relationships": [
+        {
+            "label": "Centre Hospitalier Universitaire de Rennes",
+            "type": "related",
+            "id": "https://ror.org/05qec5a53"
+        },
+        {
+            "label": "CIC Rennes",
+            "type": "child",
+            "id": "https://ror.org/02baj6743"
+        }
+    ],
+    "status": "active",
+    "types": [
+        "education"
+    ],
+    "admin": {
+        "created": {
+            "date": "2023-07-28",
+            "schema_version": "1.0"
+        },
+        "last_modified": {
+            "date": "2023-07-28",
+            "schema_version": "2.0"
+        }
+    }
+}

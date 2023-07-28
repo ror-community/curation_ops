@@ -1,0 +1,70 @@
+{
+    "locations": [
+        {
+            "geonames_id": 4699066,
+            "geonames_details": {
+                "country_code": "US",
+                "country_name": "United States",
+                "lat": 29.74842,
+                "lng": -95.47086,
+                "name": "Houston"
+            }
+        }
+    ],
+    "established": 1965,
+    "external_ids": [
+        {
+            "type": "isni",
+            "all": [
+                "0000 0004 0584 021X"
+            ],
+            "preferred": null
+        },
+        {
+            "type": "grid",
+            "all": [
+                "grid.465786.e"
+            ],
+            "preferred": "grid.465786.e"
+        }
+    ],
+    "id": "https://ror.org/01pc4rp54",
+    "domains": [],
+    "links": [
+        {
+            "type": "website",
+            "value": "https://www.artinstitutes.edu/houston/"
+        }
+    ],
+    "names": [
+        {
+            "value": "Art Institute of Houston",
+            "types": [
+                "ror_display",
+                "label"
+            ],
+            "lang": null
+        }
+    ],
+    "relationships": [
+        {
+            "label": "The Art Institutes",
+            "type": "parent",
+            "id": "https://ror.org/01p2ej961"
+        }
+    ],
+    "status": "active",
+    "types": [
+        "education"
+    ],
+    "admin": {
+        "created": {
+            "date": "2023-07-28",
+            "schema_version": "1.0"
+        },
+        "last_modified": {
+            "date": "2023-07-28",
+            "schema_version": "2.0"
+        }
+    }
+}

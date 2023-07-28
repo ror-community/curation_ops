@@ -1,0 +1,75 @@
+{
+    "locations": [
+        {
+            "geonames_id": 5392171,
+            "geonames_details": {
+                "country_code": "US",
+                "country_name": "United States",
+                "lat": 37.33939,
+                "lng": -121.89496,
+                "name": "San Jose"
+            }
+        }
+    ],
+    "established": 2015,
+    "external_ids": [
+        {
+            "type": "isni",
+            "all": [
+                "0000 0004 4911 2185"
+            ],
+            "preferred": null
+        },
+        {
+            "type": "grid",
+            "all": [
+                "grid.480445.9"
+            ],
+            "preferred": "grid.480445.9"
+        }
+    ],
+    "id": "https://ror.org/059a9e323",
+    "domains": [],
+    "links": [
+        {
+            "type": "website",
+            "value": "http://www.viavisolutions.com/en-us"
+        }
+    ],
+    "names": [
+        {
+            "value": "Viavi Solutions (United States)",
+            "types": [
+                "ror_display",
+                "label"
+            ],
+            "lang": null
+        }
+    ],
+    "relationships": [
+        {
+            "label": "Viavi Solutions (United Kingdom)",
+            "type": "child",
+            "id": "https://ror.org/0489rbg31"
+        },
+        {
+            "label": "JDSU (United States)",
+            "type": "predecessor",
+            "id": "https://ror.org/01a5v8x09"
+        }
+    ],
+    "status": "active",
+    "types": [
+        "company"
+    ],
+    "admin": {
+        "created": {
+            "date": "2023-07-28",
+            "schema_version": "1.0"
+        },
+        "last_modified": {
+            "date": "2023-07-28",
+            "schema_version": "2.0"
+        }
+    }
+}

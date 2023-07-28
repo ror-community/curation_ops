@@ -1,0 +1,63 @@
+{
+    "locations": [
+        {
+            "geonames_id": 2641689,
+            "geonames_details": {
+                "country_code": "GB",
+                "country_name": "United Kingdom",
+                "lat": 51.404566,
+                "lng": -1.304446,
+                "name": "Newbury"
+            }
+        }
+    ],
+    "established": 2015,
+    "external_ids": [
+        {
+            "type": "grid",
+            "all": [
+                "grid.505575.7"
+            ],
+            "preferred": "grid.505575.7"
+        }
+    ],
+    "id": "https://ror.org/0489rbg31",
+    "domains": [],
+    "links": [
+        {
+            "type": "website",
+            "value": "https://www.viavisolutions.com/en-uk"
+        }
+    ],
+    "names": [
+        {
+            "value": "Viavi Solutions (United Kingdom)",
+            "types": [
+                "ror_display",
+                "label"
+            ],
+            "lang": null
+        }
+    ],
+    "relationships": [
+        {
+            "label": "Viavi Solutions (United States)",
+            "type": "parent",
+            "id": "https://ror.org/059a9e323"
+        }
+    ],
+    "status": "active",
+    "types": [
+        "company"
+    ],
+    "admin": {
+        "created": {
+            "date": "2023-07-28",
+            "schema_version": "1.0"
+        },
+        "last_modified": {
+            "date": "2023-07-28",
+            "schema_version": "2.0"
+        }
+    }
+}

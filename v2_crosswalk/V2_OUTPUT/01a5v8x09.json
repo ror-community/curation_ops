@@ -1,0 +1,99 @@
+{
+    "locations": [
+        {
+            "geonames_id": 5373327,
+            "geonames_details": {
+                "country_code": "US",
+                "country_name": "United States",
+                "lat": 37.42827,
+                "lng": -121.90662,
+                "name": "Milpitas"
+            }
+        }
+    ],
+    "established": 1999,
+    "external_ids": [
+        {
+            "type": "isni",
+            "all": [
+                "0000 0004 0452 7467"
+            ],
+            "preferred": null
+        },
+        {
+            "type": "wikidata",
+            "all": [
+                "Q3156887"
+            ],
+            "preferred": null
+        },
+        {
+            "type": "grid",
+            "all": [
+                "grid.434040.7"
+            ],
+            "preferred": "grid.434040.7"
+        }
+    ],
+    "id": "https://ror.org/01a5v8x09",
+    "domains": [],
+    "links": [
+        {
+            "type": "website",
+            "value": "https://www.JDSU.com"
+        }
+    ],
+    "names": [
+        {
+            "value": "JDSU (United States)",
+            "types": [
+                "ror_display",
+                "label"
+            ],
+            "lang": null
+        },
+        {
+            "value": "JDS Uniphase",
+            "types": [
+                "alias"
+            ],
+            "lang": null
+        }
+    ],
+    "relationships": [
+        {
+            "label": "JDSU (Canada)",
+            "type": "child",
+            "id": "https://ror.org/025j82f41"
+        },
+        {
+            "label": "JDSU (China)",
+            "type": "child",
+            "id": "https://ror.org/01d3ncs59"
+        },
+        {
+            "label": "JDSU (Switzerland)",
+            "type": "child",
+            "id": "https://ror.org/00wz65j53"
+        },
+        {
+            "label": "Viavi Solutions (United States)",
+            "type": "successor",
+            "id": "https://ror.org/059a9e323"
+        }
+    ],
+    "status": "inactive",
+    "types": [
+        "company"
+    ],
+    "admin": {
+        "created": {
+            "date": "2023-07-28",
+            "schema_version": "1.0"
+        },
+        "last_modified": {
+            "date": "2023-07-28",
+            "schema_version": "2.0"
+        }
+    }
+}

@@ -1,0 +1,71 @@
+{
+    "locations": [
+        {
+            "geonames_id": 4241704,
+            "geonames_details": {
+                "country_code": "US",
+                "country_name": "United States",
+                "lat": 39.73394,
+                "lng": -90.22901,
+                "name": "Jacksonville"
+            }
+        }
+    ],
+    "established": 1846,
+    "external_ids": [
+        {
+            "type": "isni",
+            "all": [
+                "0000 0004 0414 2807"
+            ],
+            "preferred": null
+        },
+        {
+            "type": "wikidata",
+            "all": [
+                "Q6722050"
+            ],
+            "preferred": null
+        },
+        {
+            "type": "grid",
+            "all": [
+                "grid.421071.1"
+            ],
+            "preferred": "grid.421071.1"
+        }
+    ],
+    "id": "https://ror.org/04yw47259",
+    "domains": [],
+    "links": [
+        {
+            "type": "website",
+            "value": "https://www.mac.edu/"
+        }
+    ],
+    "names": [
+        {
+            "value": "Macmurray College",
+            "types": [
+                "ror_display",
+                "label"
+            ],
+            "lang": null
+        }
+    ],
+    "relationships": [],
+    "status": "inactive",
+    "types": [
+        "education"
+    ],
+    "admin": {
+        "created": {
+            "date": "2023-07-28",
+            "schema_version": "1.0"
+        },
+        "last_modified": {
+            "date": "2023-07-28",
+            "schema_version": "2.0"
+        }
+    }
+}

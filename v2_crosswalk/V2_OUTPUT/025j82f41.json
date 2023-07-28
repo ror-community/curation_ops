@@ -1,0 +1,89 @@
+{
+    "locations": [
+        {
+            "geonames_id": 6094817,
+            "geonames_details": {
+                "country_code": "CA",
+                "country_name": "Canada",
+                "lat": 45.41117,
+                "lng": -75.69812,
+                "name": "Ottawa"
+            }
+        }
+    ],
+    "established": 1999,
+    "external_ids": [
+        {
+            "type": "isni",
+            "all": [
+                "0000 0004 0498 2275"
+            ],
+            "preferred": null
+        },
+        {
+            "type": "wikidata",
+            "all": [
+                "Q29123276"
+            ],
+            "preferred": null
+        },
+        {
+            "type": "grid",
+            "all": [
+                "grid.450966.8"
+            ],
+            "preferred": "grid.450966.8"
+        }
+    ],
+    "id": "https://ror.org/025j82f41",
+    "domains": [],
+    "links": [
+        {
+            "type": "website",
+            "value": "http://www.jdsu.com/"
+        }
+    ],
+    "names": [
+        {
+            "value": "JDSU (Canada)",
+            "types": [
+                "ror_display",
+                "label"
+            ],
+            "lang": null
+        },
+        {
+            "value": "JDS Uniphase",
+            "types": [
+                "alias"
+            ],
+            "lang": null
+        }
+    ],
+    "relationships": [
+        {
+            "label": "JDSU (United States)",
+            "type": "parent",
+            "id": "https://ror.org/01a5v8x09"
+        },
+        {
+            "label": "Viavi Solutions (United States)",
+            "type": "successor",
+            "id": "https://ror.org/059a9e323"
+        }
+    ],
+    "status": "inactive",
+    "types": [
+        "company"
+    ],
+    "admin": {
+        "created": {
+            "date": "2023-07-28",
+            "schema_version": "1.0"
+        },
+        "last_modified": {
+            "date": "2023-07-28",
+            "schema_version": "2.0"
+        }
+    }
+}

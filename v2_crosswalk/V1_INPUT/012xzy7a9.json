@@ -1,0 +1,93 @@
+{
+  "external_ids": {
+    "Wikidata": {
+      "all": [
+        "https://www.wikidata.org/wiki/Q2382930"
+      ],
+      "preferred": null
+    },
+    "OrgRef": {
+      "all": [],
+      "preferred": null
+    },
+    "ISNI": {
+      "all": [],
+      "preferred": null
+    },
+    "GRID": {
+      "preferred": null,
+      "all": null
+    }
+  },
+  "relationships": [],
+  "status": "active",
+  "links": [
+    "http://www.tsoukenation.com/"
+  ],
+  "acronyms": [],
+  "aliases": [
+    "Sooke",
+    "Tsouke",
+    "T'souke",
+    "Tsou-ke"
+  ],
+  "labels": [],
+  "country": {
+    "country_name": "Canada",
+    "country_code": "CA"
+  },
+  "types": [
+    "Government"
+  ],
+  "addresses": [
+    {
+      "primary": false,
+      "geonames_city": {
+        "nuts_level3": {
+          "name": null,
+          "code": null
+        },
+        "nuts_level2": {
+          "name": null,
+          "code": null
+        },
+        "nuts_level1": {
+          "name": null,
+          "code": null
+        },
+        "geonames_admin2": {
+          "code": "CA.02.5917",
+          "id": 5916420,
+          "name": "Capital Regional District",
+          "ascii_name": "Capital Regional District"
+        },
+        "geonames_admin1": {
+          "code": "CA.02",
+          "id": 5909050,
+          "name": "British Columbia",
+          "ascii_name": "British Columbia"
+        },
+        "license": {
+          "license": "http://creativecommons.org/licenses/by/3.0/",
+          "attribution": "Data from geonames.org under a CC-BY 3.0 license"
+        },
+        "id": 6151264,
+        "city": "Sooke"
+      },
+      "state_code": null,
+      "state": null,
+      "postcode": null,
+      "line": null,
+      "lat": 48.37463,
+      "lng": -123.72762,
+      "city": "Sooke",
+      "country_geonames_id": 6251999
+    }
+  ],
+  "id": "https://ror.org/012xzy7a9",
+  "email_address": null,
+  "ip_addresses": [],
+  "established": null,
+  "wikipedia_url": "https://en.wikipedia.org/wiki/T%27Sou-ke_Nation",
+  "name": "T'Sou-ke First Nation"
+}

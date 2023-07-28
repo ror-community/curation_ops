@@ -1,0 +1,75 @@
+{
+    "locations": [
+        {
+            "geonames_id": 1795565,
+            "geonames_details": {
+                "country_code": "CN",
+                "country_name": "China",
+                "lat": 22.54554,
+                "lng": 114.0683,
+                "name": "Shenzhen"
+            }
+        }
+    ],
+    "established": 1999,
+    "external_ids": [
+        {
+            "type": "wikidata",
+            "all": [
+                "Q30273356"
+            ],
+            "preferred": null
+        },
+        {
+            "type": "grid",
+            "all": [
+                "grid.481661.c"
+            ],
+            "preferred": "grid.481661.c"
+        }
+    ],
+    "id": "https://ror.org/01d3ncs59",
+    "domains": [],
+    "links": [
+        {
+            "type": "website",
+            "value": "http://www.viavisolutions.com/en-us"
+        }
+    ],
+    "names": [
+        {
+            "value": "JDSU (China)",
+            "types": [
+                "ror_display",
+                "label"
+            ],
+            "lang": null
+        }
+    ],
+    "relationships": [
+        {
+            "label": "JDSU (United States)",
+            "type": "parent",
+            "id": "https://ror.org/01a5v8x09"
+        },
+        {
+            "label": "Viavi Solutions (United States)",
+            "type": "successor",
+            "id": "https://ror.org/059a9e323"
+        }
+    ],
+    "status": "inactive",
+    "types": [
+        "company"
+    ],
+    "admin": {
+        "created": {
+            "date": "2023-07-28",
+            "schema_version": "1.0"
+        },
+        "last_modified": {
+            "date": "2023-07-28",
+            "schema_version": "2.0"
+        }
+    }
+}

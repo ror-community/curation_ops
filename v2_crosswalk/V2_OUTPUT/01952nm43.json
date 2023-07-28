@@ -1,0 +1,84 @@
+{
+    "locations": [
+        {
+            "geonames_id": 4931482,
+            "geonames_details": {
+                "country_code": "US",
+                "country_name": "United States",
+                "lat": 42.33176,
+                "lng": -71.12116,
+                "name": "Brookline"
+            }
+        }
+    ],
+    "established": 1952,
+    "external_ids": [
+        {
+            "type": "isni",
+            "all": [
+                "0000 0004 0535 7949"
+            ],
+            "preferred": null
+        },
+        {
+            "type": "wikidata",
+            "all": [
+                "Q7007272"
+            ],
+            "preferred": null
+        },
+        {
+            "type": "grid",
+            "all": [
+                "grid.465799.0"
+            ],
+            "preferred": "grid.465799.0"
+        }
+    ],
+    "id": "https://ror.org/01952nm43",
+    "domains": [],
+    "links": [
+        {
+            "type": "website",
+            "value": "https://www.artinstitutes.edu/boston/"
+        }
+    ],
+    "names": [
+        {
+            "value": "New England Institute of Art",
+            "types": [
+                "ror_display",
+                "label"
+            ],
+            "lang": null
+        },
+        {
+            "value": "NEiA",
+            "types": [
+                "acronym"
+            ],
+            "lang": null
+        }
+    ],
+    "relationships": [
+        {
+            "label": "The Art Institutes",
+            "type": "parent",
+            "id": "https://ror.org/01p2ej961"
+        }
+    ],
+    "status": "inactive",
+    "types": [
+        "education"
+    ],
+    "admin": {
+        "created": {
+            "date": "2023-07-28",
+            "schema_version": "1.0"
+        },
+        "last_modified": {
+            "date": "2023-07-28",
+            "schema_version": "2.0"
+        }
+    }
+}
