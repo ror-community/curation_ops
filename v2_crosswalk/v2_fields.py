@@ -32,7 +32,7 @@ v2_relationship_template = {
                 "type": ""
             }
 
-v2_admin_tempalte = {
+v2_admin_template = {
             "created": {
                 "date": "",
                 "schema_version": ""

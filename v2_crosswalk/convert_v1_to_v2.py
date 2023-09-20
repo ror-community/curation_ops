@@ -6,6 +6,7 @@ import logging
 import sys
 import re
 from datetime import date
+from zipfile import ZipFile, ZIP_DEFLATED
 
 import v2_fields
 import v2_enums
@@ -21,7 +22,7 @@ logging.basicConfig(filename=ERROR_LOG,level=logging.ERROR, filemode='w')
 
 # admin
 def format_admin():
-    v2_admin = v2_fields.v2_admin_tempalte
+    v2_admin = v2_fields.v2_admin_template
     v2_admin['created']['date'] = str(TODAY)
     v2_admin['created']['schema_version'] = copy.copy(v2_enums.SCHEMA_VERSIONS['1'])
     v2_admin['last_modified']['date'] = str(TODAY)
@@ -45,13 +46,9 @@ def get_v2_ext_id_type(v1_ext_id_type):
 def format_external_ids(v1_external_ids):
     v2_external_ids = []
     for k in v1_external_ids:
-        print("v1 key is:")
-        print(k)
         v2_ext_id_type = get_v2_ext_id_type(k)
         if v2_ext_id_type:
             v2_external_id = copy.deepcopy(v2_fields.v2_external_id_template)
-            print("starting v2 ext id is:")
-            print(v2_external_id)
             v2_external_id['type'] = v2_ext_id_type
             if isinstance(v1_external_ids[k]['all'], list) and len(v1_external_ids[k]['all']) > 0:
                 v2_external_id['all'] = v1_external_ids[k]['all']
@@ -76,6 +73,7 @@ def format_links(v1_links, v1_wikipedia_url):
         v2_link = copy.deepcopy(v2_fields.v2_link_template)
         v2_link['value'] = v1_wikipedia_url
         v2_link['type'] = copy.copy(v2_enums.LINK_TYPES['WIKIPEDIA'])
+        v2_links.append(v2_link)
     return v2_links
 
 # locations
@@ -83,7 +81,12 @@ def format_locations(v1_data):
     v2_locations = []
     for address in v1_data['addresses']:
         v2_location = copy.deepcopy(v2_fields.v2_location_template)
-        v2_location['geonames_id'] = address['geonames_city']['id']
+        # temp until missing geonames IDs/names are fixed
+        if address['geonames_city']:
+            if address['geonames_city']['id']:
+                v2_location['geonames_id'] = address['geonames_city']['id']
+            if address['geonames_city']['city']:
+                v2_location['geonames_details']['name'] = address['geonames_city']['city']
         if v1_data['country']['country_code']:
             v2_location['geonames_details']['country_code'] = v1_data['country']['country_code']
         if v1_data['country']['country_name']:
@@ -92,7 +95,6 @@ def format_locations(v1_data):
             v2_location['geonames_details']['lat'] = address['lat']
         if address['lng']:
             v2_location['geonames_details']['lng'] = address['lng']
-        v2_location['geonames_details']['name'] = address['geonames_city']['city']
         v2_locations.append(v2_location)
     return v2_locations
 
@@ -151,6 +153,37 @@ def convert_v1_to_v2(v1_data):
     #except Exception as e:
     #    logging.error(f"Error converting v1 data to v2: {e}")
 
+def create_v2_dump(v1_dump_zip_path):
+    v1_dump_unzipped = ''
+    v2_records = []
+    with ZipFile(v1_dump_zip_path, "r") as zf:
+        json_files_count = sum('.json' in s for s in zf.namelist())
+        if json_files_count == 1:
+            for name in zf.namelist():
+                # assumes ror-data zip will only contain 1 JSON file
+                if '.json' in name:
+                    v1_dump_unzipped = zf.extract(name, INPUT_PATH)
+        else:
+            print("Dump zip contains multiple json files. Something is wrong.")
+
+    #try:
+    f = open(v1_dump_unzipped, 'r')
+    v1_records = json.load(f)
+    print(str(len(v1_records)) + " records in v1 dump")
+    for v1_record in v1_records:
+        print("processing dump record " + str(v1_record['id']))
+        v2_record = convert_v1_to_v2(v1_record)
+        v2_records.append(v2_record)
+    print(str(len(v2_records)) + " to be added to v2 dump")
+    path, file = os.path.split(v1_dump_unzipped)
+    filename = file.strip(".json")
+    print(filename)
+    open(OUTPUT_PATH + filename + "_schema_v2.json", "w").write(
+        json.dumps(v2_records, indent=4, separators=(',', ': '))
+    )
+    #with ZipFile(OUTPUT_PATH + release_name + NEW_DUMP_SUFFIX + ".zip", 'w', ZIP_DEFLATED) as myzip:
+    #    myzip.write(INPUT_PATH + release_name + NEW_DUMP_SUFFIX + ".json", release_name + NEW_DUMP_SUFFIX + ".json")
+    # except:
 
 def create_v2_file(v1_file):
     #try:
@@ -165,44 +198,6 @@ def create_v2_file(v1_file):
     #except Exception as e:
     #    logging.error(f"Error concatenating files: {e}")
 
-def validate(input, version, check_address, rel_file = None, path = None, schema = None):
-    """Runs the files against the schema validator and the class that checks the usecases"""
-    files = get_files(input)
-    filename = ""
-    validation_errors = False
-    errors = []
-
-    if (rel_file and not(path)):
-        raise AttributeError(f"Relationship file: {rel_file} must be passed with a --file-path argument which is a path to the rest of the files for relationship validation")
-    elif (rel_file and path):
-        u.arg_exists(rel_file)
-
-    for f in files:
-        messages = {}
-        filename = os.path.basename(f).split(".")[0]
-        valid = True
-        valid, msg = vs.validate_file(f,schema,version)
-        if valid:
-            print("schema valid")
-            messages[filename] = run_validation_tests(f, version, check_address, path, rel_file)
-            if len(messages[filename]) == 0:
-                messages[filename] = None
-        else:
-            print("NOT schema valid")
-            messages[filename] = msg
-
-        if messages[filename]:
-            errors.append(deepcopy(messages))
-
-    if len(errors) > 0:
-        validation_errors = print_errors(errors, validation_errors)
-
-    if validation_errors:
-        with open(ERROR_LOG, 'r') as f:
-            print(f.read())
-        sys.exit(1)
-    else:
-        sys.exit(0)
 
 def get_files(input):
     files = []
@@ -223,19 +218,27 @@ def main():
     parser = argparse.ArgumentParser(description="Script to generate v2 ROR record from v1 record")
     parser.add_argument('-i', '--inputpath', type=str, default='./V1_INPUT')
     parser.add_argument('-o', '--outputpath', type=str, default='./V2_OUTPUT')
+    parser.add_argument('-d', '--dumpfile', type=str)
     args = parser.parse_args()
     global INPUT_PATH
     global OUTPUT_PATH
 
-    files = get_files(args.inputpath)
-    print(files)
+    if args.dumpfile:
+        if os.path.exists(args.dumpfile):
+            create_v2_dump(args.dumpfile)
+        else:
+            print("File " + args.dumpfile + " does not exist. Cannot process files.")
 
-    if files:
-        for file in files:
-            print("processing " + file)
-            create_v2_file(file)
     else:
-        print("No files exist in " + INPUT_PATH)
+        files = get_files(args.inputpath)
+        print(files)
+
+        if files:
+            for file in files:
+                print("processing " + file)
+                create_v2_file(file)
+        else:
+            print("No files exist in " + INPUT_PATH)
 
     file_size = os.path.getsize(ERROR_LOG)
     if (file_size == 0):
