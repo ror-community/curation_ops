@@ -26,7 +26,8 @@ Running the conversion script above does not automatically add created and last 
 
         python update_dates_v2.p -f ./V2_OUTPUT/v1.32-2023-09-14-ror-data_schema_v2.json -d ./V1_INPUT/20230914_created_last_modified.csv
 
-
+## To-do
+1. Automate v2 dump generation, date update and CSV generation as part of generate_dump script.
 
 
 
