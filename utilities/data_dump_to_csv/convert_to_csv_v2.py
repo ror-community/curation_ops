@@ -58,7 +58,7 @@ def get_all_data(f):
                         'external_ids.type.wikidata.all', 'external_ids.type.wikidata.preferred', 'links.type.website', 'links.type.wikipedia',
                         'locations.geonames_id', 'locations.geonames_details.country_code', 'locations.geonames_details.country_name',
                         'locations.geonames_details.lat', 'locations.geonames_details.lng', 'locations.geonames_details.name',
-                        'names.types.acronym', 'names.types.alias', 'names.types.label', 'names.types.ror_display', 'relationships', 'status', 'types'])
+                        'names.types.acronym', 'names.types.alias', 'names.types.label', 'names.types.ror_display', 'ror_display_lang', 'relationships', 'status', 'types'])
     with open(f, 'r+', encoding='utf8') as f_in:
         json_file = json.load(f_in)
     for record in json_file:
@@ -89,11 +89,14 @@ def get_all_data(f):
         acronyms_list = [name for name in names if 'acronym' in name['types']]
         aliases_list = [name for name in names if 'alias' in name['types']]
         labels_list = [name for name in names if 'label' in name['types']]
-        ror_display_list = [name for name in names if 'label' in name['types']]
+        ror_display_list = [name for name in names if 'ror_display' in name['types']]
         acronyms_str = format_names(acronyms_list)
         aliases_str = format_names(aliases_list)
         labels_str = format_names(labels_list)
-        ror_display_str = format_names(ror_display_list)
+        ror_display_str = ror_display_list[0]['value']
+        ror_display_lang = ror_display_list[0]['lang']
+        if not ror_display_lang:
+            ror_display_lang = 'no_lang_code'
         #relationships
         relationships = record['relationships']
         relationships_dict = {}
@@ -120,7 +123,7 @@ def get_all_data(f):
                             all_ids['isni'], preferred_ids['isni'], all_ids['wikidata'], preferred_ids['wikidata'],
                             links_website, links_wikipedia, geonames_id, geonames_country_code, geonames_country_name,
                             geonames_lat, geonames_lng, geonames_name, acronyms_str, aliases_str, labels_str, ror_display_str,
-                            rels_str, status, types])
+                            ror_display_lang, rels_str, status, types])
 
 
 if __name__ == '__main__':

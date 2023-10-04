@@ -14,8 +14,6 @@ NOW = datetime.now()
 ERROR_LOG = "errors.log"
 INPUT_PATH = "./"
 OUTPUT_PATH = "./"
-TEMP_NEW_UPDATED_RECORDS_CONCAT = "temp-updated-records.json"
-TEMP_DUMP_UPDATED_RECORDS_REMOVED = "temp-dump-updated-records-removed.json"
 NEW_DUMP_SUFFIX = "-" + NOW.strftime("%Y-%m-%d") + "-ror-data"
 
 logging.basicConfig(filename=ERROR_LOG,level=logging.ERROR, filemode='w')
@@ -110,7 +108,7 @@ def update_dates(dump_file, date_file):
             print("updating record " + record['id'])
             record['admin']['created']['date'] = date_item[0]['created']
             record['admin']['last_modified']['date'] = date_item[0]['last_modified']
-        open('V2_OUTPUT/updated_dates.json', "w").write(
+        open(dump_file, "w").write(
             json.dumps(dump_json, indent=4, separators=(',', ': '))
         )
 
@@ -118,6 +116,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('-f', '--dumpjsonfilepath', type=str)
     parser.add_argument('-d', '--datescsvfilepath', type=str)
+    parser.add_argument('-o', '--outputfilepath', type=str, default="./V2_OUTPUT/")
 
     args = parser.parse_args()
 

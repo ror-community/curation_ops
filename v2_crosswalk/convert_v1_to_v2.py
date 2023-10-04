@@ -10,6 +10,7 @@ from zipfile import ZipFile, ZIP_DEFLATED
 
 import v2_fields
 import v2_enums
+import update_dates_v2
 
 TODAY = date.today()
 ERROR_LOG = "errors.log"
@@ -19,13 +20,18 @@ V2_TEMPLATE = "./v2_template.json"
 
 logging.basicConfig(filename=ERROR_LOG,level=logging.ERROR, filemode='w')
 
+def extract_date(file_name):
+    match = re.search(r'(\d{4}-\d{2}-\d{2})', file_name)
+    if match:
+        return match.group(1)
+    return None
 
 # admin
-def format_admin():
+def format_admin(file_date):
     v2_admin = v2_fields.v2_admin_template
-    v2_admin['created']['date'] = str(TODAY)
+    v2_admin['created']['date'] = file_date
     v2_admin['created']['schema_version'] = copy.copy(v2_enums.SCHEMA_VERSIONS['1'])
-    v2_admin['last_modified']['date'] = str(TODAY)
+    v2_admin['last_modified']['date'] = file_date
     v2_admin['last_modified']['schema_version'] = copy.copy(v2_enums.SCHEMA_VERSIONS['2'])
     return v2_admin
 
@@ -132,28 +138,31 @@ def format_names(v1_data):
 
     return v2_names
 
-def convert_v1_to_v2(v1_data):
-    #try:
-    with open(V2_TEMPLATE) as template_file:
-        v2_data = json.load(template_file)
-        # these fields don't change
-        v2_data['id'] = v1_data['id']
-        v2_data['types'] = [type.lower() for type in v1_data['types']]
-        v2_data['status'] = v1_data['status']
-        v2_data['established'] = v1_data['established']
-        v2_data['domains'] = []
-        # these fields DO change
-        v2_data['relationships'] = format_relationships(v1_data['relationships'])
-        v2_data['external_ids'] = format_external_ids(v1_data['external_ids'])
-        v2_data['links'] = format_links(v1_data['links'], v1_data['wikipedia_url'])
-        v2_data['locations'] = format_locations(v1_data)
-        v2_data['names'] = format_names(v1_data)
-        v2_data['admin'] = format_admin()
-        return v2_data
-    #except Exception as e:
-    #    logging.error(f"Error converting v1 data to v2: {e}")
+def convert_v1_to_v2(v1_data, file_date):
+    try:
+        with open(V2_TEMPLATE) as template_file:
+            v2_data = json.load(template_file)
+            # these fields don't change
+            v2_data['id'] = v1_data['id']
+            v2_data['types'] = [type.lower() for type in v1_data['types']]
+            v2_data['status'] = v1_data['status']
+            v2_data['established'] = v1_data['established']
+            v2_data['domains'] = []
+            # these fields DO change
+            v2_data['relationships'] = format_relationships(v1_data['relationships'])
+            v2_data['external_ids'] = format_external_ids(v1_data['external_ids'])
+            v2_data['links'] = format_links(v1_data['links'], v1_data['wikipedia_url'])
+            v2_data['locations'] = format_locations(v1_data)
+            v2_data['names'] = format_names(v1_data)
+            v2_data['admin'] = format_admin(file_date)
+            return v2_data
+    except Exception as e:
+        logging.error(f"Error converting v1 data to v2: {e}")
 
 def create_v2_dump(v1_dump_zip_path):
+    file_date = extract_date(os.path.split(v1_dump_zip_path)[1])
+    print("file date is:")
+    print(file_date)
     v1_dump_unzipped = ''
     v2_records = []
     with ZipFile(v1_dump_zip_path, "r") as zf:
@@ -172,31 +181,34 @@ def create_v2_dump(v1_dump_zip_path):
     print(str(len(v1_records)) + " records in v1 dump")
     for v1_record in v1_records:
         print("processing dump record " + str(v1_record['id']))
-        v2_record = convert_v1_to_v2(v1_record)
+        v2_record = convert_v1_to_v2(v1_record, file_date)
         v2_records.append(v2_record)
     print(str(len(v2_records)) + " to be added to v2 dump")
     path, file = os.path.split(v1_dump_unzipped)
     filename = file.strip(".json")
-    print(filename)
     open(OUTPUT_PATH + filename + "_schema_v2.json", "w").write(
         json.dumps(v2_records, indent=4, separators=(',', ': '))
     )
+    if os.path.exists(OUTPUT_PATH + filename + "_schema_v2.json"):
+        return OUTPUT_PATH + filename + "_schema_v2.json"
+    else:
+        return None
     #with ZipFile(OUTPUT_PATH + release_name + NEW_DUMP_SUFFIX + ".zip", 'w', ZIP_DEFLATED) as myzip:
     #    myzip.write(INPUT_PATH + release_name + NEW_DUMP_SUFFIX + ".json", release_name + NEW_DUMP_SUFFIX + ".json")
     # except:
 
-def create_v2_file(v1_file):
-    #try:
-    with open(v1_file) as infile:
-        v1_data = json.load(infile)
-        ror_id = re.sub('https://ror.org/', '', v1_data['id'])
-        v2_record_data = convert_v1_to_v2(v1_data)
-    with open(OUTPUT_PATH + ror_id + ".json", "w") as writer:
-        writer.write(
-        json.dumps(v2_record_data, indent=4, separators=(',', ': '))
-        )
-    #except Exception as e:
-    #    logging.error(f"Error concatenating files: {e}")
+def create_v2_file(v1_file, file_date):
+    try:
+        with open(v1_file) as infile:
+            v1_data = json.load(infile)
+            ror_id = re.sub('https://ror.org/', '', v1_data['id'])
+            v2_record_data = convert_v1_to_v2(v1_data, file_date)
+        with open(OUTPUT_PATH + ror_id + ".json", "w") as writer:
+            writer.write(
+            json.dumps(v2_record_data, indent=4, separators=(',', ': '))
+            )
+    except Exception as e:
+        logging.error(f"Error concatenating files: {e}")
 
 
 def get_files(input):
@@ -218,25 +230,29 @@ def main():
     parser = argparse.ArgumentParser(description="Script to generate v2 ROR record from v1 record")
     parser.add_argument('-i', '--inputpath', type=str, default='./V1_INPUT')
     parser.add_argument('-o', '--outputpath', type=str, default='./V2_OUTPUT')
-    parser.add_argument('-d', '--dumpfile', type=str)
+    parser.add_argument('-f', '--dumpfile', type=str)
+    parser.add_argument('-d', '--datesfile', type=str)
     args = parser.parse_args()
     global INPUT_PATH
     global OUTPUT_PATH
+    global TODAY
 
     if args.dumpfile:
         if os.path.exists(args.dumpfile):
-            create_v2_dump(args.dumpfile)
+            v2_dump_file = create_v2_dump(args.dumpfile)
+            update_dates_v2.update_dates(v2_dump_file, args.datesfile)
+            #create_csv()
+            #create_zip()
         else:
             print("File " + args.dumpfile + " does not exist. Cannot process files.")
 
     else:
         files = get_files(args.inputpath)
-        print(files)
 
         if files:
             for file in files:
                 print("processing " + file)
-                create_v2_file(file)
+                create_v2_file(file, TODAY)
         else:
             print("No files exist in " + INPUT_PATH)
 
