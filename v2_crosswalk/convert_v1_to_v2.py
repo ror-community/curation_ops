@@ -7,6 +7,8 @@ import sys
 import re
 from datetime import date
 from zipfile import ZipFile, ZIP_DEFLATED
+sys.path.append('../utilities/data_dump_to_csv')
+import convert_to_csv_v2
 
 import v2_fields
 import v2_enums
@@ -193,9 +195,7 @@ def create_v2_dump(v1_dump_zip_path):
         return OUTPUT_PATH + filename + "_schema_v2.json"
     else:
         return None
-    #with ZipFile(OUTPUT_PATH + release_name + NEW_DUMP_SUFFIX + ".zip", 'w', ZIP_DEFLATED) as myzip:
-    #    myzip.write(INPUT_PATH + release_name + NEW_DUMP_SUFFIX + ".json", release_name + NEW_DUMP_SUFFIX + ".json")
-    # except:
+
 
 def create_v2_file(v1_file, file_date):
     try:
@@ -239,10 +239,21 @@ def main():
 
     if args.dumpfile:
         if os.path.exists(args.dumpfile):
-            v2_dump_file = create_v2_dump(args.dumpfile)
-            update_dates_v2.update_dates(v2_dump_file, args.datesfile)
-            #create_csv()
-            #create_zip()
+            try:
+                #print("Creating v2 dump JSON file")
+                #v2_dump_file = create_v2_dump(args.dumpfile)
+                print("Updating created and last mod dates")
+                ##update_dates_v2.update_dates(v2_dump_file, args.datesfile)
+                v2_dump_file = './V2_OUTPUT/v1.33-2023-09-21-ror-data_schema_v2.json'
+                print("Creating v2 dump CSV file")
+                convert_to_csv_v2.get_all_data(v2_dump_file)
+                print("Updating zip file:")
+                print(args.dumpfile)
+                with ZipFile(args.dumpfile, "a", ZIP_DEFLATED) as myzip:
+                    myzip.write(os.path.splitext(v2_dump_file)[0] + ".json", os.path.split(v2_dump_file)[1])
+                    myzip.write(os.path.splitext(v2_dump_file)[0] + ".csv", os.path.split(v2_dump_file)[1].replace("json", "csv"))
+            except Exception as e:
+                logging.error("Error creating new dump: {e}")
         else:
             print("File " + args.dumpfile + " does not exist. Cannot process files.")
 
