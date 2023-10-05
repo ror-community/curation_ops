@@ -240,11 +240,10 @@ def main():
     if args.dumpfile:
         if os.path.exists(args.dumpfile):
             try:
-                #print("Creating v2 dump JSON file")
-                #v2_dump_file = create_v2_dump(args.dumpfile)
+                print("Creating v2 dump JSON file")
+                v2_dump_file = create_v2_dump(args.dumpfile)
                 print("Updating created and last mod dates")
-                ##update_dates_v2.update_dates(v2_dump_file, args.datesfile)
-                v2_dump_file = './V2_OUTPUT/v1.33-2023-09-21-ror-data_schema_v2.json'
+                update_dates_v2.update_dates(v2_dump_file, args.datesfile)
                 print("Creating v2 dump CSV file")
                 convert_to_csv_v2.get_all_data(v2_dump_file)
                 print("Updating zip file:")
