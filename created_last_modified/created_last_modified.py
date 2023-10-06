@@ -3,6 +3,7 @@ import csv
 import json
 import argparse
 import os
+import shutil
 from datetime import datetime
 from zipfile import ZipFile, ZIP_DEFLATED
 
@@ -115,14 +116,13 @@ def parse_args():
 def main():
     args = parse_args()
     data_dumps = get_file_list(args.dump_directory)
-    print(data_dumps)
     output_file = os.path.split(data_dumps[len(data_dumps)-1])[1].strip(".zip") + "_created_last_mod.csv"
-    print(output_file)
     json_files = extract_json_files(data_dumps)
     first_appearance_data = find_created(json_files)
     last_modified_data = find_last_modified(json_files)
+    print("Output file is {0}".format(output_file))
     write_to_csv(first_appearance_data, last_modified_data, output_file)
-    os.rmdir(DUMP_FILES_DIR)
+    shutil.rmtree(DUMP_FILES_DIR)
 
 
 if __name__ == "__main__":
