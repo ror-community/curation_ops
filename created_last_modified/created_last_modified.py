@@ -108,19 +108,21 @@ def get_file_list(dump_dir):
 def parse_args():
     parser = argparse.ArgumentParser(
         description="Parse ROR data dump files to determine when a record was first created and last modified.")
-    parser.add_argument("-d", "--dump_directory", help="Path to a directory that contains ROR dump files to extract dates from")
-    parser.add_argument("-o", "--output", default="created_last_modified.csv",
-                        help="Name of the CSV output file.")
+    parser.add_argument("-d", "--dump_directory", default="../../ror-data", help="Path to a directory that contains ROR dump files to extract dates from")
     return parser.parse_args()
 
 
 def main():
     args = parse_args()
     data_dumps = get_file_list(args.dump_directory)
+    print(data_dumps)
+    output_file = os.path.split(data_dumps[len(data_dumps)-1])[1].strip(".zip") + "_created_last_mod.csv"
+    print(output_file)
     json_files = extract_json_files(data_dumps)
     first_appearance_data = find_created(json_files)
     last_modified_data = find_last_modified(json_files)
-    write_to_csv(first_appearance_data, last_modified_data, args.output)
+    write_to_csv(first_appearance_data, last_modified_data, output_file)
+    os.rmdir(DUMP_FILES_DIR)
 
 
 if __name__ == "__main__":
