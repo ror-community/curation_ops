@@ -5,7 +5,7 @@ import os
 import logging
 import sys
 import re
-from datetime import date
+from datetime import datetime
 from zipfile import ZipFile, ZIP_DEFLATED
 sys.path.append('../utilities/data_dump_to_csv')
 import convert_to_csv_v2
@@ -14,7 +14,7 @@ import v2_fields
 import v2_enums
 import update_dates_v2
 
-TODAY = date.today()
+TODAY = datetime.today().strftime('%Y-%m-%d')
 ERROR_LOG = "errors.log"
 INPUT_PATH = "./V1_INPUT/"
 OUTPUT_PATH = "./V2_OUTPUT/"

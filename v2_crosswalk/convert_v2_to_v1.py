@@ -16,8 +16,8 @@ import v2_enums
 
 TODAY = date.today()
 ERROR_LOG = "errors.log"
-INPUT_PATH = "./V1_INPUT/"
-OUTPUT_PATH = "./V2_OUTPUT/"
+INPUT_PATH = "./V2_INPUT/"
+OUTPUT_PATH = "./V1_OUTPUT/"
 V1_TEMPLATE = "./v1_template.json"
 
 logging.basicConfig(filename=ERROR_LOG,level=logging.ERROR, filemode='w')
@@ -49,7 +49,10 @@ def format_external_ids(v2_external_ids):
         if v1_ext_id_type:
             v1_external_id = copy.deepcopy(v1_fields.v1_external_id_template)
             if isinstance(v2_external_id['all'], list) and len(v2_external_id['all']) > 0:
-                v1_external_id['all'] = v2_external_id['all']
+                if v1_ext_id_type == v1_enums.EXTERNAL_ID_TYPES['GRID']:
+                    v1_external_id['all'] = v2_external_id['all'][0]
+                else:
+                    v1_external_id['all'] = v2_external_id['all']
             if isinstance(v2_external_id['all'], str) and len(v2_external_id['all']) > 0:
                 v1_external_id['all'].append(v2_external_id['all'])
             if v2_external_id['preferred']:
@@ -64,8 +67,8 @@ def format_links(v2_links):
     v2_links = filter(None, v2_links)
     for link in v2_links:
         if link['type'] == v2_enums.LINK_TYPES['WEBSITE']:
-            v1_links.append(format_links['value'])
-    return v2_links
+            v1_links.append(link['value'])
+    return v1_links
 
 # wikipedia_url
 def format_wikipedia_url(v2_links):
@@ -88,7 +91,8 @@ def format_addresses(v2_locations):
         if v2_location['geonames_details']['lng']:
             v1_address['lng'] = v2_location['geonames_details']['lng']
         if v2_location['geonames_details']['name']:
-            v1_address['geonames_city']['city'] = v2_location['geonames_details']['name']:
+            v1_address['city'] = v2_location['geonames_details']['name']
+            v1_address['geonames_city']['city'] = v2_location['geonames_details']['name']
     v1_addresses.append(v1_address)
     return v1_addresses
 
@@ -96,7 +100,6 @@ def format_addresses(v2_locations):
 def format_country(v2_locations):
     v2_location = v2_locations[0]
     v1_country = copy.deepcopy(v1_fields.v1_country_template)
-        # temp until missing geonames IDs/names are fixed
     if v2_location['geonames_details']:
         if v2_location['geonames_details']['country_code']:
             v1_country['country_code'] = v2_location['geonames_details']['country_code']
@@ -128,7 +131,7 @@ def format_aliases(v2_names):
     return v1_aliases
 
 # labels
-def format_aliases(v2_names):
+def format_labels(v2_names):
     v1_labels = []
     for v2_name in v2_names:
         if v2_enums.NAME_TYPES['LABEL'] in v2_name['types'] and v2_enums.NAME_TYPES['ROR_DISPLAY'] not in v2_name['types']:
@@ -144,7 +147,7 @@ def convert_v2_to_v1(v2_data):
             v1_data = json.load(template_file)
             # these fields don't change
             v1_data['id'] = v2_data['id']
-            v1_data['types'] = [type.lower() for type in v2_data['types']]
+            v1_data['types'] = [type.title() for type in v2_data['types']]
             v1_data['status'] = v2_data['status']
             v1_data['established'] = v2_data['established']
             v1_data['email_address'] = None
@@ -155,7 +158,7 @@ def convert_v2_to_v1(v2_data):
             v1_data['links'] = format_links(v2_data['links'])
             v1_data['wikipedia_url'] = format_wikipedia_url(v2_data['links'])
             v1_data['addresses'] = format_addresses(v2_data['locations'])
-            v1_data['country'] = format_addresses(v2_data['locations'])
+            v1_data['country'] = format_country(v2_data['locations'])
             v1_data['name'] = format_name(v2_data['names'])
             v1_data['acronyms'] = format_acronyms(v2_data['names'])
             v1_data['aliases'] = format_aliases(v2_data['names'])
@@ -231,8 +234,8 @@ def get_files(input):
 
 def main():
     parser = argparse.ArgumentParser(description="Script to generate v2 ROR record from v1 record")
-    parser.add_argument('-i', '--inputpath', type=str, default='./V1_INPUT')
-    parser.add_argument('-o', '--outputpath', type=str, default='./V2_OUTPUT')
+    parser.add_argument('-i', '--inputpath', type=str, default='./V2_INPUT')
+    parser.add_argument('-o', '--outputpath', type=str, default='./V1_OUTPUT')
     parser.add_argument('-f', '--dumpfile', type=str)
     parser.add_argument('-d', '--datesfile', type=str)
     args = parser.parse_args()
@@ -265,7 +268,7 @@ def main():
         if files:
             for file in files:
                 print("processing " + file)
-                create_v2_file(file, TODAY)
+                create_v1_file(file)
         else:
             print("No files exist in " + INPUT_PATH)
 
