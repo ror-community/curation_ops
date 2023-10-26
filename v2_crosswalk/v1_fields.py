@@ -1,7 +1,11 @@
 v1_address_template = {
+                "lat" : None,
+                "lng" : None,
+                "state" : None,
+                "state_code" : None,
                 "city" : None,
-                "country_geonames_id" : None,
                 "geonames_city" : {
+                    "id" : None,
                     "city" : None,
                     "geonames_admin1" : {
                         "ascii_name" : None,
@@ -15,7 +19,6 @@ v1_address_template = {
                         "id" : None,
                         "name" : None
                     },
-                    "id" : None,
                     "license" : {
                         "attribution" : "Data from geonames.org under a CC-BY 3.0 license",
                         "license" : "http://creativecommons.org/licenses/by/3.0/"
@@ -33,18 +36,15 @@ v1_address_template = {
                         "name" : None
                     }
                 },
-                "lat" : None,
-                "line" : None,
-                "lng" : None,
                 "postcode" : None,
                 "primary" : False,
-                "state" : "",
-                "state_code" : None
+                "line" : None,
+                "country_geonames_id" : None
             }
 
 v1_country_template = {
-                "country_code": None,
                 "country_name": None,
+                "country_code": None
             }
 
 v1_external_id_template = {
