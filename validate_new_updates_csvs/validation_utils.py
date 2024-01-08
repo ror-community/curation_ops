@@ -6,7 +6,7 @@ def validate_update_field(update_field):
     field_value_pairs = []
     valid_change_types = ['change', 'add', 'delete', 'replace']
     valid_field_names = ['name', 'status', 'established', 'wikipedia_url', 'links', 'types',
-                         'aliases', 'acronyms', 'wikidata', 'isni', 'fundref', 'grid',
+                         'aliases', 'acronyms', 'Wikidata', 'ISNI', 'FundRef', 'GRID',
                          'labels', 'relationships', 'Geonames']
     changes = update_field.split(';')
     for change in changes:
@@ -28,7 +28,7 @@ def validate_update_field(update_field):
             errors.append(f"Invalid field name: '{field_name}'. Valid field names are: {valid_field_names}")
         if change_type in ['add', 'delete'] and field_name in ['name', 'status', 'established', 'wikipedia_url']:
             errors.append(f"Incompatible change type '{change_type}' for field '{field_name}'. Expected fields: 'labels', links', 'types', 'aliases', 'acronyms'")
-        if change_type == 'replace' and field_name not in ['links', 'types', 'aliases', 'acronyms', 'labels']:
+        if change_type == 'replace' and field_name not in ['links', 'types', 'aliases', 'acronyms', 'labels', 'ISNI', 'FundRef', 'Wikidata']:
             errors.append(f"Incompatible change type '{change_type}' for field '{field_name}'. Expected fields: 'links', 'types', 'aliases', 'acronyms'")
         if change_type == 'change' and field_name not in ['name', 'status', 'established', 'wikipedia_url', 'Geonames']:
             errors.append(f"Incompatible change type 'change' for field '{field_name}'. The only valid fields for 'change' are 'name', 'status', 'established', 'wikipedia_url', 'Geonames'")
