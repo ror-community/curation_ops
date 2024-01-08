@@ -19,14 +19,14 @@ def validate_update_field(update_field):
         change_type, rest = parts
         field_name, field_value = rest.split('==', 1)
         change_type, field_name, field_value = change_type.strip(
-        ), field_name.strip().lower(), field_value.strip()
+        ), field_name.strip(), field_value.strip()
         if change_type != 'delete':
             field_value_pairs.append((field_name, field_value))
         if change_type not in valid_change_types:
             errors.append(f"Invalid change type: '{change_type}'. Valid types are: {valid_change_types}")
         if field_name not in valid_field_names:
             errors.append(f"Invalid field name: '{field_name}'. Valid field names are: {valid_field_names}")
-        if change_type in ['add', 'delete'] and field_name in ['name', 'status', 'established', 'wikipedia_url']:
+        if change_type in ['add', 'delete'] and field_name in ['name', 'status']:
             errors.append(f"Incompatible change type '{change_type}' for field '{field_name}'. Expected fields: 'labels', links', 'types', 'aliases', 'acronyms'")
         if change_type == 'replace' and field_name not in ['links', 'types', 'aliases', 'acronyms', 'labels', 'ISNI', 'FundRef', 'Wikidata']:
             errors.append(f"Incompatible change type '{change_type}' for field '{field_name}'. Expected fields: 'links', 'types', 'aliases', 'acronyms'")
