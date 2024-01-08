@@ -19,7 +19,7 @@ def validate_update_field(update_field):
         change_type, rest = parts
         field_name, field_value = rest.split('==', 1)
         change_type, field_name, field_value = change_type.strip(
-        ), field_name.strip().lower(), field_value.strip()
+        ), field_name.strip(), field_value.strip()
         if change_type != 'delete':
             field_value_pairs.append((field_name, field_value))
         if change_type not in valid_change_types:
