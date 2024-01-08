@@ -35,6 +35,10 @@ def validate_update_field(update_field):
     return errors, field_value_pairs
 
 
+def validate_name(field_value):
+    return [] if field_value != '*missing*' else [f"Error in 'name': Null value in name - {field_value}. Provide name value."]
+
+
 def validate_types(field_value):
     valid_types = {"Education", "Healthcare", "Company",
                    "Archive", "Nonprofit", "Government", "Facility", "Other"}
@@ -94,6 +98,7 @@ def validate_country(field_value):
 
 def validate_field_value(field_name, field_value):
     validation_functions = {
+        'name': validate_name,
         'types': validate_types,
         'acronyms': validate_acronyms,
         'labels': validate_labels,
