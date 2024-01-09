@@ -22,7 +22,7 @@ def validate_new_records_file(new_records_file, output_file):
             if field_name in locations:
                 values = [field_value]
             else:
-                if field_name in ['name', 'geonames', 'geonames_id'] and not field_value:
+                if field_name in ['name', 'links', 'types', 'geonames', 'geonames_id'] and not field_value:
                     values = ['*missing*']
                 else:
                     values = field_value.split(';') if field_value else []
