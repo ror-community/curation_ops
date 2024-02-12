@@ -95,7 +95,7 @@ def main():
         logging.error("Invalid ROR ID(s) in JSON files for the input directory")
         return
     all_400_range_errors, any_200_or_500_range_errors, non_400_ids = execute_multiprocessing(
-        ids, args.output)
+        ror_ids, args.output)
     if all_400_range_errors:
         logging.info("Success: All IDs returned 400 range errors.")
     elif any_200_or_500_range_errors:
