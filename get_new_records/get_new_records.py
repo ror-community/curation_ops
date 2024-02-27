@@ -3,6 +3,7 @@ import re
 import sys
 import csv
 import json
+import argparse
 import urllib.parse
 import requests
 from collections import defaultdict
@@ -10,7 +11,6 @@ from github import Github
 
 GITHUB_USER = os.environ.get('GITHUB_USER')
 GITHUB_TOKEN = os.environ.get('GITHUB_TOKEN')
-COLUMN_ID = 12055464
 
 
 def find_between(text, first, last):
@@ -56,7 +56,7 @@ def fix_wikipedia_url(record_data):
 
 
 def parse_issue_text(issue_text, mappings):
-    record_data = defaultdict(lambda:'')
+    record_data = defaultdict(lambda: '')
     for key, values in mappings.items():
         for value in values:
             search_result = find_between(issue_text, value, '\n')
@@ -78,7 +78,7 @@ def process_issue(issue, api_fields, ror_fields, issue_ror_mappings, outfile):
         writer.writerow(record_entry)
 
 
-def create_new_records_metadata():
+def create_new_records_metadata(column_id):
     outfile = os.path.join(os.getcwd(), 'new_records_metadata.csv')
     api_fields = ['html_url']
     ror_fields = [
@@ -126,13 +126,13 @@ def create_new_records_metadata():
         'city': ['City:'],
         'country': ['Country:'],
         'locations.geonames_id': ['Geonames ID:', 'Geoname ID:']
-        }
+    }
     with open(outfile, 'w') as f_out:
         writer = csv.writer(f_out)
         writer.writerow(api_fields + ror_fields)
 
     g = Github(GITHUB_TOKEN)
-    column = g.get_project_column(COLUMN_ID)
+    column = g.get_project_column(column_id)
     cards = column.get_cards()
     new_record_issues = []
     for card in cards:
@@ -145,5 +145,17 @@ def create_new_records_metadata():
                       issue_ror_mappings, outfile)
 
 
+def parse_arguments():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-c', '--column_id', required=True,
+                        type=int, help='Project column where records are located')
+    return parser.parse_args()
+
+
+def main():
+    args = parse_arguments()
+    create_new_records_metadata(args.column_id)
+
+
 if __name__ == '__main__':
-    create_new_records_metadata()
+    main()
