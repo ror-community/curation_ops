@@ -127,7 +127,7 @@ def create_new_records_metadata():
         'country': ['Country:'],
         'locations.geonames_id': ['Geonames ID:', 'Geoname ID:']
         }
-    with open(outfile, 'w', newline='') as f_out:
+    with open(outfile, 'w') as f_out:
         writer = csv.writer(f_out)
         writer.writerow(api_fields + ror_fields)
 
