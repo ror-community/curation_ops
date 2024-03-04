@@ -3,34 +3,67 @@ import re
 import sys
 import csv
 import json
+import argparse
 from collections import defaultdict
 
 
-def parse_record_updates_file(f):
+def parse_update_field(update_str):
+	updates = {}
+	parts = update_str.split(';')
+	for part in parts:
+		subparts = part.split('==', 1)
+		if len(subparts) == 2:
+			change_type, value = subparts[0].strip(), subparts[1].strip()
+			if change_type in updates:
+				updates[change_type].append(value)
+			else:
+				updates[change_type] = [value]
+		else:
+			updates.setdefault('replace', []).append(subparts[0].strip())
+	return updates
+
+
+def parse_row_updates(row):
+	row_updates = {}
+	for field, update_str in row.items():
+		row_updates[field] = parse_update_field(update_str)
+	return row_updates
+
+
+def parse_record_updates_file(input_file):
+	valid_fields = [
+		'status',
+		'types',
+		'names.types.acronym',
+		'names.types.alias',
+		'names.types.label',
+		'names.types.ror_display',
+		'links.type.website',
+		'established',
+		'links.type.wikipedia',
+		'external_ids.type.isni.preferred',
+		'external_ids.type.isni.all',
+		'external_ids.type.wikidata.preferred',
+		'external_ids.type.wikidata.all',
+		'external_ids.type.fundref.preferred',
+		'external_ids.type.fundref.all',
+		'locations.geonames_id'
+	]
 	record_updates = defaultdict(list)
-	ror_fields = ['name', 'established', 'wikipedia_url', 'links', 'types',
-				  'aliases', 'acronyms', 'Wikidata', 'ISNI', 'FundRef', 'labels', 'Geonames']
-	with open(f, encoding='utf-8-sig') as f_in:
+	field_value_pairs = []
+	with open(input_file, 'r+', encoding='utf-8-sig') as f_in:
 		reader = csv.DictReader(f_in)
 		for row in reader:
-			ror_id = re.sub('https://ror.org/', '', row['ror_id'])
-			issue_url = row['html_url']
-			update_field = row['update_field']
-			updates = update_field.split(';')
-			updates = [u for u in updates if u.strip() != '']
-			for update in updates:
-				change_type = update.split('.')[0].strip()
-				change_field = re.search(
-					r'(?<=\.)(.*)(?=\=\=)', update).group(1)
-				change_field = change_field.strip()
-				if change_field not in ror_fields:
-					print(
-						change_field, "is not a valid field. Please check coding on", row['html_url'])
-					sys.exit()
-				change_value = update.split('==')[1].strip()
-				record_updates[ror_id].append(
-					{'issue_url':issue_url,'change_type': change_type, 'change_field': change_field, 'change_value': change_value})
-
+			ror_id = row['id']
+			html_url = row['html_url']
+			row_updates = parse_row_updates(row)
+			for field, updates in row_updates.items():
+				if field in valid_fields:
+					for change_type, values in updates.items():
+						for value in values:
+							if value:
+								record_updates[ror_id].append(
+									{'html_url': html_url, 'change_type': change_type, 'field': field, 'value': value})
 	return record_updates
 
 
@@ -52,40 +85,67 @@ def flatten_json(j):
 	return flattened
 
 
-def check_if_updates_applied(f):
-	record_updates = parse_record_updates_file(f)
-	curr_dir = os.getcwd() + '/'
-	outfile = os.getcwd() + '/updates_integrity_check.csv'
-	header = ['issue_url', 'ror_id', 'field', 'type', 'value', 'position', 'status']
-	with open(outfile, 'w') as f_out:
+def check_if_updates_applied(input_file, output_file):
+	record_updates = parse_record_updates_file(input_file)
+	header = ['html_url', 'ror_id', 'field',
+			  'type', 'value', 'position', 'status']
+	with open(output_file, 'w') as f_out:
 		writer = csv.writer(f_out)
 		writer.writerow(header)
 	for ror_id, updates in record_updates.items():
-		json_file_path = curr_dir + ror_id + '.json'
+		ror_id_file_prefix = re.sub('https://ror.org/', '', ror_id)
+		json_file_path = f'{ror_id_file_prefix}.json'
 		with open(json_file_path, 'r+', encoding='utf8') as f_in:
 			json_file = json.load(f_in)
 		flattened = flatten_json(json_file)
+		replace_nulls = {k:("null value" if v is None else v) for k, v in flattened.items()}
 		inverted_json = {v: k for k, v in flattened.items()}
-		additions = ['change','add', 'replace']
+		additions = ['add', 'replace']
 		deletions = ['delete']
 		for update in updates:
-			issue_url = update['issue_url']
-			change_type, change_field, change_value = update[
-				'change_type'], update['change_field'], update['change_value']
-			if '*' in change_value:
-				change_value = change_value.split('*')[0]
-			if change_field == 'Geonames':
-				change_value = int(change_value)
+			issue_url = update['html_url']
+			change_type, field, value = update[
+				'change_type'], update['field'], update['value']
+			if '*' in value:
+				value = value.split('*')[0]
+			if field == 'locations.geonames_id':
+				value = int(value)
 			if change_type in additions:
-				if change_value not in flattened.values():
-					with open(outfile, 'a') as f_out:
+				if value not in flattened.values() and value not in ['delete', 'Delete']:
+					with open(output_file, 'a') as f_out:
 						writer = csv.writer(f_out)
-						writer.writerow([issue_url, ror_id, change_field, change_type, change_value, '', 'missing'])
-			elif change_type in deletions:
-				if change_value in flattened.values() and change_field in inverted_json[change_value]:
-					with open(outfile, 'a') as f_out:
+						writer.writerow(
+							[issue_url, ror_id, field, change_type, value, '', 'missing'])
+			if change_type in deletions:
+				if value in inverted_json.keys():
+					with open(output_file, 'a') as f_out:
 						writer = csv.writer(f_out)
-						writer.writerow([issue_url, ror_id, change_field, change_type, change_value, inverted_json[change_value], 'still_present'])
+						writer.writerow([issue_url, ror_id, field, change_type,
+										 value, inverted_json[value], 'still_present'])
+			if change_type == 'replace' and value in ['delete', 'Delete']:
+				if 'external' in field:
+					external_id_type = field.split('.')[2]
+					if any(external_id_type in key for key in inverted_json if not isinstance(key, int) and key is not None):
+						with open(output_file, 'a') as f_out:
+							writer = csv.writer(f_out)
+							writer.writerow([issue_url, ror_id, field, change_type,
+											 value, '', 'still_present'])
+			# implement case for use of "delete" in other fields where value will still exist but be None
+
+
+def parse_arguments():
+	parser = argparse.ArgumentParser(description="Validate a CSV file.")
+	parser.add_argument("-i", "--input_file", required=True,
+						help="Input CSV file path.")
+	parser.add_argument("-o", "--output_file",
+						default="updates_integrity_check.csv", help="Output CSV file path.")
+	return parser.parse_args()
+
+
+def main():
+	args = parse_arguments()
+	check_if_updates_applied(args.input_file, args.output_file)
+
 
 if __name__ == '__main__':
-	check_if_updates_applied(sys.argv[1])
+	main()
