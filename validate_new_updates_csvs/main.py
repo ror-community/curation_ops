@@ -1,6 +1,6 @@
 import argparse
 from file_utils import read_csv, write_report
-from validation_utils import validate_update_field, validate_field_value
+from validation_utils import validate_updates, validate_field_value
 
 
 def parse_arguments():
@@ -27,24 +27,23 @@ def validate_new_records_file(new_records_file, output_file):
                 value = value.strip()
                 errors = validate_field_value(field_name, value)
                 if errors:
-                    validation_report.append({'id': row.get('id'), 'url': row.get('url'), 'html_url': row.get('html_url'),
-                                              'name': row.get('name'), 'messages': errors})
+                    validation_report.append({'html_url': row.get('html_url'),
+                                              'ror_id': row.get('id'), 'messages': errors})
     write_report(validation_report, output_file)
 
 
 def validate_update_records_file(update_records_file, output_file):
     validation_report = []
     for row in update_records_file:
-        update_field_errors, field_value_pairs = validate_update_field(
-            row.get('update_field', ''))
+        update_field_errors, field_value_pairs = validate_updates(row)
         if update_field_errors:
-            validation_report.append({'id': row.get('id'), 'url': row.get('url'), 'html_url': row.get('html_url'),
-                                      'name': row.get('name'), 'messages': update_field_errors})
+            validation_report.append({'html_url': row.get('html_url'),
+                                      'ror_id': row.get('id'), 'messages': update_field_errors})
         for field_name, field_value in field_value_pairs:
             errors = validate_field_value(field_name, field_value)
             if errors:
-                validation_report.append({'id': row.get('id'), 'url': row.get('url'), 'html_url': row.get('html_url'),
-                                          'name': row.get('name'), 'messages': errors})
+                validation_report.append({'html_url': row.get('html_url'),
+                                          'ror_id': row.get('id'), 'messages': errors})
     write_report(validation_report, output_file)
 
 

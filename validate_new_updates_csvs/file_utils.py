@@ -14,10 +14,10 @@ def write_report(report_data, file_path):
     try:
         with open(file_path, mode='w', encoding='utf-8') as file:
             writer = csv.writer(file)
-            writer.writerow(['id', 'url', 'html_url', 'name', 'error_warning'])
+            writer.writerow(['html_url', 'ror_id', 'error_warning'])
             for data in report_data:
                 if isinstance(data, dict):
                     for message in data['messages']:
-                        writer.writerow([data['id'], data['url'], data['html_url'], data['name'], message])
+                        writer.writerow([data['html_url'], data['ror_id'], message])
     except IOError as e:
         raise IOError(f"Error: IO Error while writing the file - {e}")
