@@ -85,7 +85,7 @@ def create_new_records_metadata(column_id):
         'id',
         'names.types.ror_display',
         'status',
-        'types'
+        'types',
         'names.types.alias',
         'names.types.label',
         'names.types.acronym',
@@ -120,7 +120,8 @@ def create_new_records_metadata(column_id):
         'external_ids.type.isni.all': ['ISNI ID:', 'ISNI:'],
         'external_ids.type.grid.preferred': ['GRID ID:', 'GRID:'],
         'external_ids.type.grid.all': ['GRID ID:', 'GRID:'],
-        'wikidata': ['Wikidata ID:', 'Wikidata:'],
+        'external_ids.type.wikidata.preferred': ['Wikidata ID:', 'Wikidata:'],
+        'external_ids.type.wikidata.all': ['Wikidata ID:', 'Wikidata:'],
         'external_ids.type.fundref.preferred': ['Crossref Funder ID:'],
         'external_ids.type.fundref.all': ['Crossref Funder ID:'],
         'city': ['City:'],
@@ -135,6 +136,7 @@ def create_new_records_metadata(column_id):
     column = g.get_project_column(column_id)
     cards = column.get_cards()
     new_record_issues = []
+    i = 0
     for card in cards:
         issue = card.get_content()
         if issue and "new record" in [label.name for label in issue.labels]:
