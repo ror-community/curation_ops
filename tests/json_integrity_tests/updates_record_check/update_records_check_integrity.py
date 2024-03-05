@@ -134,11 +134,11 @@ def check_if_updates_applied(input_file, output_file):
 
 
 def parse_arguments():
-	parser = argparse.ArgumentParser(description="Validate a CSV file.")
+	parser = argparse.ArgumentParser(description="Check integrity of JSON files based on update records CSV.")
 	parser.add_argument("-i", "--input_file", required=True,
 						help="Input CSV file path.")
 	parser.add_argument("-o", "--output_file",
-						default="updates_integrity_check.csv", help="Output CSV file path.")
+						default="update_records_integrity_check.csv", help="Output CSV file path.")
 	return parser.parse_args()
 
 
