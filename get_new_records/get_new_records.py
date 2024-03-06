@@ -41,7 +41,7 @@ def normalize_text(text):
 def fix_types(record_data):
     types = record_data['types']
     if '(' in types:
-        types = types.split('(')[0].strip()
+        types = types.split('(')[0].strip().lower()
         record_data['types'] = types
     return record_data
 
