@@ -6,7 +6,6 @@ import argparse
 
 def flatten_json(j):
 	flattened = {}
-
 	def flatten(obj, name=''):
 		if type(obj) is dict:
 			for item in obj:
@@ -22,7 +21,7 @@ def flatten_json(j):
 	return flattened
 
 
-def check_in_json(input_dir, output_file):
+def check_duplicate_values(input_dir, output_file):
 	header = ['ror_id', 'field', 'value', 'duplicated_in']
 	with open(output_file, 'w') as f_out:
 		writer = csv.writer(f_out)
@@ -69,7 +68,7 @@ def parse_arguments():
 
 def main():
 	args = parse_arguments()
-	check_in_json(args.input_file, args.output_file)
+	check_duplicate_values(args.input_dir, args.output_file)
 
 
 if __name__ == '__main__':
