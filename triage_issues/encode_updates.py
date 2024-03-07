@@ -10,7 +10,7 @@ def encode_update(ror_id, description_of_change):
 	ror_api_url = 'https://api.ror.org/v2/organizations/' + ror_id
 	r = requests.get(ror_api_url)
 	if r.status_code == requests.codes.ok:
-		with open('encode_prompt_v2.txt', 'r') as file:
+		with open('encode_prompt.txt', 'r') as file:
 			encode_prompt = file.read()
 		record = str(r.json())
 		# try:
