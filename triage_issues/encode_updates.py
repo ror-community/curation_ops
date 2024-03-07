@@ -13,13 +13,11 @@ def encode_update(ror_id, description_of_change):
 		with open('encode_prompt.txt', 'r') as file:
 			encode_prompt = file.read()
 		record = str(r.json())
-		# try:
-		print(description_of_change)
-		encode_request = encode_prompt + record + description_of_change
-		encode_response = client.chat.completions.create(model="gpt-4-1106-preview",
-		messages=[{"role": "user", "content": encode_request}])
-		update = encode_response.choices[0].message.content
-		print(update)
-		return update
-		# except Exception:
-		# 	return None
+		try:
+			encode_request = encode_prompt + record + description_of_change
+			encode_response = client.chat.completions.create(model="gpt-4-1106-preview",
+			messages=[{"role": "user", "content": encode_request}])
+			update = encode_response.choices[0].message.content
+			return update
+		except Exception:
+			return None
