@@ -7,7 +7,7 @@ def validate_encoding(encoding):
     for r in remove:
         encoding = encoding.replace(r, "")
     input_parts = encoding.split('|')
-    valid_parts = ["Update:"]
+    valid_parts = []
     for part in input_parts:
         part = part.strip()
         operation = None
@@ -28,7 +28,7 @@ def validate_encoding(encoding):
             elif operation in ['add', 'delete'] and field not in repeating_fields:
                 continue
             valid_parts.append(f"{field}{operation}=={value}")
-    result = " | ".join(valid_parts) + "$"
+    result = "Update: " + " | ".join(valid_parts) + "$"
     if result == "Update:$" or result == "Update: $":
         return None
     return result
