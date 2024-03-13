@@ -90,7 +90,7 @@ def get_record_status(record_id, version):
             logging.error(f"Request for {download_url}: {e}")
     return status
 
-def get_record(id, filename):
+def get_record(id, filename, version):
     api_url = V2_API_URL if version == 2 else V1_API_URL
     download_url=api_url + id
     try:
@@ -115,7 +115,7 @@ def has_inverse_rel_csv(current_rel, all_rels):
     print("Has inverse is " + str(has_inverse))
     return has_inverse
 
-def download_records(relationships):
+def download_records(relationshipsm, version):
     print("DOWNLOADING PRODUCTION RECORDS")
     downloaded_records_count = 0
     if not os.path.exists(UPDATED_RECORDS_PATH):
@@ -125,7 +125,7 @@ def download_records(relationships):
         if r['related_location'] == "Production" and (r['record_relationship'] in INVERSE_TYPES or has_inverse_rel_csv(r, relationships)):
             filename = r['short_related_id'] + ".json"
             if not(check_file(filename)):
-                get_record(r['short_related_id'], filename)
+                get_record(r['short_related_id'], filename, version)
                 downloaded_records_count += 1
     print(str(downloaded_records_count) + " records downloaded")
 
