@@ -1,8 +1,8 @@
+import argparse
 import os
 import json
 import logging
 import sys
-sys.path.append('/Users/ekrznarich/git/update_address')
 import update_address
 
 RECORDS_PATH = "."
@@ -21,7 +21,7 @@ def get_files(top):
             filepaths.append(os.path.join(dirpath, file))
     return filepaths
 
-def update_addresses(filepaths):
+def update_addresses(filepaths, version):
     for filepath in filepaths:
         filename, file_extension = os.path.splitext(filepath)
         if file_extension == '.json':
@@ -29,13 +29,19 @@ def update_addresses(filepaths):
                 with open(filepath, 'r+') as json_in:
                     print("updating " + filepath)
                     json_data = json.load(json_in)
-                    json_data = update_address.update_geonames(json_data)
+                    if version == 2:
+                        json_data = update_address.update_geonames_v2(json_data)
+                    if version == 1:
+                        json_data = update_address.update_geonames(json_data)
                     export_json(json_data, json_in)
             except Exception as e:
                 logging.error(f"Writing {filepath}: {e}")
 
 if __name__ == '__main__':
-    update_addresses(get_files(RECORDS_PATH))
+    parser = argparse.ArgumentParser(description="Script to generate v1 ROR record from v2 record")
+    parser.add_argument('-v', '--schemaversion', choices=[1, 2], type=int, required=True, help='Output schema version (1 or 2)')
+    args = parser.parse_args()
+    update_addresses(get_files(RECORDS_PATH), args.schemaversion)
     file_size = os.path.getsize(ERROR_LOG)
     if (file_size == 0):
         os.remove(ERROR_LOG)
