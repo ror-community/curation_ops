@@ -122,5 +122,5 @@ def main(version):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Script to updated organization names on related records")
     parser.add_argument('-v', '--schemaversion', choices=[1, 2], type=int, required=True, help='Schema version (1 or 2)')
-    args = parser.parse_args(args.schemaversion)
-    main()
+    args = parser.parse_args()
+    main(args.schemaversions)
