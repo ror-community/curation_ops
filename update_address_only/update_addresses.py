@@ -38,7 +38,7 @@ def update_addresses(filepaths, version):
                 logging.error(f"Writing {filepath}: {e}")
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description="Script to generate v1 ROR record from v2 record")
+    parser = argparse.ArgumentParser(description="Script to update location information")
     parser.add_argument('-v', '--schemaversion', choices=[1, 2], type=int, required=True, help='Output schema version (1 or 2)')
     args = parser.parse_args()
     update_addresses(get_files(RECORDS_PATH), args.schemaversion)
