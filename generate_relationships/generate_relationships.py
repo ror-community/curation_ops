@@ -238,8 +238,7 @@ def generate_relationships(file, version):
     else:
         logging.error(f"{file} must exist to process relationship records")
 
-def main(version):
-    file = sys.argv[1]
+def main(file, version):
     generate_relationships(file, version)
     file_size = os.path.getsize(ERROR_LOG)
     if (file_size == 0):
@@ -251,7 +250,8 @@ def main(version):
         sys.exit(1)
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Script to generated relationships in new/udpated records")
     parser.add_argument('-v', '--schemaversion', choices=[1, 2], type=int, required=True, help='Schema version (1 or 2)')
+    parser = argparse.ArgumentParser(description="Script to generated relationships in new/udpated records")
+    parser.add_argument('file')
     args = parser.parse_args()
-    main(args.schemaverion)
+    main(args.file, args.schemaverion)
