@@ -254,4 +254,4 @@ if __name__ == "__main__":
     parser.add_argument('-v', '--schemaversion', choices=[1, 2], type=int, required=True, help='Schema version (1 or 2)')
     parser.add_argument('file')
     args = parser.parse_args()
-    main(args.file, args.schemaverion)
+    main(args.file, args.schemaversion)
