@@ -156,7 +156,7 @@ def check_missing_files(relationships):
 def check_relationship(former_relationship, current_relationship_id, current_relationship_type):
     return [r for r in former_relationship if ((not r['id'] == current_relationship_id) or (r['id'] == current_relationship_id and (not r['type'] == current_relationship_type)))]
 
-s
+
 def get_record_name(record, version):
     record_name = None
     if version == 2:
