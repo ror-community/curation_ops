@@ -250,7 +250,7 @@ def main(file, version):
         sys.exit(1)
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Script to generated relationships in new/udpated records")s
+    parser = argparse.ArgumentParser(description="Script to generated relationships in new/udpated records")
     parser.add_argument('-v', '--schemaversion', choices=[1, 2], type=int, required=True, help='Schema version (1 or 2)')
     parser.add_argument('file')
     args = parser.parse_args()
