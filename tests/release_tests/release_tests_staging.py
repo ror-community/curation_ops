@@ -28,12 +28,11 @@ def compare_api(ror_id, json_file):
         api_json = response.json()
         file_api_diff = jsondiff.diff(api_json, json_file, syntax='symmetric')
         if file_api_diff:
-            return "different"
-        else:
-            return "same"
+            return "different", file_api_diff
+        return "same", None
     except requests.exceptions.RequestException as e:
         print(f"Error occurred while fetching data from API for ROR ID: {ror_id}")
-        return "api_error"
+        return "api_error", None
 
 
 def search_name_api(org_name):
@@ -74,7 +73,7 @@ def check_release_files(all_ror_ids_file, release_tests_outfile, jsondiff_outfil
                          "compare_check", "search_name_api_check"])
     with open(jsondiff_outfile, 'w') as f_out:
         writer = csv.writer(f_out)
-        writer.writerow(["ror_id", "field", "diff"])
+        writer.writerow(["ror_id", "diff"])
     ids_in_file = []
     for file in glob.glob("*.json"):
         with open(file, 'r+', encoding='utf8') as f_in:
@@ -84,7 +83,11 @@ def check_release_files(all_ror_ids_file, release_tests_outfile, jsondiff_outfil
         org_name = get_ror_display_name(json_file)
         print("Testing -", org_name, "- ROR ID:", ror_id, "...")
         retrieve_check = retrieve_api(ror_id)
-        compare_check = compare_api(ror_id, json_file)
+        compare_check, diff_json = compare_api(ror_id, json_file)
+        if diff_json:
+            with open(jsondiff_outfile, 'w') as f_out:
+                writer = csv.writer(f_out)
+                writer.writerow([ror_id, diff_json])
         search_name_api_check = search_name_api(
             org_name)
         with open(release_tests_outfile, 'a') as f_out:
