@@ -16,7 +16,7 @@ INVERSE_TYPES = ('Parent', 'Child', 'Related')
 REL_INVERSE = {'Parent': 'Child', 'Child': 'Parent', 'Related': 'Related',
                 'Successor': 'Predecessor', 'Predecessor': 'Successor'}
 
-def get_relationships_from_file(file):
+def get_relationships_from_file(file, version):
     print("PROCESSING CSV")
     relation = []
     rel_dict = {}
@@ -30,7 +30,7 @@ def get_relationships_from_file(file):
                 check_record_id = parse_record_id(row['Record ID'])
                 check_related_id = parse_record_id(row['Related ID'])
                 # check that related ID is an active record
-                check_related_id_status = get_record_status(check_related_id)
+                check_related_id_status = get_record_status(check_related_id, version)
                 if (check_record_id and check_related_id):
                     if check_related_id_status == 'active' or row['Relationship of Related ID to Record ID'].title() == 'Predecessor':
                         rel_dict['short_record_id'] = check_record_id
@@ -68,7 +68,7 @@ def parse_record_id(id):
         logging.error(f"ROR ID: {id} does not match format: {pattern}. Record will not be processed")
     return parsed_id
 
-def get_record_status(record_id):
+def get_record_status(record_id, version):
     status = ''
     filepath = check_file(record_id + ".json")
     if filepath:
@@ -228,7 +228,7 @@ def process_relationships(relationships, version):
 
 def generate_relationships(file, version):
     if check_file(file):
-        relationships = get_relationships_from_file(file)
+        relationships = get_relationships_from_file(file, version)
         if relationships:
             download_records(relationships, version)
             relationships_missing_files_removed = check_missing_files(relationships)
