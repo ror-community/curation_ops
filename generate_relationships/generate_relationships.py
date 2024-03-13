@@ -115,7 +115,7 @@ def has_inverse_rel_csv(current_rel, all_rels):
     print("Has inverse is " + str(has_inverse))
     return has_inverse
 
-def download_records(relationshipsm, version):
+def download_records(relationships, version):
     print("DOWNLOADING PRODUCTION RECORDS")
     downloaded_records_count = 0
     if not os.path.exists(UPDATED_RECORDS_PATH):
