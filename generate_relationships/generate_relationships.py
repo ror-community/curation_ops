@@ -1,3 +1,4 @@
+imoprt argparse
 import json
 import os
 import logging
@@ -8,7 +9,8 @@ import sys
 
 ERROR_LOG = "relationship_errors.log"
 logging.basicConfig(filename=ERROR_LOG,level=logging.ERROR, filemode='w')
-API_URL = "http://api.ror.org/organizations/"
+V1_API_URL = https://api.ror.org/v1/organizations/
+V2_API_URL = https://api.ror.org/v2/organizations/s
 UPDATED_RECORDS_PATH = "updates/"
 INVERSE_TYPES = ('Parent', 'Child', 'Related')
 REL_INVERSE = {'Parent': 'Child', 'Child': 'Parent', 'Related': 'Related',
@@ -77,7 +79,8 @@ def get_record_status(record_id):
         except Exception as e:
             logging.error(f"Error reading {filepath}: {e}")
     else:
-        download_url=API_URL + record_id
+        api_url = V2_API_URL if version == 2 else V1_API_URL
+        download_url=api_url + record_id
         try:
             rsp = requests.get(download_url)
             rsp.raise_for_status()
@@ -88,7 +91,8 @@ def get_record_status(record_id):
     return status
 
 def get_record(id, filename):
-    download_url=API_URL + id
+    api_url = V2_API_URL if version == 2 else V1_API_URL
+    download_url=api_url + id
     try:
         rsp = requests.get(download_url)
         rsp.raise_for_status()
@@ -152,9 +156,21 @@ def check_missing_files(relationships):
 def check_relationship(former_relationship, current_relationship_id, current_relationship_type):
     return [r for r in former_relationship if ((not r['id'] == current_relationship_id) or (r['id'] == current_relationship_id and (not r['type'] == current_relationship_type)))]
 
-def get_related_name_api(related_id):
+s
+def get_record_name(record, version):
+    record_name = None
+    if version == 2:
+        ror_display  = [name for name in record['names'] if 'ror_display' in name['types']]
+        record_name = ror_display[0]
+    if version == 1:
+        record_name = record['name']
+    return record_name
+
+
+def get_related_name_api(related_id, version):
     name = None
-    download_url=API_URL + related_id
+    api_url = V2_API_URL if version == 2 else V1_API_URL
+    download_url=api_url + related_id
     try:
         rsp = requests.get(download_url)
         rsp.raise_for_status()
@@ -163,12 +179,12 @@ def get_related_name_api(related_id):
 
     try:
         response = rsp.json()
-        name = response['name']
+        name = get_record_name(response, version)
     except Exception as e:
         logging.error(f"Getting name for {related_id}: {e}")
     return name
 
-def get_related_name(related_id):
+def get_related_name(related_id, version):
     filename = related_id + ".json"
     filepath = check_file(filename)
     name = None
@@ -176,18 +192,18 @@ def get_related_name(related_id):
         try:
             with open(filepath, 'r') as f:
                 file_data = json.load(f)
-                name = file_data['name']
+                name = get_record_name(file_data, version)
         except Exception as e:
             logging.error(f"Reading {filepath}: {e}")
     else:
-        name = get_related_name_api(related_id)
+        name = get_related_name_api(related_id, version)
     return name
 
-def process_one_relationship(relationship):
+def process_one_relationship(relationship, version):
     filename = relationship['short_record_id'] + ".json"
     filepath = check_file(filename)
     relationship_data = {
-        "label": get_related_name(relationship['short_related_id']),
+        "label": get_related_name(relationship['short_related_id'], version),
         "type": relationship['record_relationship'],
         "id": relationship['related_id']
     }
@@ -202,29 +218,29 @@ def process_one_relationship(relationship):
     except Exception as e:
         logging.error(f"Writing {filepath}: {e}")
 
-def process_relationships(relationships):
+def process_relationships(relationships, version):
     print("UPDATING RECORDS")
     processed_relationships_count = 0
     for r in relationships:
-        process_one_relationship(r)
+        process_one_relationship(r, version)
         processed_relationships_count += 1
     print(str(processed_relationships_count) + " relationships updated")
 
-def generate_relationships(file):
+def generate_relationships(file, version):
     if check_file(file):
         relationships = get_relationships_from_file(file)
         if relationships:
-            download_records(relationships)
+            download_records(relationships, version)
             relationships_missing_files_removed = check_missing_files(relationships)
-            process_relationships(relationships_missing_files_removed)
+            process_relationships(relationships_missing_files_removed, version)
         else:
             logging.error(f"No valid relationships found in {file}")
     else:
         logging.error(f"{file} must exist to process relationship records")
 
-def main():
+def main(version):
     file = sys.argv[1]
-    generate_relationships(file)
+    generate_relationships(file, version)
     file_size = os.path.getsize(ERROR_LOG)
     if (file_size == 0):
         os.remove(ERROR_LOG)
@@ -235,4 +251,7 @@ def main():
         sys.exit(1)
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description="Script to generated relationships in new/udpated records")
+    parser.add_argument('-v', '--schemaversion', choices=[1, 2], type=int, required=True, help='Schema version (1 or 2)')
+    args = parser.parse_args()
+    main(args.schemaverion)
