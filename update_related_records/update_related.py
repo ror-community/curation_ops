@@ -62,8 +62,12 @@ def get_record_name(record, version):
 
 def check_name_production(ror_id, related_name, version):
     api_url = V2_API_URL if version == 2 else V1_API_URL
+    print("API URL :")
+    print(api_url)
     api_record = api_url + '/' + ror_id
     prod_record = requests.get(api_record).json()
+    print("prod record name:")
+    print(get_record_name(prod_record, version))
     if get_record_name(prod_record, version) == related_name:
         return True
     return False
