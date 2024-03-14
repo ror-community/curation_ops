@@ -65,7 +65,7 @@ def check_name_production(ror_id, related_name, version):
     api_record = api_url + '/' + ror_id
     prod_record = requests.get(api_record).json()
     if get_record_name(prod_record, version) == related_name:
-        return Trues
+        return True
     return False
 
 def get_files(top):
