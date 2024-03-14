@@ -360,7 +360,7 @@ def triage(record):
     org_name = record['name']
     aliases = record['aliases'].split(';')
     aliases = [alias.strip() for alias in aliases]
-    all_names = [org_name] + ['aliases']
+    all_names = [org_name] + aliases
     wikidata_name, wikidata_id, best_match_ratio = search_wikidata(all_names)
     if wikidata_id:
         org_metadata = get_wikidata_claims(
