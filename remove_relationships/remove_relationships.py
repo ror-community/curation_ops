@@ -103,7 +103,7 @@ def remove_relationships(version):
     return all_removed_relationships_pruned, no_relationship_in_related_file
 
 def main(version):
-    removed_relationships, no_relationship_in_related_file = remove_relationships()
+    removed_relationships, no_relationship_in_related_file = remove_relationships(version)
     print(str(len(removed_relationships)) + " relationship(s) removed")
     if len(removed_relationships) > 0:
         print(removed_relationships)
