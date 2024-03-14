@@ -371,7 +371,7 @@ def triage(record):
         record, all_names)
     org_metadata['ORCID affiliation usage'] = search_orcid(all_names)
     org_metadata['Possible ROR matches'] = search_ror(all_names)
-    org_metadata['Previous requests'] = check_existing_issues(all_names)
+    org_metadata['Previous requests'] = check_existing_issues(org_name)
     if record['city'] and record['country']:
         location = f"{record['city']}, {record['country']}"
         geonames_result = search_geonames(location)
