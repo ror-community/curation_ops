@@ -54,7 +54,7 @@ def get_record_name(record, version):
     record_name = None
     if version == 2:
         ror_display  = [name for name in record['names'] if 'ror_display' in name['types']]
-        record_name = ror_display[0]
+        record_name = ror_display[0]['value']
     if version == 1:
         record_name = record['name']
     return record_name
