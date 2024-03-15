@@ -122,10 +122,10 @@ def create_update_records_metadata(column_id):
     issue_ror_mappings = {
         'names.types.ror_display': ['ror_display'],
         'status': ['status'],
-        'types': ['types'],
+        'types': ['type','types'],
         'names.types.alias': ['alias', 'aliases'],
         'names.types.label': ['label','labels'],
-        'names.types.acronym': ['acronyms'],
+        'names.types.acronym': ['acronym','acronyms'],
         'links.type.website': ['website'],
         'links.type.wikipedia': ['wikipedia'],
         'domains': ['domains'],
@@ -138,7 +138,7 @@ def create_update_records_metadata(column_id):
         'external_ids.type.wikidata.all': ['wikidata.all'],
         'external_ids.type.fundref.preferred': ['fundref.preferred'],
         'external_ids.type.fundref.all': ['fundref.all'],
-        'locations.geonames_id': ['geonames']
+        'locations.geonames_id': ['geonames_id','geonames']
     }
     outfile = os.path.join(os.getcwd(), 'update_records_metadata.csv')
     with open(outfile, 'w') as f_out:
