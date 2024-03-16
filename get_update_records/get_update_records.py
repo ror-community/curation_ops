@@ -79,6 +79,11 @@ def parse_issue_text(issue_text, mappings):
                     if existing_value and not existing_value.endswith(';'):
                         existing_value += ';'
                     parsed_data[csv_column] = existing_value + op_value if existing_value else op_value
+        if '.delete_field' in update:
+            key = update.strip().replace('.delete_field', '')
+            for csv_column, keywords in mappings.items():
+                if any(keyword in key for keyword in keywords):
+                    parsed_data[csv_column] = 'delete'
     for key, value in parsed_data.items():
         if value.endswith(';'):
             parsed_data[key] = value[:-1]
