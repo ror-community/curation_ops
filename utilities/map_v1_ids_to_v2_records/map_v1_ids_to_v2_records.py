@@ -32,9 +32,7 @@ def map_ids(v1_data, v2_data):
     mapped_data = {}
     for v1_filename, v1_obj in v1_data.items():
         for v2_filename, v2_obj in v2_data.items():
-            if (v1_obj.get('name') == v2_obj.get('names', [{}])[0].get('value')
-                    and v1_obj.get('links', [None])[0] == next((link['value'] for link in v2_obj.get('links', []) if link.get('type') == 'website'), None)
-                    and v1_obj.get('addresses', [{}])[0].get('geonames_city', {}).get('id') == v2_obj.get('locations', [{}])[0].get('geonames_id')):
+            if (v1_obj.get('name') == v2_obj.get('names', [{}])[0].get('value') and v1_obj.get('addresses', [{}])[0].get('geonames_city', {}).get('id') == v2_obj.get('locations', [{}])[0].get('geonames_id')):
                 v2_obj['id'] = v1_obj['id']
                 mapped_data[v1_obj['id']] = v2_obj
                 break
@@ -53,7 +51,8 @@ def save_mapped_files(mapped_data, output_directory):
 
 def log_failed_mappings(v1_data, mapped_ids):
     v1_filenames = set(v1_data.keys())
-    mapped_filenames = set(re.sub('https://ror.org/', '', mapped_id) + '.json' for mapped_id in mapped_ids)
+    mapped_filenames = set(re.sub('https://ror.org/', '',
+                                  mapped_id) + '.json' for mapped_id in mapped_ids)
     unmapped_files = v1_filenames - mapped_filenames
     if unmapped_files:
         print('Failed to map the following files:')
