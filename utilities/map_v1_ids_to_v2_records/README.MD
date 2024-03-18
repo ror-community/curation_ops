@@ -1,4 +1,4 @@
-# ROR ID Mapping Tool
+# Map v1 IDs to v2 files
 
 Maps ROR IDs from v1 JSON files to v2 JSON files based on matching name, website link, and geonames city ID.
 
