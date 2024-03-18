@@ -2,6 +2,7 @@ import argparse
 import csv
 import json
 import os
+import jsondiff
 
 
 def parse_arguments():
@@ -125,21 +126,36 @@ def compare_json_data(json_data1, json_data2, output_csv):
     with open(output_csv, 'w', newline='') as csv_file:
         writer = csv.writer(csv_file)
         writer.writerow(['ID', 'Matched ID Found', 'Key-Value Pairs Matched',
-                         'All Values Matched', 'Mismatched Keys'])
+                         'All Values Matched', 'Mismatched Keys', 'Mismatched Values'])
         for id1, data1 in json_data1.items():
             if id1 in json_data2:
                 data2 = json_data2[id1]
-                key_value_match = all(set(value) == set(data2.get(key, [])) if isinstance(value, list) else value == data2.get(key) for key, value in data1.items() if key != 'all')
-                all_values_match = set(str(value) for value in data1['all']) == set(str(value) for value in data2['all'])
-                mismatched_keys = [key for key in data1 if key !=
-                                   'all' and data1[key] != data2.get(key)]
+                key_value_match = all(
+                    sorted(value) == sorted(data2.get(key, [])) if isinstance(value, list)
+                    else value == data2.get(key)
+                    for key, value in data1.items() if key != 'all'
+                )
+                all_values_match = sorted(str(value) for value in data1['all']) == sorted(str(value) for value in data2['all'])
+                mismatched_keys = []
+                mismatched_values = []
+                for key in data1:
+                    if key != 'all':
+                        if isinstance(data1[key], list) and isinstance(data2.get(key), list):
+                            if sorted(data1[key]) != sorted(data2.get(key, [])):
+                                mismatched_keys.append(key)
+                                mismatched_values.append(f"{key}: {data1[key]} != {data2.get(key)}")
+                        elif data1[key] != data2.get(key):
+                            mismatched_keys.append(key)
+                            mismatched_values.append(f"{key}: {data1[key]} != {data2.get(key)}")
                 writer.writerow([id1, 'True', 'True' if key_value_match else 'False',
-                                 'True' if all_values_match else 'False', '; '.join(mismatched_keys)])
+                                 'True' if all_values_match else 'False',
+                                 '; '.join(mismatched_keys),
+                                 '; '.join(mismatched_values)])
             else:
-                writer.writerow([id1, 'False', '', '', ''])
+                writer.writerow([id1, 'False', '', '', '', ''])
         for id2 in json_data2:
             if id2 not in json_data1:
-                writer.writerow([id2, 'False', '', '', ''])
+                writer.writerow([id2, 'False', '', '', '', ''])
 
 
 def main():
