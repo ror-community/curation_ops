@@ -10,16 +10,20 @@ from collections import defaultdict
 def parse_update_field(update_str):
     updates = {}
     parts = update_str.split(';')
+    current_change_type = None
     for part in parts:
         subparts = part.split('==', 1)
         if len(subparts) == 2:
-            change_type, value = subparts[0].strip(), subparts[1].strip()
-            if change_type in updates:
-                updates[change_type].append(value)
+            current_change_type, value = subparts[0].strip(), subparts[1].strip()
+            if current_change_type in updates:
+                updates[current_change_type].append(value)
             else:
-                updates[change_type] = [value]
+                updates[current_change_type] = [value]
         else:
-            updates.setdefault('replace', []).append(subparts[0].strip())
+            if current_change_type:
+                updates[current_change_type].append(subparts[0].strip())
+            else:
+                updates.setdefault('replace', []).append(subparts[0].strip())
     return updates
 
 
@@ -67,7 +71,7 @@ def parse_record_updates_file(input_file):
     return record_updates
 
 
-def simplify_json(j):
+def simplify_and_invert_json(j):
     simplified = {}
     name_types = ['ror_display', 'alias', 'label', 'acronym']
     link_types = ['wikipedia', 'website']
@@ -88,11 +92,14 @@ def simplify_json(j):
         all_id_values = [ext_id.get('all', []) for ext_id in ids_of_type]
         simplified[f'external_ids.type.{id_type}.all'] = sum(all_id_values, []) if all(isinstance(v, list) for v in all_id_values) else []
     all_values = []
-    for key, value in simplified.items():
-        all_values += value
-    all_values = [value for value in all_values if value]
+    inverted = {}
+    for key, values in simplified.items():
+        for value in values:
+            if value:
+                all_values.append(value)
+                inverted.setdefault(value, []).append(key)
     simplified['all'] = all_values
-    return simplified
+    return simplified, inverted
 
 
 def check_if_updates_applied(input_file, output_file):
@@ -107,7 +114,7 @@ def check_if_updates_applied(input_file, output_file):
         json_file_path = f'{ror_id_file_prefix}.json'
         with open(json_file_path, 'r+', encoding='utf8') as f_in:
             json_file = json.load(f_in)
-        simplified_json = simplify_json(json_file)
+        simplified_json, inverted_json = simplify_and_invert_json(json_file)
         additions = ['add', 'replace']
         deletions = ['delete']
         for update in updates:
@@ -125,7 +132,7 @@ def check_if_updates_applied(input_file, output_file):
                         writer.writerow(
                             [issue_url, ror_id, field, change_type, value, '', 'missing'])
             if change_type in deletions:
-                if value in simplified_json['all']:
+                if value in simplified_json['all'] and inverted_json[value] == field:
                     with open(output_file, 'a') as f_out:
                         writer = csv.writer(f_out)
                         writer.writerow(
