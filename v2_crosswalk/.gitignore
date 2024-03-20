@@ -1,5 +1,7 @@
 V1_INPUT/*
 V2_OUTPUT/*
+V2_INPUT/*
+V1_OUTPUT/*
 __pycache__/
 ../.vscode/
 errors.log

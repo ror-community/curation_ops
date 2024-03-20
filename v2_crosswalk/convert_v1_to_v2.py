@@ -11,6 +11,17 @@ V2_TEMPLATE = os.path.join(os.path.dirname(__file__), 'v2_template.json')
 
 logging.basicConfig(filename=ERROR_LOG,level=logging.ERROR, filemode='w')
 
+def sort_list_fields(v2_data):
+    for field in v2_data:
+        if field in v2_enums.SORT_KEYS:
+            if v2_enums.SORT_KEYS[field] is not None:
+                sort_key = v2_enums.SORT_KEYS[field]
+                sorted_vals = sorted(v2_data[field], key=lambda x: x[sort_key])
+            else:
+                sorted_vals = sorted(v2_data[field])
+            v2_data[field] = sorted_vals
+    return v2_data
+
 # admin
 def format_v2_admin(file_date):
     v2_admin = v2_fields.v2_admin_template
@@ -140,6 +151,6 @@ def convert_v1_to_v2(v1_data, file_date):
             v2_data['locations'] = format_v2_locations(v1_data)
             v2_data['names'] = format_v2_names(v1_data)
             v2_data['admin'] = format_v2_admin(file_date)
-            return v2_data
+            return sort_list_fields(v2_data)
     except Exception as e:
         logging.error(f"Error converting v1 data to v2: {e}")
