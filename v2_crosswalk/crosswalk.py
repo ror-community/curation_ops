@@ -83,7 +83,7 @@ def convert_file(file, output_schema_version, output_path):
             if output_schema_version == 2:
                 converted_record = convert_v1_to_v2.convert_v1_to_v2(record, DEFAULT_DATE)
             else:
-                converted_record = convert_v2_to_v1.convert_v2_to_v1(record, DEFAULT_DATE)
+                converted_record = convert_v2_to_v1.convert_v2_to_v1(record)
         with open(output_path + ror_id + ".json", "w") as writer:
             writer.write(
             json.dumps(converted_record, ensure_ascii=False, indent=2, separators=(',', ': '))

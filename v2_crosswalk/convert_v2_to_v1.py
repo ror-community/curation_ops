@@ -1,13 +1,14 @@
 import copy
 import json
 import logging
+import os
 
 import v1_fields
 import v1_enums
 import v2_enums
 
 ERROR_LOG = "errors.log"
-V1_TEMPLATE = "./v1_template.json"
+V1_TEMPLATE = os.path.join(os.path.dirname(__file__), 'v1_template.json')
 
 logging.basicConfig(filename=ERROR_LOG,level=logging.ERROR, filemode='w')
 

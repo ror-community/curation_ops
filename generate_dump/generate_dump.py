@@ -24,17 +24,17 @@ logging.basicConfig(filename=ERROR_LOG,level=logging.ERROR, filemode='w')
 
 
 def create_v1_files(input_dir, output_dir):
-    files = get_files(input_dir)
+    files = crosswalk.get_files(input_dir)
     file_count = 0
     if files:
-        print(f"Converting files to v{args.schemaversion}")
+        print(f"Converting files to v1")
         for file in files:
             print(f"Processing {file}")
             crosswalk.convert_file(file, 1, output_dir)
             file_count += 1
-        print(f"Converted {str(file_count)} files to v1".)
+        print(f"Converted {str(file_count)} files to v1")
     else:
-        print("No files exist in " + args.inputpath)
+        print("No files exist in " + input_dir)
 
 
 def concat_files(filepath, schema_version):
@@ -54,9 +54,8 @@ def concat_files(filepath, schema_version):
             filename = TEMP_NEW_UPDATED_RECORDS_CONCAT + V2_SUFFIX + '.json'
         else:
             filename = TEMP_NEW_UPDATED_RECORDS_CONCAT + '.json'
-        open(INPUT_PATH + filename, "w").write(
-            json.dumps(updated_records, indent=4, separators=(',', ': '))
-        )
+        with open(os.path.join(INPUT_PATH, filename), "w") as f:
+            f.write(json.dumps(updated_records, indent=4, separators=(',', ': ')))
     except Exception as e:
         logging.error(f"Error concatenating files: {e}")
 
@@ -67,11 +66,13 @@ def concat_files(filepath, schema_version):
 
 # update to handle either version
 def remove_existing_records(ror_ids, existing_dump_zip_path, schema_version):
+    print("removing existing records")
     existing_dump_unzipped = ''
     indexes = []
     records_to_remove = []
     with ZipFile(existing_dump_zip_path, "r") as zf:
         json_files = [f for f in zf.namelist() if '.json' in f]
+        print(json_files)
         if len(json_files)==1:
             existing_dump_unzipped = zf.extract(json_files[0], INPUT_PATH)
         elif len(json_files) == 2:
@@ -79,7 +80,7 @@ def remove_existing_records(ror_ids, existing_dump_zip_path, schema_version):
                 v1_dump = [f for f in json_files if V2_SUFFIX not in json_files]
                 existing_dump_unzipped = zf.extract(v1_dump[0], INPUT_PATH)
             if schema_version == 2:
-                v2_dump = [f for f in json_files if V2_SUFFIX in json_files]
+                v2_dump = [f for f in json_files if V2_SUFFIX in f]
                 existing_dump_unzipped = zf.extract(v2_dump[0], INPUT_PATH)
         else:
             print("Dump zip contains more than 2 files. Something is wrong.")
@@ -102,31 +103,30 @@ def remove_existing_records(ror_ids, existing_dump_zip_path, schema_version):
             filename = TEMP_DUMP_UPDATED_RECORDS_REMOVED + V2_SUFFIX + '.json'
         else:
             filename = TEMP_DUMP_UPDATED_RECORDS_REMOVED + '.json'
-        open(INPUT_PATH + filename, "w").write(
-            json.dumps(json_data, indent=4, separators=(',', ': '))
-        )
+        with open(os.path.join(INPUT_PATH, filename), "w") as f:
+            f.write(json.dumps(json_data, indent=4, separators=(',', ': ')))
     except Exception as e:
         logging.error("Error removing existing records: {e}")
 
 def create_zip(release_name, base_version):
     file_list = []
     # always include v1 until sunset
-    file_list.append = release_name + NEW_DUMP_SUFFIX
+    file_list.append(release_name + NEW_DUMP_SUFFIX)
     if base_version == 2:
-        file_list.append = release_name + NEW_DUMP_SUFFIX + V2_SUFFIX
+        file_list.append(release_name + NEW_DUMP_SUFFIX + V2_SUFFIX)
     with ZipFile(OUTPUT_PATH + release_name + NEW_DUMP_SUFFIX + ".zip", 'w', ZIP_DEFLATED) as myzip:
         for f in file_list:
-            myzip.write(INPUT_PATH + f + ".json", filename + ".json")
-            myzip.write(INPUT_PATH + f + ".csv", filename + ".csv")
+            myzip.write(INPUT_PATH + f + ".json", f + ".json")
+            myzip.write(INPUT_PATH + f + ".csv", f + ".csv")
 
 def create_dump_files(release_name, schema_version):
     if schema_version == 1:
         file_suffix = '.json'
     else:
         file_suffix = V2_SUFFIX + '.json'
-    temp_dump_updated_records_removed = open(INPUT_PATH + TEMP_DUMP_UPDATED_RECORDS_REMOVED + file_suffix, 'r')
+    temp_dump_updated_records_removed = open(os.path.join(INPUT_PATH, TEMP_DUMP_UPDATED_RECORDS_REMOVED + file_suffix), 'r')
     temp_dump_updated_records_removed_json = json.load(temp_dump_updated_records_removed)
-    updated_records = open(INPUT_PATH + TEMP_NEW_UPDATED_RECORDS_CONCAT + file_suffix, 'r')
+    updated_records = open(os.path.join(INPUT_PATH, TEMP_NEW_UPDATED_RECORDS_CONCAT + file_suffix), 'r')
     updated_records_json = json.load(updated_records)
     print(str(len(updated_records_json)) + " records added to dump")
     try:
@@ -144,7 +144,7 @@ def create_dump_files(release_name, schema_version):
         )
         if schema_version == 1:
             convert_to_csv.get_all_data(INPUT_PATH + filename + ".json")
-        if else:
+        else:
             convert_to_csv_v2.get_all_data(INPUT_PATH + filename + ".json")
 
     except Exception as e:
@@ -162,24 +162,25 @@ def main():
     global OUTPUT_PATH
 
     INPUT_PATH = args.inputpath + '/'
-    OUTPUT_PATH = args.inputpath + '/'
+    OUTPUT_PATH = args.outputpath + '/'
 
-    input_dir = INPUT_PATH + args.releasedirname + "/"
-    existing_dump_zip_path = OUTPUT_PATH + args.existingdumpname + ".zip"
+    release_dir = os.path.join(INPUT_PATH, args.releasedirname)
+    existing_dump_zip_path = os.path.join(OUTPUT_PATH, args.existingdumpname + ".zip")
     base_version = args.baseversion
-    if os.path.exists(input_dir):
-        updated_record_ids = concat_files(input_dir)
+    if os.path.exists(release_dir):
+        updated_record_ids = concat_files(release_dir, base_version)
         remove_existing_records(updated_record_ids, existing_dump_zip_path, base_version)
         create_dump_files(args.releasedirname, base_version)
         if base_version == 2:
             schema_version  = 1
-            v1_dir = os.path.join(input_dir, 'v1')
-            create_v1_files(input_dir, v1_dir)
-            updated_record_ids = concat_files(v1_dir)
+            v1_dir = os.path.join(release_dir, 'v1/')
+            os.mkdir(v1_dir)
+            create_v1_files(release_dir, v1_dir)
+            updated_record_ids = concat_files(v1_dir, schema_version)
             remove_existing_records(updated_record_ids, existing_dump_zip_path, schema_version)
             create_dump_files(args.releasedirname, schema_version)
-        zipfile = create_zip(args.releasedirname, base_version)
-        print("created new dump zip: " + zipfile)
+        create_zip(args.releasedirname, base_version)
+        print("created new dump zip")
     else:
         print("File " + input_dir + " does not exist. Cannot process files.")
 
