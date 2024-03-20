@@ -24,16 +24,16 @@ logging.basicConfig(filename=ERROR_LOG,level=logging.ERROR, filemode='w')
 
 
 def create_other_version_files(input_dir, output_dir, schema_version):
-    other_version = 1 if schema_version == 2 else 2
     files = crosswalk.get_files(input_dir)
     file_count = 0
     if files:
-        print(f"Converting files to v{str(other_version)}")
+        print(f"Converting files to v{str(schema_version)}")
         for file in files:
-            print(f"Processing {file}")
-            crosswalk.convert_file(file, other_version, output_dir)
-            file_count += 1
-        print(f"Converted {str(file_count)} files to v{str(other_version)}")
+            if file.endswith('.json'):
+                print(f"Processing {file}")
+                crosswalk.convert_file(file, schema_version, output_dir)
+                file_count += 1
+        print(f"Converted {str(file_count)} files to v{str(schema_version)}")
     else:
         print("No files exist in " + input_dir)
 
