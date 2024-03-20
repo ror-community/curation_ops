@@ -23,16 +23,17 @@ V2_SUFFIX = "_schema_v2"
 logging.basicConfig(filename=ERROR_LOG,level=logging.ERROR, filemode='w')
 
 
-def create_v1_files(input_dir, output_dir):
+def create_other_version_files(input_dir, output_dir, schema_version):
+    other_version = 1 if schema_version == 2 else 2
     files = crosswalk.get_files(input_dir)
     file_count = 0
     if files:
-        print(f"Converting files to v1")
+        print(f"Converting files to v{str(other_version)}")
         for file in files:
             print(f"Processing {file}")
-            crosswalk.convert_file(file, 1, output_dir)
+            crosswalk.convert_file(file, other_version, output_dir)
             file_count += 1
-        print(f"Converted {str(file_count)} files to v1")
+        print(f"Converted {str(file_count)} files to v{str(other_version)}")
     else:
         print("No files exist in " + input_dir)
 
@@ -175,8 +176,16 @@ def main():
             schema_version  = 1
             v1_dir = os.path.join(release_dir, 'v1/')
             os.mkdir(v1_dir)
-            create_v1_files(release_dir, v1_dir)
+            create_other_version_files(release_dir, v1_dir, schema_version)
             updated_record_ids = concat_files(v1_dir, schema_version)
+            remove_existing_records(updated_record_ids, existing_dump_zip_path, schema_version)
+            create_dump_files(args.releasedirname, schema_version)
+        if base_version == 1:
+            schema_version  = 2
+            v2_dir = os.path.join(release_dir, 'v2/')
+            os.mkdir(v2_dir)
+            create_other_version_files(release_dir, v2_dir, schema_version)
+            updated_record_ids = concat_files(v2_dir, schema_version)
             remove_existing_records(updated_record_ids, existing_dump_zip_path, schema_version)
             create_dump_files(args.releasedirname, schema_version)
         create_zip(args.releasedirname, base_version)
