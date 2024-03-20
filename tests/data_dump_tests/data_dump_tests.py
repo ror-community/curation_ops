@@ -60,7 +60,7 @@ def compare_old_data_dump_new_data_dump(release_ids, data_dump_file_path, old_da
                     writer.writerow([key, record_diff])
 
 
-def compare_random_data_dump_production_api(release_ids, data_dump_file_path, prod_data_dump_discrepancies_file, staging_flag):
+def compare_random_data_dump_production_api(release_ids, data_dump_file_path, prod_data_dump_discrepancies_file, schema_version, staging_flag):
     with open(data_dump_file_path, 'r+', encoding='utf8') as f_in:
         data_dump = json.load(f_in)
     minus_release_files = [
@@ -71,9 +71,9 @@ def compare_random_data_dump_production_api(release_ids, data_dump_file_path, pr
     for record in random_data_dump_records:
         ror_id = record["id"]
         if staging_flag:
-	        api_url = f"https://api.staging.ror.org/v2/organizations/{ror_id}"
+	        api_url = f"https://api.staging.ror.org/v{schema_version}/organizations/{ror_id}"
         else:
-        	api_url = f"https://api.ror.org/v2/organizations/{ror_id}"
+        	api_url = f"https://api.ror.org/v{schema_version}/organizations/{ror_id}"
         print("Comparing data dump file and API for", ror_id, "...")
         api_json = requests.get(api_url).json()
         if api_json == record:
@@ -101,6 +101,8 @@ def parse_arguments():
                         help='Path to the prod/datadump discrepancies output file')
     parser.add_argument('-j', '--jsondiff_outfile', default='jsondiff.csv',
                         help='Path to the jsondiff output file')
+    parser.add_argument('-v', '--schema-version', choices=[
+                        "1", "2"], default="2", help='ROR Schema version. 1 or 2. Default is 2')
     parser.add_argument('-s', '--staging_flag', choices=[
                         True, False], type=bool, default=False, help='Use staging for tests. True or False. Default is False')
     args = parser.parse_args()
@@ -114,7 +116,7 @@ def main():
     compare_old_data_dump_new_data_dump(
         release_ids, args.new_data_dump_file, args.old_data_dump_file, args.jsondiff_outfile)
     compare_random_data_dump_production_api(
-        release_ids, args.new_data_dump_file, args.prod_data_dump_discrepancies_file, args.staging_flag)
+        release_ids, args.new_data_dump_file, args.prod_data_dump_discrepancies_file, args.schema_version, args.staging_flag)
 
 
 if __name__ == '__main__':
