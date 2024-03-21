@@ -9,8 +9,8 @@ import sys
 
 ERROR_LOG = "relationship_errors.log"
 logging.basicConfig(filename=ERROR_LOG,level=logging.ERROR, filemode='w')
-V1_API_URL = "https://api.ror.org/v1/organizations/"
-V2_API_URL = "https://api.ror.org/v2/organizations/"
+V1_API_URL = "https://api.dev.ror.org/v1/organizations/"
+V2_API_URL = "https://api.dev.ror.org/v2/organizations/"
 UPDATED_RECORDS_PATH = "updates/"
 INVERSE_TYPES = ('parent', 'child', 'related')
 REL_INVERSE = {'parent': 'child', 'child': 'parent', 'related': 'related',
@@ -208,19 +208,19 @@ def delete_one_relationship(relationship, version):
             json.dump(file_data, f, ensure_ascii=False, indent=2)
             f.truncate()
     except Exception as e:
-        logging.error(f"Writing {filepath}: {e}")
+        logging.error(f"Writing {record_filepath}: {e}")
 
     related_filename = relationship['short_related_id'] + ".json"
-    related_filename = check_file(related_filename)
+    related_filepath = check_file(related_filename)
     try:
-        with open(record_filepath, 'r+') as f:
+        with open(related_filepath, 'r+') as f:
             file_data = json.load(f)
             file_data['relationships'] = check_relationship(file_data['relationships'], relationship['record_id'], relationship['record_relationship'], version)
             f.seek(0)
             json.dump(file_data, f, ensure_ascii=False, indent=2)
             f.truncate()
     except Exception as e:
-        logging.error(f"Writing {filepath}: {e}")
+        logging.error(f"Writing {related_filepath}: {e}")
 
 
 
@@ -230,14 +230,14 @@ def process_add_relationships(add_relationships, version):
     for r in add_relationships:
         process_one_relationship(r, version)
         added_relationships_count += 1
-    print(str(processed_relationships_count) + " relationships added")
+    print(str(added_relationships_count) + " relationships added")
 
 
-def process_delete_relationships(delete_relationships):
+def process_delete_relationships(delete_relationships, version):
     print("DELETING RELATIONSHIPS")
     deleted_relationships_count = 0
     for r in delete_relationships:
-        delete_one_relationship(r)
+        delete_one_relationship(r, version)
         deleted_relationships_count += 1
     print(str(deleted_relationships_count) + " relationships deleted")
 
@@ -252,6 +252,7 @@ def get_relationships_from_file(file, version):
         with open(file, 'r') as rel:
             rel_file_rows = DictReader(rel)
             for row in rel_file_rows:
+
                 row_count += 1
                 check_record_id = parse_record_id(row['Record ID'])
                 check_related_id = parse_record_id(row['Related ID'])
@@ -285,7 +286,7 @@ def generate_relationships(file, version):
             relationships_missing_files_removed = check_missing_files(relationships)
             delete_rels = [r for r in relationships_missing_files_removed if r['record_relationship'].lower() == 'delete']
             add_rels = [r for r in relationships_missing_files_removed if r not in delete_rels]
-            process_delete_relationships(delete_rels)
+            process_delete_relationships(delete_rels, version)
             process_add_relationships(add_rels, version)
         else:
             logging.error(f"No valid relationships found in {file}")
@@ -304,7 +305,7 @@ def main(file, version):
         sys.exit(1)
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Script to generated relationships in new/udpated records")
+    parser = argparse.ArgumentParser(description="Script to generate relationships in new/udpated records")
     parser.add_argument('-v', '--schemaversion', choices=[1, 2], type=int, required=True, help='Schema version (1 or 2)')
     parser.add_argument('file')
     args = parser.parse_args()
