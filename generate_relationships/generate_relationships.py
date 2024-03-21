@@ -87,11 +87,21 @@ def download_records(relationships, version):
         os.makedirs(UPDATED_RECORDS_PATH)
     # download all records that are labeled as in production
     for r in relationships:
-        if r['related_location'].lower() == "production" and (r['record_relationship'] in INVERSE_TYPES or has_inverse_rel_csv(r, relationships)):
-            filename = r['short_related_id'] + ".json"
-            if not(check_file(filename)):
-                get_record(r['short_related_id'], filename, version)
-                downloaded_records_count += 1
+        if r['record_relationship'].lower() == 'delete':
+            record_filename = r['short_record_id'] + ".json"
+            if not(check_file(record_filename)):
+                    get_record(r['short_record_id'], record_filename, version)
+                    downloaded_records_count += 1
+            related_filename = r['short_related_id'] + ".json"
+            if not(check_file(related_filename)):
+                    get_record(r['short_related_id'], related_filename, version)
+                    downloaded_records_count += 1
+        else:
+            if r['related_location'].lower() == "production" and (r['record_relationship'] in INVERSE_TYPES or has_inverse_rel_csv(r, relationships)):
+                filename = r['short_related_id'] + ".json"
+                if not(check_file(filename)):
+                    get_record(r['short_related_id'], filename, version)
+                    downloaded_records_count += 1
     print(str(downloaded_records_count) + " records downloaded")
 
 def remove_missing_files(relationships, missing_files):
@@ -121,7 +131,10 @@ def check_missing_files(relationships):
 def check_relationship(former_relationship, current_relationship_id, current_relationship_type, version):
     if not version >= 2:
         current_relationship_type = current_relationship_type.title()
-    return [r for r in former_relationship if ((not r['id'] == current_relationship_id) or (r['id'] == current_relationship_id and (not r['type'] == current_relationship_type)))]
+    if current_relationship_type.lower() == 'delete':
+        return [r for r in former_relationship if not r['id'] == current_relationship_id]
+    else:
+        return [r for r in former_relationship if ((not r['id'] == current_relationship_id) or (r['id'] == current_relationship_id and (not r['type'] == current_relationship_type)))]
 
 
 def get_record_name(record, version):
@@ -178,20 +191,55 @@ def process_one_relationship(relationship, version):
         with open(filepath, 'r+') as f:
             file_data = json.load(f)
             file_data['relationships'] = check_relationship(file_data['relationships'], relationship['related_id'], relationship['record_relationship'], version)
-            file_data['relationships'].append(relationship_data.copy())
             f.seek(0)
             json.dump(file_data, f, ensure_ascii=False, indent=2)
             f.truncate()
     except Exception as e:
         logging.error(f"Writing {filepath}: {e}")
 
-def process_relationships(relationships, version):
-    print("UPDATING RECORDS")
-    processed_relationships_count = 0
-    for r in relationships:
+def delete_one_relationship(relationship, version):
+    record_filename = relationship['short_record_id'] + ".json"
+    record_filepath = check_file(record_filename)
+    try:
+        with open(record_filepath, 'r+') as f:
+            file_data = json.load(f)
+            file_data['relationships'] = check_relationship(file_data['relationships'], relationship['related_id'], relationship['record_relationship'], version)
+            f.seek(0)
+            json.dump(file_data, f, ensure_ascii=False, indent=2)
+            f.truncate()
+    except Exception as e:
+        logging.error(f"Writing {filepath}: {e}")
+
+    related_filename = relationship['short_related_id'] + ".json"
+    related_filename = check_file(related_filename)
+    try:
+        with open(record_filepath, 'r+') as f:
+            file_data = json.load(f)
+            file_data['relationships'] = check_relationship(file_data['relationships'], relationship['record_id'], relationship['record_relationship'], version)
+            f.seek(0)
+            json.dump(file_data, f, ensure_ascii=False, indent=2)
+            f.truncate()
+    except Exception as e:
+        logging.error(f"Writing {filepath}: {e}")
+
+
+
+def process_add_relationships(add_relationships, version):
+    print("ADDING RELATIONSHIPS")
+    added_relationships_count = 0
+    for r in add_relationships:
         process_one_relationship(r, version)
-        processed_relationships_count += 1
-    print(str(processed_relationships_count) + " relationships updated")
+        added_relationships_count += 1
+    print(str(processed_relationships_count) + " relationships added")
+
+
+def process_delete_relationships(delete_relationships):
+    print("DELETING RELATIONSHIPS")
+    deleted_relationships_count = 0
+    for r in delete_relationships:
+        delete_one_relationship(r)
+        deleted_relationships_count += 1
+    print(str(deleted_relationships_count) + " relationships deleted")
 
 
 def get_relationships_from_file(file, version):
@@ -229,14 +277,16 @@ def get_relationships_from_file(file, version):
         logging.error(f"Reading file {file}: {e}")
     return relationships
 
-
 def generate_relationships(file, version):
     if check_file(file):
         relationships = get_relationships_from_file(file, version)
         if relationships:
             download_records(relationships, version)
             relationships_missing_files_removed = check_missing_files(relationships)
-            process_relationships(relationships_missing_files_removed, version)
+            delete_rels = [r for r in relationships_missing_files_removed if r['record_relationship'].lower() == 'delete']
+            add_rels = [r for r in relationships_missing_files_removed if r not in delete_rels]
+            process_delete_relationships(delete_rels)
+            process_add_relationships(add_rels, version)
         else:
             logging.error(f"No valid relationships found in {file}")
     else:
