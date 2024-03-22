@@ -36,11 +36,12 @@ def extract_name_and_aliases(issue_body):
 
 def detect_language(label):
     try:
-        predictions = detector.predict(label, k=1)
-        detected_lg_iso_code = predictions[0][0].split("__label__")[1]
-        lg = Lang(detected_lg_iso_code)
-        if lg:
-            return lg.name
+        if '*' not in label:
+            predictions = detector.predict(label, k=1)
+            detected_lg_iso_code = predictions[0][0].split("__label__")[1]
+            lg = Lang(detected_lg_iso_code)
+            if lg:
+                return lg.name
         return None
     except Exception as e:
         return None
