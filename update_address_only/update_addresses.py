@@ -33,7 +33,10 @@ def update_addresses(filepaths, version):
                         json_data = update_address.update_geonames_v2(json_data)
                     if version == 1:
                         json_data = update_address.update_geonames(json_data)
-                    export_json(json_data, json_in)
+                    if json_data:
+                        export_json(json_data, json_in)
+                    else:
+                        logging.error(f"Error updating file {filepath}: {e}")
             except Exception as e:
                 logging.error(f"Writing {filepath}: {e}")
 
