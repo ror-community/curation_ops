@@ -63,10 +63,10 @@ def detect_languages(name, aliases):
     return updated_name, updated_aliases
 
 
-def update_issue_body(repo, issue_number, updated_name, updated_aliases):
+def update_issue_body(repo, issue_number, updated_name, aliases, updated_aliases):
     issue = repo.get_issue(issue_number)
     updated_body = issue.body.replace(f"Name of organization: {updated_name.split('*')[0]}", f"Name of organization: {updated_name}")
-    updated_body = updated_body.replace(f"Aliases: {updated_aliases.split('*')[0]}", f"Aliases: {updated_aliases}")
+    updated_body = updated_body.replace(f"Aliases: {aliases}", f"Aliases: {updated_aliases}")
     issue.edit(body=updated_body)
 
 
@@ -78,7 +78,7 @@ def main():
     issue_body = get_issue_body(repo, args.issue_number)
     name, aliases = extract_name_and_aliases(issue_body)
     updated_name, updated_aliases = detect_languages(name, aliases)
-    update_issue_body(repo, args.issue_number, updated_name, updated_aliases)
+    update_issue_body(repo, args.issue_number, updated_name, aliases, updated_aliases)
     print("GitHub issue updated with languages.")
 
 
