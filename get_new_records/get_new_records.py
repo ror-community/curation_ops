@@ -55,6 +55,14 @@ def fix_wikipedia_url(record_data):
     return record_data
 
 
+def add_ror_display_to_labels(record_data):
+    if record_data['names.types.label']:
+        record_data['names.types.label'] = '; '.join([record_data['names.types.ror_display'], record_data['names.types.label']])
+    else:
+        record_data['names.types.label'] = record_data['names.types.ror_display']
+    return record_data
+
+
 def parse_issue_text(issue_text, mappings):
     record_data = defaultdict(lambda: '')
     for key, values in mappings.items():
@@ -65,6 +73,7 @@ def parse_issue_text(issue_text, mappings):
                 break
     record_data = fix_types(record_data)
     record_data = fix_wikipedia_url(record_data)
+    record_data = add_ror_display_to_labels(record_data)
     return record_data
 
 
