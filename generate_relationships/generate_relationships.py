@@ -253,14 +253,15 @@ def get_relationships_from_file(file, version):
         with open(file, 'r') as rel:
             rel_file_rows = DictReader(rel)
             for row in rel_file_rows:
-
                 row_count += 1
                 check_record_id = parse_record_id(row['Record ID'])
                 check_related_id = parse_record_id(row['Related ID'])
                 # check that related ID is an active record
                 check_related_id_status = get_record_status(check_related_id, version)
                 if (check_record_id and check_related_id):
-                    if check_related_id_status == 'active' or row['Relationship of Related ID to Record ID'].lower() == 'predecessor':
+                    if check_related_id_status == 'active' or \
+                        row['Relationship of Related ID to Record ID'].lower() == 'predecessor' or \
+                        row['Relationship of Related ID to Record ID'].lower() == 'delete':
                         rel_dict['short_record_id'] = check_record_id
                         rel_dict['short_related_id'] = check_related_id
                         rel_dict['record_name'] = row['Name of org in Record ID']
