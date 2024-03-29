@@ -14,10 +14,11 @@ def get_ror_display_name(json_file):
     return next((name['value'] for name in json_file.get('names', []) if 'ror_display' in name.get('types', [])), None)
 
 
-def release_files_in_data_dump(data_dump_file_path, release_dir, outfile):
+def release_files_in_data_dump(data_dump_file_path, release_dir, missing_ids_outfile, release_diff_outfile):
     release_file_ids = []
     with open(data_dump_file_path, 'r+', encoding='utf8') as f_in:
         data_dump = json.load(f_in)
+    data_dump_records = {record['id']: record for record in data_dump}
     print("Total record count in data dump:", len(data_dump))
     for file in glob.glob(f'{release_dir}/*.json'):
         with open(file, 'r+', encoding='utf8') as f_in:
@@ -29,6 +30,14 @@ def release_files_in_data_dump(data_dump_file_path, release_dir, outfile):
             with open(outfile, 'a') as f_out:
                 writer = csv.writer(f_out)
                 writer.writerow([release_file_id, ror_display_name])
+        record_diff = jsondiff.diff(
+            release_file, data_dump_records[release_file_id], syntax='symmetric')
+        if record_diff:
+            ror_display_name = release_file['name']
+            with open(release_diff_outfile, 'a') as f_out:
+                writer = csv.writer(f_out)
+                writer.writerow(
+                    [release_file_id, ror_display_name, record_diff])
     return release_file_ids
 
 
@@ -97,6 +106,8 @@ def parse_arguments():
                         help='Path to the new data dump file')
     parser.add_argument('-m', '--missing_ids_outfile', default='missing_ids.csv',
                         help='Path to the missing IDs output file')
+    parser.add_argument('-d', '--release_diff_outfile', default='release_file_data_dump_file_diff.csv',
+                        help='Path to the release data dump diff output file')
     parser.add_argument('-p', '--prod_data_dump_discrepancies_file', default='prod_data_dump_discrepancies.csv',
                         help='Path to the prod/datadump discrepancies output file')
     parser.add_argument('-j', '--jsondiff_outfile', default='jsondiff.csv',
@@ -112,7 +123,7 @@ def parse_arguments():
 def main():
     args = parse_arguments()
     release_ids = release_files_in_data_dump(
-        args.new_data_dump_file, args.release_dir, args.missing_ids_outfile)
+        args.new_data_dump_file, args.release_dir, args.missing_ids_outfile, args.release_diff_outfile)
     compare_old_data_dump_new_data_dump(
         release_ids, args.new_data_dump_file, args.old_data_dump_file, args.jsondiff_outfile)
     compare_random_data_dump_production_api(
