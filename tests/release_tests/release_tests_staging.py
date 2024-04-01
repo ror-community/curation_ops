@@ -66,7 +66,11 @@ def compare_random(compare_ids):
     return diff_response_ids
 
 
-def check_release_files(all_ror_ids_file, release_tests_outfile, jsondiff_outfile):
+def check_release_files(release_directory, all_ror_ids_file, release_tests_outfile, jsondiff_outfile):
+    if not os.path.exists(release_directory):
+        print(f"Error: Release directory '{release_directory}' does not exist.")
+        exit(1)
+
     with open(release_tests_outfile, 'w') as f_out:
         writer = csv.writer(f_out)
         writer.writerow(["ror_id", "org_name", "retrieve_check",
@@ -75,7 +79,8 @@ def check_release_files(all_ror_ids_file, release_tests_outfile, jsondiff_outfil
         writer = csv.writer(f_out)
         writer.writerow(["ror_id", "diff"])
     ids_in_file = []
-    for file in glob.glob("*.json"):
+    json_files = glob.glob(os.path.join(release_directory, "*.json"))
+    for file in json_files:
         with open(file, 'r+', encoding='utf8') as f_in:
             json_file = json.load(f_in)
         ids_in_file.append(json_file["id"])
@@ -106,6 +111,8 @@ def check_release_files(all_ror_ids_file, release_tests_outfile, jsondiff_outfil
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description='Run release tests for ROR')
+    parser.add_argument('-r', '--release_directory', required=True,
+                        help='Path to the directory containing JSON files')
     parser.add_argument('-a', '--all_ror_ids_file', default='all_ror_ids.txt',
                         help='Path to the release tests output file')
     parser.add_argument('-t', '--release_tests_outfile', default='release_tests.csv',
