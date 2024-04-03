@@ -4,12 +4,8 @@ import csv
 from github import Github
 
 
-GITHUB = {}
-GITHUB['TOKEN'] = ''
-
-
 def move_to_done():
-    g = Github(GITHUB['TOKEN'])
+    g = Github(os.environ['GITHUB_TOKEN'])
     repo = g.get_repo("ror-community/ror-updates")
     project = repo.get_projects()[0]
     columns = project.get_columns()
@@ -19,7 +15,7 @@ def move_to_done():
                    'Done (released on production)'][0]
     approved_cards = approved_column.get_cards()
     for card in approved_cards:
-        card.move('bottom',done_column)
+        card.move('bottom', done_column)
 
 
 if __name__ == '__main__':

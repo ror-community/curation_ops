@@ -1,4 +1,4 @@
-# close_issues.py
+# Close Issues
 
 Update and close issues using release files.
 
