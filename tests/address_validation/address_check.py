@@ -2,6 +2,7 @@ import csv
 import argparse
 import requests
 
+
 def query_geonames_api(geonames_id, username):
     api_url = "http://api.geonames.org/getJSON"
     params = {
@@ -19,7 +20,7 @@ def validate_city_country(record, api_data):
 
 def arg_parse():
     parser = argparse.ArgumentParser()
-    parser.add_argument("-i", "--csv_path", type=str, required=True)
+    parser.add_argument("-i", "--input_file_path", type=str, required=True)
     parser.add_argument("-u", "--api_user", type=str, required=True)
     return parser.parse_args()
 
@@ -27,24 +28,22 @@ def arg_parse():
 def main():
     args = arg_parse()
     discrepancies = []
-
     with open(args.csv_path, 'r') as csvfile:
         reader = csv.DictReader(csvfile)
         for row in reader:
             api_city_country = query_geonames_api(
-                row['geonames_id'], args.api_user)
+                row['locations.geonames_id'], args.api_user)
             if not validate_city_country(row, api_city_country):
                 discrepancies.append({
-                    "name": row["name"],
-                    "geonames_id": row["geonames_id"],
+                    "name": row["names.types.ror_display"],
+                    "geonames_id": row["locations.geonames_id"],
                     "csv_city": row["city"],
                     "csv_country": row["country"],
                     "api_city": api_city_country[0],
                     "api_country": api_city_country[1]
                 })
-
     with open('discrepancies.csv', 'w', newline='') as csvfile:
-        fieldnames = ["name", "geonames_id", "csv_city",
+        fieldnames = ["names.types.ror_display", "locations.geonames_id", "csv_city",
                       "csv_country", "api_city", "api_country"]
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
         writer.writeheader()
