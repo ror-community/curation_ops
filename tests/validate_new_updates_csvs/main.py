@@ -16,11 +16,12 @@ def parse_arguments():
 
 def validate_new_records_file(new_records_file, output_file):
     validation_report = []
-    locations = ['city', 'country']
     for row in new_records_file:
         for field_name, field_value in row.items():
-            if field_name in locations:
+            if field_name in ['city', 'country']:
                 values = [field_value]
+            elif field_name == 'locations.geonames_id' and not field_value:
+                field_value = 'null'
             else:
                 values = field_value.split(';') if field_value else []
             for value in values:
