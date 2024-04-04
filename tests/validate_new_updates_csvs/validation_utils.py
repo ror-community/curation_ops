@@ -74,7 +74,7 @@ def validate_types(field_value):
 
 
 def validate_acronyms(field_value):
-    return [] if field_value and ACRONYMS_PATTERN.match(field_value) else [f"Warning in '{field_value}': Potential invalid value(s) - {field_value}. Expected format: uppercase letters, numbers, and spaces"]
+    return [] if field_value and ACRONYMS_PATTERN.match(field_value.split('*')[0]) else [f"Warning in '{field_value}': Potential invalid value(s) - {field_value}. Expected format: uppercase letters, numbers, and spaces"]
 
 
 def validate_names(field_value):
