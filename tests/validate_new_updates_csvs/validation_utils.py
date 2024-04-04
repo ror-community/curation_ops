@@ -58,7 +58,6 @@ def validate_updates(row):
                             # Skip delete operations because they do not require field validation
                             continue
                         field_value_pairs.append((field, value))
-    print(field_value_pairs)
     return errors, field_value_pairs
 
 
