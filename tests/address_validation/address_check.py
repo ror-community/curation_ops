@@ -37,8 +37,8 @@ def main():
                 row['locations.geonames_id'], args.api_user)
             if not validate_city_country(row, api_city_country):
                 discrepancies.append({
-                    "name": row["names.types.ror_display"],
-                    "geonames_id": row["locations.geonames_id"],
+                    "names.types.ror_display": row["names.types.ror_display"],
+                    "locations.geonames_id": row["locations.geonames_id"],
                     "csv_city": row["city"],
                     "csv_country": row["country"],
                     "api_city": api_city_country[0],
