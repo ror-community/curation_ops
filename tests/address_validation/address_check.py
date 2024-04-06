@@ -20,16 +20,18 @@ def validate_city_country(record, api_data):
 
 def arg_parse():
     parser = argparse.ArgumentParser()
-    parser.add_argument("-i", "--input_file_path", type=str, required=True)
+    parser.add_argument("-i", "--input_file", type=str, required=True)
     parser.add_argument("-u", "--api_user", type=str, required=True)
+    parser.add_argument("-o", "--output_file", type=str,
+                        default='address_discrepancies.csv')
     return parser.parse_args()
 
 
 def main():
     args = arg_parse()
     discrepancies = []
-    with open(args.csv_path, 'r') as csvfile:
-        reader = csv.DictReader(csvfile)
+    with open(args.input_file, 'r') as f_in:
+        reader = csv.DictReader(f_in)
         for row in reader:
             api_city_country = query_geonames_api(
                 row['locations.geonames_id'], args.api_user)
@@ -42,10 +44,10 @@ def main():
                     "api_city": api_city_country[0],
                     "api_country": api_city_country[1]
                 })
-    with open('discrepancies.csv', 'w', newline='') as csvfile:
+    with open(args.output_file, 'w', newline='') as f_out:
         fieldnames = ["names.types.ror_display", "locations.geonames_id", "csv_city",
                       "csv_country", "api_city", "api_country"]
-        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+        writer = csv.DictWriter(f_out, fieldnames=fieldnames)
         writer.writeheader()
         for record in discrepancies:
             writer.writerow(record)
