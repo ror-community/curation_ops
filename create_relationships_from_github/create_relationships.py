@@ -27,7 +27,7 @@ def dict_from_csv(f):
             ror_id = row['id']
             release_ids.append(ror_id)
             if row['names.types.ror_display']:
-                name = row['names.types.ror_display']
+                name = row['names.types.ror_display'].split('*')[0]
             else:
                 name = get_ror_name(ror_id)
             ids_k_names_v[ror_id] = name
@@ -57,7 +57,8 @@ def extract_relationships(input_file, output_file):
     repo = g.get_repo("ror-community/ror-updates")
     project = repo.get_projects()[0]
     columns = project.get_columns()
-    ready_for_prod = [column for column in columns if column.name == 'Ready for sign-off / metadata QA'][0]
+    ready_for_prod = [column for column in columns if column.name ==
+                      'Ready for production release'][0]
     cards = ready_for_prod.get_cards()
     issues = []
     for card in cards:
@@ -78,6 +79,7 @@ def extract_relationships(input_file, output_file):
         if relationships:
             org_ror_id = find_between(issue_body, 'ROR ID:', '\n')
             org_name = find_between(issue_body, 'Name of organization:', '\n')
+            org_name = org_name.split('*')[0]
             if not org_ror_id:
                 org_ror_id = names_k_ids_v[org_name]
             for relationship in relationships:
@@ -101,7 +103,7 @@ def extract_relationships(input_file, output_file):
                     entry = [issue_number, issue_html_url, issue_title, org_name, org_ror_id,
                              related_ror_id, related_name, relationship_type, locations[0]]
                     rel_type_mappings = {'Parent': 'Child', 'Child': 'Parent',
-                                         'Successor': 'Predecessor', 'Predecessor': 'Successor', 'Related': 'Related'}
+                                         'Successor': 'Predecessor', 'Predecessor': 'Successor', 'Related': 'Related', 'Delete': 'Delete'}
                     if relationship_type == 'Successor-np':
                         entry = [issue_number, issue_html_url, issue_title, org_name,
                                  org_ror_id, related_ror_id, related_name, 'Successor', locations[0]]
