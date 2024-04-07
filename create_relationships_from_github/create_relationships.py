@@ -26,8 +26,9 @@ def dict_from_csv(f):
         for row in reader:
             ror_id = row['id']
             release_ids.append(ror_id)
-            if row['names.types.ror_display']:
-                name = row['names.types.ror_display'].split('*')[0]
+            ror_display = row['names.types.ror_display']
+            if ror_display and "==" not in ror_display:
+                name = ror_display.split('*')[0]
             else:
                 name = get_ror_name(ror_id)
             ids_k_names_v[ror_id] = name
