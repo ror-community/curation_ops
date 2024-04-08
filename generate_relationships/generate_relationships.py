@@ -9,8 +9,8 @@ import sys
 
 ERROR_LOG = "relationship_errors.log"
 logging.basicConfig(filename=ERROR_LOG,level=logging.ERROR, filemode='w')
-V1_API_URL = "https://api.dev.ror.org/v1/organizations/"
-V2_API_URL = "https://api.dev.ror.org/v2/organizations/"
+V1_API_URL = "https://api.ror.org/v1/organizations/"
+V2_API_URL = "https://api.ror.org/v2/organizations/"
 UPDATED_RECORDS_PATH = "updates/"
 INVERSE_TYPES = ('parent', 'child', 'related')
 REL_INVERSE = {'parent': 'child', 'child': 'parent', 'related': 'related',
