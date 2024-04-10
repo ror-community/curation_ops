@@ -130,26 +130,26 @@ def create_dump_files(release_name, schema_version):
     updated_records = open(os.path.join(INPUT_PATH, TEMP_NEW_UPDATED_RECORDS_CONCAT + file_suffix), 'r')
     updated_records_json = json.load(updated_records)
     print(str(len(updated_records_json)) + " records added to dump")
-    try:
-        for i in updated_records_json:
-            temp_dump_updated_records_removed_json.append(i)
-        print(str(len(temp_dump_updated_records_removed_json)) + " records in new dump")
+    #try:
+    for i in updated_records_json:
+        temp_dump_updated_records_removed_json.append(i)
+    print(str(len(temp_dump_updated_records_removed_json)) + " records in new dump")
 
-        if schema_version == 1:
-            filename = release_name + NEW_DUMP_SUFFIX
-        else:
-            filename = release_name + NEW_DUMP_SUFFIX + V2_SUFFIX
+    if schema_version == 1:
+        filename = release_name + NEW_DUMP_SUFFIX
+    else:
+        filename = release_name + NEW_DUMP_SUFFIX + V2_SUFFIX
 
-        open(INPUT_PATH + filename + ".json", "w").write(
-            json.dumps(temp_dump_updated_records_removed_json, indent=4, separators=(',', ': '))
-        )
-        if schema_version == 1:
-            convert_to_csv.get_all_data(INPUT_PATH + filename + ".json")
-        else:
-            convert_to_csv_v2.get_all_data(INPUT_PATH + filename + ".json")
+    open(INPUT_PATH + filename + ".json", "w").write(
+        json.dumps(temp_dump_updated_records_removed_json, indent=4, separators=(',', ': '))
+    )
+    if schema_version == 1:
+        convert_to_csv.get_all_data(INPUT_PATH + filename + ".json")
+    else:
+        convert_to_csv_v2.get_all_data(INPUT_PATH + filename + ".json")
 
-    except Exception as e:
-        logging.error("Error creating dump files: {e}")
+    #except Exception as e:
+    #    logging.error("Error creating dump files: {e}")
 
 def main():
     parser = argparse.ArgumentParser()
