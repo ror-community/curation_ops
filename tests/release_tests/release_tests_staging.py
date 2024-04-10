@@ -5,8 +5,8 @@ import json
 import glob
 import random
 import requests
-import jsondiff
 import argparse
+from deepdiff import DeepDiff
 
 
 def get_ror_display_name(json_file):
@@ -27,9 +27,10 @@ def compare_api(ror_id, json_file):
         response = requests.get(api_url)
         response.raise_for_status()
         api_json = response.json()
-        file_api_diff = jsondiff.diff(api_json, json_file, syntax='symmetric')
-        if file_api_diff:
-            return "different", file_api_diff
+        diff = DeepDiff(api_json, json_file, ignore_order=True)
+        if diff:
+            print(diff)
+            return "different", diff
         return "same", None
     except requests.exceptions.RequestException as e:
         print(f"Error occurred while fetching data from API for ROR ID: {ror_id}")
