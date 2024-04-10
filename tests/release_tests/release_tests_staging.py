@@ -77,7 +77,7 @@ def check_release_files(release_directory, all_ror_ids_file, release_tests_outfi
         writer = csv.writer(f_out)
         writer.writerow(["ror_id", "org_name", "retrieve_check",
                          "compare_check", "search_name_api_check"])
-    with open(jsondiff_outfile, 'w') as f_out:
+    with open(jsondiff_outfile, 'a') as f_out:
         writer = csv.writer(f_out)
         writer.writerow(["ror_id", "diff"])
     ids_in_file = []
