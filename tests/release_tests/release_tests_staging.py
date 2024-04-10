@@ -1,3 +1,4 @@
+import os
 import re
 import csv
 import json
@@ -79,7 +80,7 @@ def check_release_files(release_directory, all_ror_ids_file, release_tests_outfi
         writer = csv.writer(f_out)
         writer.writerow(["ror_id", "diff"])
     ids_in_file = []
-    json_files = glob.glob(os.path.join(release_directory, "*.json"))
+    json_files = glob.glob(os.path.join(release_directory, "**", "*.json"), recursive=True)
     for file in json_files:
         with open(file, 'r+', encoding='utf8') as f_in:
             json_file = json.load(f_in)
@@ -125,7 +126,7 @@ def parse_arguments():
 
 def main():
     args = parse_arguments()
-    check_release_files(args.all_ror_ids_file,
+    check_release_files(args.release_directory, args.all_ror_ids_file,
                         args.release_tests_outfile, args.jsondiff_outfile)
 
 
