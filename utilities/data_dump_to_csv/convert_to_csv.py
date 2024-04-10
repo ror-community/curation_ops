@@ -31,14 +31,14 @@ def get_all_data(f):
 		if len(labels) > 0:
 			for label in labels:
 				code = None
-		        if label['iso639']:
-				    code = label['iso639']
-                else:
-                    code = 'no_lang_code'
-                if code in labels_dict:
-                    labels_dict[code].append(label['label'])
-                else:
-                    labels_dict[code] = [label['label']]
+				if label['iso639']:
+					code = label['iso639']
+				else:
+					code = 'no_lang_code'
+				if code in labels_dict:
+					labels_dict[code].append(label['label'])
+				else:
+					labels_dict[code] = [label['label']]
 		labels_str = str()
 		for code in labels_dict:
 			labels_str += code + ": " + ", ".join(labels_dict[code]) + "; "
