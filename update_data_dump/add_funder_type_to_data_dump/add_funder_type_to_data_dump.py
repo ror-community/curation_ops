@@ -20,7 +20,7 @@ def save_individual_json(directory, record):
         json.dump(record, file, indent=4, ensure_ascii=False)
 
 
-def update_json_records(data_dump, csv_data, updates_dir):
+def update_json_records(data_dump, updates_dir):
     for record in data_dump:
         record_id = record['id']
         if any(external_id['type'] == 'fundref' for external_id in record['external_ids']):
@@ -48,11 +48,10 @@ def parse_args():
 
 def main():
     args = parse_args()
-    csv_data = parse_csv(args.input_file)
     data_dump = parse_json(args.data_dump_file)
     os.makedirs(args.updates_dir, exist_ok=True)
     updated_data_dump = update_json_records(
-        data_dump, csv_data, args.updates_dir)
+        data_dump, args.updates_dir)
     save_json(args.output_file, updated_data_dump)
     print(f'Updated JSON records saved to {args.output_file}')
     print(f'Individual JSON files saved in {args.updates_dir} directory')
