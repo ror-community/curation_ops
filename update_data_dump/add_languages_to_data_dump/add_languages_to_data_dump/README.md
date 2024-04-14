@@ -10,7 +10,7 @@ python add_languages_to_data_dump.py -i <input_csv> -d <data_dump_json> [-o <out
 
 - `-i`, `--input_file`: Path to the input CSV file containing language information (required).
 - `-d`, `--data_dump_file`: Path to the input data dump file (required).
-- `-o`, `--output_file`: Path to the output data dumpp file (default: 'dump_w_languages_added.json').
+- `-o`, `--output_file`: Path to the output data dump file (default: 'dump_w_languages_added.json').
 
 ## Input CSV Format
 
