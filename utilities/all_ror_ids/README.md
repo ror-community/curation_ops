@@ -1,2 +1,0 @@
-# usage
-get_all_ror_ids.py json_file_from_last_release.json
