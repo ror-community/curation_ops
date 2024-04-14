@@ -5,6 +5,10 @@ import glob
 import json
 
 
+def get_ror_display_name(record):
+    return [name['value'] for name in record.get('names', []) if 'ror_display' in name.get('types', [])][0]
+
+
 def get_all_names_ror_ids(input_dir, output_file):
     with open(output_file, 'w', newline='') as f_out:
         writer = csv.writer(f_out)
@@ -14,7 +18,7 @@ def get_all_names_ror_ids(input_dir, output_file):
             with open(file, 'r+', encoding='utf8') as f_in:
                 record = json.load(f_in)
                 ror_id = record['id']
-                name = record['name']
+                name = get_ror_display_name(record)
                 writer.writerow([name, ror_id])
 
 
