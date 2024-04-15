@@ -27,7 +27,3 @@ python in_release_duplicate_check.py -i <input_directory> [-o <output_file>]
 3. It compares the normalized names of each record with all other records.
 4. If the match ratio between two names is greater than or equal to 85 and the country codes match (if available), it considers them as potential duplicates.
 5. The script writes the potential duplicate records to the output CSV file with columns: "ror_id", "name", "duplicate_ror_id", "duplicate_name", and "match_ratio".
-
-## Note
-
-The script uses fuzzy string matching to compare names and identify potential duplicates. The match ratio threshold is set to 85, but it can be adjusted based on specific requirements.
