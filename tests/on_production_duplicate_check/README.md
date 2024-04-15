@@ -33,4 +33,4 @@ The script generates a CSV file with the following columns:
 - `name`: The name of the original record.
 - `matched_ror_id`: The ROR ID of the matched duplicate record.
 - `matched_name`: The name of the matched duplicate record.
-- `match_ratio`: The fuzzy match ratio between the original and matched names.
+- `match_ratio`: The match ratio between the original and matched names.
