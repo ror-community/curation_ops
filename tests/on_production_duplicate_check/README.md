@@ -22,7 +22,8 @@ python on_production_duplicate_check.py -i <input_directory> [-o <output_file>]
 1. The script iterates over each JSON file in the specified input directory.
 2. For each JSON file, it extracts the names and country code from the record.
 3. The names are searched in ROR API for potential duplicate records, based on the normalized organization name and country code.
-4. If duplicates are found, the script writes the original record's ROR ID, name, matched record's ROR ID, matched name, and match ratio to the output CSV file.
+4. If the match ratio between two names is greater than or equal to 85 and the country codes match (if available), it considers them as potential duplicates.
+5. The script writes the potential duplicate records to the output CSV file with columns: "ror_id", "name", "duplicate_ror_id", "duplicate_name", and "match_ratio".
 
 
 ## Output
