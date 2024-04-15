@@ -15,5 +15,5 @@ python leading_trailing.py -i <input_directory> [-o <output_file>]
 
 The script generates a CSV file with the following columns:
 - `ror_id`: The ID of the ROR record.
-- `field`: The flattened JSON key where the leading/trailing character was found.
+- `field`: The key where the leading/trailing character was found.
 - `value`: The value containing the leading/trailing character.
