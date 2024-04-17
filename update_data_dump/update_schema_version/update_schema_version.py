@@ -36,7 +36,7 @@ def save_json(file_path, data_dump):
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        description='Update JSON records with language information from CSV.')
+        description='Update JSON records with a new schema version, excluding IDs in a CSV.')
     parser.add_argument('-i', '--input_file', required=True,
                         help='Path to the input file')
     parser.add_argument('-d', '--data_dump_file',
