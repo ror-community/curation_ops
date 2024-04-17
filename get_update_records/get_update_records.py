@@ -92,7 +92,7 @@ def parse_issue_text(issue_text, mappings):
     for key, value in parsed_data.items():
         if value.endswith(';'):
             parsed_data[key] = value[:-1]
-        elif key == 'wikipedia':
+        if key == 'wikipedia' and value:
             parsed_data[key] = fix_wikipedia_url(value)
     return parsed_data
 
