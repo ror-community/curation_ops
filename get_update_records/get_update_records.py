@@ -2,6 +2,7 @@ import os
 import re
 import csv
 import sys
+import urllib
 import argparse
 from github import Github
 
@@ -45,7 +46,11 @@ def make_printable(s):
     return s.translate(noprint_trans_table)
 
 
-def normalize_text(text):
+def fix_wikipedia_url(wikipedia_url):
+    return wikipedia_url[0:30] + urllib.parse.quote(wikipedia_url[30:])
+
+
+def normalize_text(text, field):
     text = re.sub(' +', ' ', text)
     text = make_printable(text)
     text = text.strip()
@@ -87,6 +92,8 @@ def parse_issue_text(issue_text, mappings):
     for key, value in parsed_data.items():
         if value.endswith(';'):
             parsed_data[key] = value[:-1]
+        if key == 'wikipedia' and value:
+            parsed_data[key] = fix_wikipedia_url(value)
     return parsed_data
 
 
