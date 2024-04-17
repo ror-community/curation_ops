@@ -45,7 +45,8 @@ def parse_args():
                         help='Path to the output JSON file')
     parser.add_argument('-u', '--updates_dir', default='updates',
                         help='Directory to save individual JSON files')
-    parser.add_argument('-s', '--schema_version', required=True, help='Schema version with which to update JSON files')
+    parser.add_argument('-s', '--schema_version', required=True, choices=[
+                        "1.0", "2.0"], help='Schema version with which to update JSON files')
     return parser.parse_args()
 
 
