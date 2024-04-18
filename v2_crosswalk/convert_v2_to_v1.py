@@ -133,7 +133,7 @@ def convert_v2_to_v1(v2_data):
             v1_data = json.load(template_file)
             # these fields don't change
             v1_data['id'] = v2_data['id']
-            v1_data['types'] = [type.title() for type in v2_data['types']]
+            v1_data['types'] = [type.title() for type in v2_data['types'] if type.title() in v1_enums.ORG_TYPES.values()]
             v1_data['status'] = v2_data['status']
             v1_data['established'] = v2_data['established']
             v1_data['email_address'] = None
