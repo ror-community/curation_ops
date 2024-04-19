@@ -47,6 +47,15 @@ def save_json(file_path, data_dump):
         json.dump(data_dump, file, indent=4, ensure_ascii=False)
 
 
+def validate_date(date_string):
+    try:
+        date = datetime.strptime(date_string, '%Y-%m-%d')
+        return date.strftime('%Y-%m-%d')
+    except ValueError:
+        raise argparse.ArgumentTypeError(
+            f"Invalid date format: {date_string}. Expected format: YYYY-MM-DD")
+
+
 def parse_args():
     parser = argparse.ArgumentParser(
         description='Update JSON records with the specified last_modified date.')
@@ -58,22 +67,13 @@ def parse_args():
                         help='Path to the output JSON file')
     parser.add_argument('-u', '--updates_dir', default='updates',
                         help='Directory to save individual JSON files')
-    parser.add_argument('-t', '--date', required=True,
+    parser.add_argument('-t', '--date', required=True, type=validate_date,
                         help='Date to update the last_modified field (YYYY-MM-DD)')
     return parser.parse_args()
 
 
-def validate_date(date_string):
-    try:
-        datetime.strptime(date_string, '%Y-%m-%d')
-    except ValueError:
-        raise argparse.ArgumentTypeError(
-            f"Invalid date format: {date_string}. Expected format: YYYY-MM-DD")
-
-
 def main():
     args = parse_args()
-    validate_date(args.date)
     record_ids = parse_csv(args.input_file)
     data_dump = parse_json(args.data_dump_file)
     os.makedirs(args.updates_dir, exist_ok=True)
