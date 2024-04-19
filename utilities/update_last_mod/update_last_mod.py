@@ -46,7 +46,7 @@ def valid_date(date_arg: str) -> datetime.datetime:
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Script to update location information")
-    parser.add_argument('-d', '--dateinput', required=True, type=valid_date, help='Date to use when updating last modified YYYY-DD-MM')
+    parser.add_argument('-d', '--dateinput', required=True, type=valid_date, help='Date to use when updating last modified YYYY-MM-DD')
     args = parser.parse_args()
     print(args.dateinput)
     update_last_mod(get_files(RECORDS_PATH), args.dateinput)
