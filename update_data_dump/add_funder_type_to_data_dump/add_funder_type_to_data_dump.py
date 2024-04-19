@@ -3,6 +3,7 @@ import re
 import csv
 import json
 import argparse
+from datetime import datetime
 
 
 def parse_json(file_path):
@@ -20,11 +21,16 @@ def save_individual_json(directory, record):
         json.dump(record, file, indent=4, ensure_ascii=False)
 
 
-def update_json_records(data_dump, updates_dir):
+def update_last_mod(record, date):
+    record['admin']['last_modified']['date'] = date
+
+
+def update_json_records(data_dump, updates_dir, date):
     for record in data_dump:
         record_id = record['id']
         if any(external_id['type'] == 'fundref' for external_id in record['external_ids']):
             record['types'].append('funder')
+            update_last_mod(record, date)
             save_individual_json(updates_dir, record)
     return data_dump
 
@@ -43,15 +49,26 @@ def parse_args():
                         help='Path to the output JSON file')
     parser.add_argument('-u', '--updates_dir', default='updates',
                         help='Directory to save individual JSON files')
+    parser.add_argument('-t', '--date', required=True,
+                        help='Date to update the last_modified field (YYYY-MM-DD)')
     return parser.parse_args()
+
+
+def validate_date(date_string):
+    try:
+        datetime.strptime(date_string, '%Y-%m-%d')
+    except ValueError:
+        raise argparse.ArgumentTypeError(
+            f"Invalid date format: {date_string}. Expected format: YYYY-MM-DD")
 
 
 def main():
     args = parse_args()
+    validate_date(args.date)
     data_dump = parse_json(args.data_dump_file)
     os.makedirs(args.updates_dir, exist_ok=True)
     updated_data_dump = update_json_records(
-        data_dump, args.updates_dir)
+        data_dump, args.updates_dir, args.date)
     save_json(args.output_file, updated_data_dump)
     print(f'Updated JSON records saved to {args.output_file}')
     print(f'Individual JSON files saved in {args.updates_dir} directory')
