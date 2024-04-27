@@ -291,46 +291,47 @@ def all_affiliation_usage_to_string(result_dict):
 
 @catch_requests_exceptions
 def search_openalex(org_name):
-    try:
-        normalized_name = normalize_text(org_name)
-        base_url = 'https://api.openalex.org/works'
-        params = {
-            'filter': 'raw_affiliation_string.search:"{}"'.format(normalized_name),
-            'per-page': '100'
-        }
-        api_response = requests.get(base_url, params=params).json()
-        if api_response.get('results'):
-            substring_permutations = generate_substring_permutations(org_name)
-            match_dict = defaultdict(set)
-            works = api_response['results']
-            for work in works:
-                for author in work.get('authorships', []):
-                    raw_affiliation = author.get('raw_affiliation_string')
-                    if not raw_affiliation:
-                        continue
-                    normalized_affiliation = normalize_text(raw_affiliation)
-                    partial_ratio = fuzz.partial_ratio(
-                        normalized_name, normalized_affiliation)
-                    token_set_ratio = fuzz.token_set_ratio(
-                        normalized_name, normalized_affiliation)
-                    max_ratio = max(partial_ratio, token_set_ratio)
-                    for substring in substring_permutations:
-                        if substring in normalized_affiliation:
-                            doi = work.get("doi", work.get('id'))
-                            match_dict[substring].add(doi)
-                        elif fuzz.ratio(normalized_name, normalized_affiliation) >= 90:
-                            doi = work.get("doi", work.get('id'))
-                            match_dict[org_name].add(doi)
-                        elif max_ratio >= 90:
-                            doi = work.get("doi", work.get('id'))
-                            match_dict[org_name].add(doi)
-            for key in match_dict.keys():
-                match_dict[key] = list(match_dict[key])[:10]
-            return all_affiliation_usage_to_string(match_dict)
-    except KeyError as err:
-        #OpenAlex API error: Key not found in response
+    normalized_name = normalize_text(org_name)
+    base_url = 'https://api.openalex.org/works'
+    params = {
+        'filter': 'raw_affiliation_strings.search:"{}"'.format(normalized_name),
+        'per-page': '100'
+    }
+    api_response = requests.get(base_url, params=params).json()
+    results = api_response.get('results')
+    if not results:
         return None
-    return None
+    substring_permutations = generate_substring_permutations(org_name)
+    match_dict = defaultdict(set)
+    for work in results:
+        authorships = work.get('authorships', [])
+        for author in authorships:
+            raw_affiliations = author.get('raw_affiliation_strings')
+            if not raw_affiliations:
+                continue
+            for raw_affiliation in raw_affiliations:
+                normalized_affiliation = normalize_text(raw_affiliation)
+                partial_ratio = fuzz.partial_ratio(normalized_name, normalized_affiliation)
+                token_set_ratio = fuzz.token_set_ratio(normalized_name, normalized_affiliation)
+                max_ratio = max(partial_ratio, token_set_ratio)
+                for substring in substring_permutations:
+                    if substring in normalized_affiliation:
+                        doi = work.get("doi") or work.get('id')
+                        if doi:
+                            match_dict[substring].add(doi)
+                        break
+                
+                if fuzz.ratio(normalized_name, normalized_affiliation) >= 90:
+                    doi = work.get("doi") or work.get('id')
+                    if doi:
+                        match_dict[org_name].add(doi)
+                elif max_ratio >= 90:
+                    doi = work.get("doi") or work.get('id')
+                    if doi:
+                        match_dict[org_name].add(doi)
+    for key in match_dict.keys():
+        match_dict[key] = list(match_dict[key])[:10]
+    return all_affiliation_usage_to_string(match_dict) if match_dict else None
 
 
 def get_publication_affiliation_usage(record, all_names):
@@ -357,9 +358,9 @@ def get_publication_affiliation_usage(record, all_names):
 
 def triage(record):
     org_metadata = {}
-    org_name = record['name']
-    aliases = record['aliases'].split(';')
-    aliases = [alias.strip() for alias in aliases]
+    org_name = record['name'].split("*")[0]
+    aliases = record['aliases'].split(';') if record['aliases'] else []
+    aliases = [alias.split("*")[0].strip() for alias in aliases]
     all_names = [org_name] + aliases
     wikidata_name, wikidata_id, best_match_ratio = search_wikidata(all_names)
     if wikidata_id:
