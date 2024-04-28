@@ -86,7 +86,7 @@ def parse_issue_text(issue_text, mappings):
             if search_result:
                 record_data[key] = search_result.strip()
                 break
-    record_data = supplement_record_data(record_data)
+    record_data = fix_and_supplement_record_data(record_data)
     return record_data
 
 
