@@ -57,9 +57,22 @@ def fix_wikipedia_url(record_data):
 
 def add_ror_display_to_labels(record_data):
     if record_data['names.types.label']:
-        record_data['names.types.label'] = '; '.join([record_data['names.types.ror_display'], record_data['names.types.label']])
+        record_data['names.types.label'] = '; '.join(
+            [record_data['names.types.ror_display'], record_data['names.types.label']])
     else:
         record_data['names.types.label'] = record_data['names.types.ror_display']
+    return record_data
+
+
+def supplement_record_data(record_data):
+    add_ror_display_to_labels(record_data)
+    if record_data['external_ids.type.fundref.all'] and "funder" not in record_data['types']:
+        if record_data['types']:
+            record_data['types'] += "; funder"
+        else:
+            record_data['types'] = "funder"
+    if not record_data['status']:
+        record_data['status'] = 'active'
     return record_data
 
 
@@ -73,7 +86,7 @@ def parse_issue_text(issue_text, mappings):
                 break
     record_data = fix_types(record_data)
     record_data = fix_wikipedia_url(record_data)
-    record_data = add_ror_display_to_labels(record_data)
+    record_data = supplement_record_data(record_data)
     return record_data
 
 
@@ -87,8 +100,7 @@ def process_issue(issue, api_fields, ror_fields, issue_ror_mappings, outfile):
         writer.writerow(record_entry)
 
 
-def create_new_records_metadata(column_id):
-    outfile = os.path.join(os.getcwd(), 'new_records_metadata.csv')
+def create_new_records_metadata(column_id, outfile):
     api_fields = ['html_url']
     ror_fields = [
         'id',
@@ -140,17 +152,14 @@ def create_new_records_metadata(column_id):
     with open(outfile, 'w') as f_out:
         writer = csv.writer(f_out)
         writer.writerow(api_fields + ror_fields)
-
     g = Github(GITHUB_TOKEN)
     column = g.get_project_column(column_id)
     cards = column.get_cards()
     new_record_issues = []
-    i = 0
     for card in cards:
         issue = card.get_content()
         if issue and "new record" in [label.name for label in issue.labels]:
             new_record_issues.append(issue)
-
     for issue in new_record_issues:
         process_issue(issue, api_fields, ror_fields,
                       issue_ror_mappings, outfile)
@@ -160,12 +169,14 @@ def parse_arguments():
     parser = argparse.ArgumentParser()
     parser.add_argument('-c', '--column_id', required=True,
                         type=int, help='Project column where records are located')
+    parser.add_argument('-o', '--output_file', default="new_records_metadata.csv",
+                        help='Output file path')
     return parser.parse_args()
 
 
 def main():
     args = parse_arguments()
-    create_new_records_metadata(args.column_id)
+    create_new_records_metadata(args.column_id, args.output_file)
 
 
 if __name__ == '__main__':
