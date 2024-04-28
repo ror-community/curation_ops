@@ -42,7 +42,7 @@ def fix_types(record_data):
     types = record_data['types'].lower()
     if '(' in types:
         types = types.split('(')[0].strip()
-        record_data['types'] = types
+    record_data['types'] = types
     return record_data
 
 
