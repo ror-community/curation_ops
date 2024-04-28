@@ -64,8 +64,10 @@ def add_ror_display_to_labels(record_data):
     return record_data
 
 
-def supplement_record_data(record_data):
-    add_ror_display_to_labels(record_data)
+def fix_and_supplement_record_data(record_data):
+    record_data = fix_types(record_data)
+    record_data = fix_wikipedia_url(record_data)
+    record_data = add_ror_display_to_labels(record_data)
     if record_data['external_ids.type.fundref.all'] and "funder" not in record_data['types']:
         if record_data['types']:
             record_data['types'] += "; funder"
@@ -84,8 +86,6 @@ def parse_issue_text(issue_text, mappings):
             if search_result:
                 record_data[key] = search_result.strip()
                 break
-    record_data = fix_types(record_data)
-    record_data = fix_wikipedia_url(record_data)
     record_data = supplement_record_data(record_data)
     return record_data
 
