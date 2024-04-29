@@ -6,8 +6,8 @@ import glob
 import random
 import argparse
 import requests
-import jsondiff
 from time import sleep
+from deepdiff import DeepDiff
 
 
 def get_ror_display_name(json_file):
@@ -30,8 +30,8 @@ def release_files_in_data_dump(data_dump_file_path, release_dir, missing_ids_out
             with open(outfile, 'a') as f_out:
                 writer = csv.writer(f_out)
                 writer.writerow([release_file_id, ror_display_name])
-        record_diff = jsondiff.diff(
-            release_file, data_dump_records[release_file_id], syntax='symmetric')
+        record_diff = DeepDiff(
+            release_file, data_dump_records[release_file_id], ignore_order=True)
         if record_diff:
             ror_display_name = release_file['name']
             with open(release_diff_outfile, 'a') as f_out:
@@ -62,8 +62,8 @@ def compare_old_data_dump_new_data_dump(release_ids, data_dump_file_path, old_da
             old_record = value
             new_record = current_dd_minus_release_files[key]
             if old_record != new_record:
-                record_diff = jsondiff.diff(
-                    old_record, new_record, syntax='symmetric')
+                record_diff = DeepDiff(
+                    old_record, new_record, ignore_order=True)
                 with open(prod_data_dump_discrepancies_file, 'a') as f_out:
                     writer = csv.writer(f_out)
                     writer.writerow([key, record_diff])
@@ -89,7 +89,7 @@ def compare_random_data_dump_production_api(release_ids, data_dump_file_path, pr
             print("Data dump file matches API.\n")
         if api_json != record:
             print("Data dump file does not match API.\n")
-            record_diff = jsondiff.diff(record, api_json, syntax='symmetric')
+            record_diff = DeepDiff(record, api_json, ignore_order=True)
             with open(prod_data_dump_discrepancies_file, 'a') as f_out:
                 writer = csv.writer(f_out)
                 writer.writerow([record['id'], record_diff])

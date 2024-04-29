@@ -1,6 +1,8 @@
 certifi==2024.2.2
 charset-normalizer==3.3.2
+deepdiff==7.0.1
 idna==3.6
-jsondiff==2.0.0
+ordered-set==4.1.0
+orjson==3.10.1
 requests==2.31.0
 urllib3==2.2.1
