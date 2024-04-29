@@ -67,7 +67,7 @@ def validate_status(field_value):
 
 
 def validate_types(field_value):
-    valid_types = ["education", "healthcare", "company",
+    valid_types = ["education", "healthcare", "company", "funder",
                    "archive", "nonprofit", "government", "facility", "other"]
     field_value = field_value.split('(')[0].strip().lower()
     return [] if field_value and field_value in valid_types else [f"Error in 'types': Invalid value(s). Valid values are: {valid_types}"]
