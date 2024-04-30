@@ -59,7 +59,7 @@ def check_duplicate_values(input_dir, output_file):
 def parse_arguments():
 	parser = argparse.ArgumentParser(
 		description="Check for duplicate values in directory containing ROR records")
-	parser.add_argument("-i", "--input_file", required=True,
+	parser.add_argument("-i", "--input_dir", required=True,
 						help="Input CSV file path.")
 	parser.add_argument("-o", "--output_file",
 						default="duplicate_values.csv", help="Output CSV file path.")
