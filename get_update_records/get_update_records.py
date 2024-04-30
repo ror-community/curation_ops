@@ -50,7 +50,7 @@ def fix_wikipedia_url(wikipedia_url):
     return wikipedia_url[0:30] + urllib.parse.quote(wikipedia_url[30:])
 
 
-def normalize_text(text, field):
+def normalize_text(text):
     text = re.sub(' +', ' ', text)
     text = make_printable(text)
     text = text.strip()
