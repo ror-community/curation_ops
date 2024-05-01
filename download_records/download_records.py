@@ -15,7 +15,7 @@ def download_record(ror_id, schema_version, json_file_path):
         json.dump(ror_data, f_out, indent=4, ensure_ascii=False)
 
 
-def parse_and_download(f):
+def parse_and_download(f, schema_version):
     now = datetime.now()
     json_dir = os.getcwd() + '/' + now.strftime("%Y%m%d_%H%M%S") + '/'
     os.makedirs(json_dir)
@@ -27,7 +27,7 @@ def parse_and_download(f):
             ror_id = ror_id.split('.org/')[1]
             json_file_path = ror_id + '.json'
             json_file_path = json_dir + json_file_path
-            download_record(ror_id, json_file_path)
+            download_record(ror_id, schema_version, json_file_path)
 
 
 def main():
@@ -35,9 +35,9 @@ def main():
     parser.add_argument('-i', '--input_file', type=str,
                         help='Path to the input CSV file')
     parser.add_argument('-s', '--schema_version', type=str,
-                        choice=["1", "2"], help='Schema version for the records to download. Choices: 1 or 2')
+                        choices=["1", "2"], help='Schema version for the records to download. Choices: 1 or 2')
     args = parser.parse_args()
-    parse_and_download(args.input_file, schema_version)
+    parse_and_download(args.input_file, args.schema_version)
 
 
 if __name__ == '__main__':
