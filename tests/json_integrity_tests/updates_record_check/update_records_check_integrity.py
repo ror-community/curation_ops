@@ -125,6 +125,8 @@ def check_if_updates_applied(input_file, output_file):
                 value = value.split('*')[0]
             if field == 'locations.geonames_id' or field == 'established':
                 value = int(value)
+            if field == 'types':
+                value = value.lower()
             if change_type in additions:
                 if value not in simplified_json['all'] and value not in ['delete', 'Delete']:
                     with open(output_file, 'a') as f_out:
