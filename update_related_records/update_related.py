@@ -4,11 +4,14 @@ import re
 import json
 import urllib
 import requests
+from datetime import datetime
 
 V1_API_URL = "https://api.ror.org/v1/organizations"
 V2_API_URL = "https://api.ror.org/v2/organizations"
 INACTIVE_STATUSES = ('inactive', 'withdrawn')
 UPDATED_RECORDS_PATH = "updates/"
+LAST_MOD_DATE =  datetime.now().strftime("%Y-%m-%d")
+
 updated_file_report = []
 
 def export_json(json_data, json_file):
@@ -16,7 +19,7 @@ def export_json(json_data, json_file):
     json.dump(json_data, json_file, ensure_ascii=False, indent=2)
     json_file.truncate()
 
-def update_release_file(release_file, related_id, related_name):
+def update_release_file(release_file, related_id, related_name, version):
     with open(release_file, 'r+', encoding='utf8') as json_in:
         release_file_data = json.load(json_in)
         relationships = release_file_data['relationships']
@@ -28,6 +31,8 @@ def update_release_file(release_file, related_id, related_name):
                     print('Current name:', release_file_data['relationships']
                           [index]['label'], '- Updated Name:', related_name)
                     release_file_data['relationships'][index]['label'] = related_name
+                    if version == 2:
+                        release_file_data['admin']['last_modified']['date'] = LAST_MOD_DATE
                     export_json(release_file_data, json_in)
                     updated_file_report.append(['release', release_file, related_id, related_name])
 
@@ -44,6 +49,8 @@ def check_update_production_file(ror_id, related_id, related_name, version):
                 print('Current name:', prod_record['relationships']
                       [index]['label'], '- Updated Name:', related_name)
                 prod_record['relationships'][index]['label'] = related_name
+                if version == 2:
+                    prod_record['admin']['last_modified']['date'] = LAST_MOD_DATE
                 json_file = short_id + '.json'
                 json_file_path = UPDATED_RECORDS_PATH + json_file
                 with open(json_file_path, 'w', encoding='utf8') as f_out:
@@ -99,7 +106,7 @@ def check_update_inactive_prod(related_id, name, version):
     print("Found " + str(count) + " relationships to " + related_id + " in inactive prod records")
 
 
-def check_update_inactive_release(related_id, name):
+def check_update_inactive_release(related_id, name, version):
     # check for inactive release records with relationships(s) to record with updated name
     print("Checking for inactive records to update in release")
     count = 0
@@ -114,7 +121,7 @@ def check_update_inactive_release(related_id, name):
                     for r in file_data['relationships']:
                         if r['id'] == related_id:
                             count += 1
-                            update_release_file(file, related_id, name)
+                            update_release_file(file, related_id, name, version)
     print("Found " + str(count) + " relationships to " + related_id + " in inactive release records")
 
 def update_related(initial_release_files, version):
@@ -138,11 +145,11 @@ def update_related(initial_release_files, version):
                         current_release_files = get_files(".")
                         if any(short_related_filename in file for file in current_release_files):
                             related_file_path = [file for file in current_release_files if short_related_filename in file][0]
-                            update_release_file(related_file_path, ror_id, name)
+                            update_release_file(related_file_path, ror_id, name, version)
                         else:
                             check_update_production_file(related_id, ror_id, name, version)
                 print("Checking inactive records for relationships to record:", ror_id, '-', name)
-                check_update_inactive_release(ror_id, name)
+                check_update_inactive_release(ror_id, name, version)
                 check_update_inactive_prod(ror_id, name, version)
 
 if __name__ == '__main__':

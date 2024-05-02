@@ -3,13 +3,18 @@ import os
 import json
 import logging
 import sys
+from datetime import datetime
 import update_address
+
 
 RECORDS_PATH = "."
 ERROR_LOG = "address_update_errors.log"
+LAST_MOD_DATE =  datetime.now().strftime("%Y-%m-%d")
 logging.basicConfig(filename=ERROR_LOG,level=logging.ERROR, filemode='w')
 
-def export_json(json_data, json_file):
+def export_json(json_data, json_file, version):
+    if version == 2:
+        json_data['admin']['last_modified']['date'] = LAST_MOD_DATE
     json_file.seek(0)
     json.dump(json_data, json_file, ensure_ascii=False, indent=2)
     json_file.truncate()
@@ -34,7 +39,7 @@ def update_addresses(filepaths, version):
                     if version == 1:
                         json_data = update_address.update_geonames(json_data)
                     if json_data:
-                        export_json(json_data, json_in)
+                        export_json(json_data, json_in, version)
                     else:
                         logging.error(f"Error updating file {filepath}: {e}")
             except Exception as e:
