@@ -75,21 +75,21 @@ def compare_random_data_dump_production_api(release_ids, data_dump_file_path, pr
     minus_release_files = [
         record for record in data_dump if record["id"] not in release_ids]
     random_data_dump_records = []
-    for _ in range(10):
+    for _ in range(1000):
         random_data_dump_records.append(random.choice(minus_release_files))
     for record in random_data_dump_records:
         ror_id = record["id"]
         if staging_flag:
-	        api_url = f"https://api.staging.ror.org/v{schema_version}/organizations/{ror_id}"
+            api_url = f"https://api.staging.ror.org/v{schema_version}/organizations/{ror_id}"
         else:
-        	api_url = f"https://api.ror.org/v{schema_version}/organizations/{ror_id}"
+            api_url = f"https://api.ror.org/v{schema_version}/organizations/{ror_id}"
         print("Comparing data dump file and API for", ror_id, "...")
         api_json = requests.get(api_url).json()
-        if api_json == record:
-            print("Data dump file matches API.\n")
-        if api_json != record:
-            print("Data dump file does not match API.\n")
-            record_diff = DeepDiff(record, api_json, ignore_order=True)
+        record_diff = DeepDiff(record, api_json, ignore_order=True)
+        if not record_diff:
+            print("Randomly chosen data dump file matches API.\n")
+        else:
+            print("Randomly chosen data dump file does not match API.\n")
             with open(prod_data_dump_discrepancies_file, 'a') as f_out:
                 writer = csv.writer(f_out)
                 writer.writerow([record['id'], record_diff])
