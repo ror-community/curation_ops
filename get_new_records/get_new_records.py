@@ -135,7 +135,7 @@ def create_new_records_metadata(column_id, outfile):
         'names.types.acronym': ['Acronym/abbreviation:', 'Acronym:'],
         'links.type.website': ['Website:', 'Organization website |'],
         'links.type.wikipedia': ['Wikipedia page:', 'Wikipedia:', 'Wikipedia |'],
-        'domains': ['Domains:'],
+        'domains': ['Domains:', 'Web Domain:'],
         'established': ['Year established:'],
         'external_ids.type.isni.preferred': ['ISNI ID:', 'ISNI:'],
         'external_ids.type.isni.all': ['ISNI ID:', 'ISNI:'],
