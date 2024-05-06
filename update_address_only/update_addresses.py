@@ -35,10 +35,10 @@ def update_addresses(filepaths, version):
                     print("updating " + filepath)
                     json_data = json.load(json_in)
                     if version == 2:
-                        json_data = update_address.update_geonames_v2(json_data)
+                        updated_data = update_address.update_geonames_v2(json_data)
                     if version == 1:
-                        json_data = update_address.update_geonames(json_data)
-                    if json_data:
+                        updated_data = update_address.update_geonames(json_data)
+                    if json_data['locations'] != updated_data['locations']:
                         export_json(json_data, json_in, version)
                     else:
                         logging.error(f"Error updating file {filepath}: {e}")
