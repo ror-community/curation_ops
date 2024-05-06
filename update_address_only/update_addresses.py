@@ -39,6 +39,10 @@ def update_addresses(filepaths, version):
                     if version == 1:
                         updated_data = update_address.update_geonames(json_data)
                     if updated_data:
+                        print("previous locations:")
+                        print(json_data['locations'])
+                        print("new locations:")
+                        print(updated_data['locations'])
                         if json_data['locations'] != updated_data['locations']:
                             export_json(updated_data, json_in, version)
                     else:
