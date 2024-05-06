@@ -34,6 +34,8 @@ def update_addresses(filepaths, version):
                 with open(filepath, 'r+') as json_in:
                     print("updating " + filepath)
                     json_data = json.load(json_in)
+                    print("input locations:")
+                    print(json_data['locations'])
                     if version == 2:
                         updated_data = update_address.update_geonames_v2(json_data)
                     if version == 1:
