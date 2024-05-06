@@ -45,6 +45,8 @@ def update_addresses(filepaths, version):
                         print(original_locations)
                         print("new locations:")
                         print(updated_data['locations'])
+                        print("original and new locations are same:")
+                        print(original_locations==updated_data['locations'])
                         if original_locations != updated_data['locations']:
                             export_json(updated_data, json_in, version)
                     else:
