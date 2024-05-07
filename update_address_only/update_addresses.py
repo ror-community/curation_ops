@@ -35,7 +35,7 @@ def compare_locations(original_locations, updated_locations):
             print(original_location['geonames_details'].get(key))
             print(updated_locations[i]['geonames_details'].get(key))
             if original_location['geonames_details'].get(key) != updated_locations[i]['geonames_details'].get(key) \
-                or not isinstance(original_location['geonames_details'].get(key)), type(updated_locations[i]['geonames_details'].get(key)):
+                or not isinstance(original_location['geonames_details'].get(key), type(updated_locations[i]['geonames_details'].get(key))):
                 is_equal = False
         i += 1
     return is_equal
