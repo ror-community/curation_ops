@@ -27,6 +27,18 @@ def get_files(top):
             filepaths.append(os.path.join(dirpath, file))
     return filepaths
 
+def compare_locations(original_locations, updated_locations):
+    i = 0
+    is_equal = True
+    for original_location in original_locations:
+        for key in original_location:
+            if original_location['geonames_details'].get(key) != updated_locations[i]['geonames_details'].get(key) \
+                or type(original_location['geonames_details'].get(key)) != type(updated_locations[i]['geonames_details'].get(key)):
+                is_equal = False
+        i += 1
+    return is_equal
+
+
 def update_addresses(filepaths, version):
     for filepath in filepaths:
         filename, file_extension = os.path.splitext(filepath)
@@ -41,14 +53,12 @@ def update_addresses(filepaths, version):
                     if version == 1:
                         updated_data = update_address.update_geonames(json_data)
                     if updated_data:
+                        if not compare_locations(original_locations, updated_data['locations']):
                         print("original locations:")
                         print(original_locations)
                         print("new locations:")
                         print(updated_data['locations'])
-                        print("original and new locations are same:")
-                        print(original_locations==updated_data['locations'])
-                        if original_locations != updated_data['locations']:
-                            export_json(updated_data, json_in, version)
+                        export_json(updated_data, json_in, version)
                     else:
                         logging.error(f"Error updating file {filepath}: {e}")
             except Exception as e:
