@@ -54,11 +54,11 @@ def update_addresses(filepaths, version):
                         updated_data = update_address.update_geonames(json_data)
                     if updated_data:
                         if not compare_locations(original_locations, updated_data['locations']):
-                        print("original locations:")
-                        print(original_locations)
-                        print("new locations:")
-                        print(updated_data['locations'])
-                        export_json(updated_data, json_in, version)
+                            print("original locations:")
+                            print(original_locations)
+                            print("new locations:")
+                            print(updated_data['locations'])
+                            export_json(updated_data, json_in, version)
                     else:
                         logging.error(f"Error updating file {filepath}: {e}")
             except Exception as e:
