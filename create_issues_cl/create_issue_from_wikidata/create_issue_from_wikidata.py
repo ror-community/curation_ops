@@ -128,7 +128,7 @@ Other information about this request:
 def parse_arguments():
     parser = argparse.ArgumentParser(
         description='Process Wikidata ID to create a GitHub issue.')
-    parser.add_argument('-w', '--wikidata_id',
+    parser.add_argument('-i', '--wikidata_id',
                         help='Wikidata ID of the organization')
     args = parser.parse_args()
     return args

@@ -15,7 +15,7 @@ pip install -r requirements.txt
 ## Usage
 
 ```
-python create_issues_from_wikidata.py -w <wikidata_id>
+python create_issues_from_wikidata.py -i <wikidata_id>
 ```
 
-- `-w`, `--wikidata_id`: Wikidata ID of the organization (required)
+- `-i`, `--wikidata_id`: Wikidata ID of the organization (required)
