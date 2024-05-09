@@ -2,6 +2,7 @@ import os
 import re
 import csv
 import sys
+import json
 import argparse
 import requests
 from github import Github
@@ -11,11 +12,26 @@ def get_ror_display_name(record):
     return [name['value'] for name in record.get('names', []) if 'ror_display' in name.get('types', [])][0]
 
 
-def get_ror_name(ror_id):
+def get_ror_name(ror_id, max_retries=3, retry_delay=5):
+    print(ror_id)
     url = f'https://api.ror.org/v2/organizations/{ror_id}'
-    record = requests.get(url).json()
-    ror_display_name = get_ror_display_name(record)
-    return ror_display_name
+
+    for attempt in range(max_retries):
+        try:
+            response = requests.get(url)
+            response.raise_for_status()
+            record = response.json()
+            ror_display_name = get_ror_display_name(record)
+            return ror_display_name
+        except requests.exceptions.RequestException as e:
+            if attempt < max_retries - 1:
+                time.sleep(retry_delay)
+            else:
+                print(f"Error: Failed to retrieve ROR name for {ror_id} after {max_retries} attempts.")
+                return ""
+        except json.decoder.JSONDecodeError as e:
+            print(f"Error: Failed to parse JSON response for {ror_id}. Response: {response.text}")
+            return ""
 
 
 def dict_from_csv(f):
