@@ -92,7 +92,7 @@ def get_organization_data(wikidata_id):
     return organization_data
 
 
-def create_github_issue(organization_data):
+def create_github_issue(repo, organization_data):
     record_type = input("Record type: ")
     issue_title = f"Add a new organization to ROR - {
         organization_data['name']}"
@@ -140,7 +140,7 @@ def main():
     repo = g.get_repo("ror-community/ror-updates")
     args = parse_arguments()
     organization_data = get_organization_data(args.wikidata_id)
-    issue = create_github_issue(organization_data)
+    issue = create_github_issue(repo, organization_data)
     print(f"Created issue: {issue.html_url}")
 
 
