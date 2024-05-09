@@ -29,7 +29,7 @@ def create_new_record_issue():
     print("Creating a new record...")
     name = input("Name of organization: ")
     website = input("Website: ")
-    website = input("Domains: ")
+    domains = input("Domains: ")
     link_to_publications = input("Link to publications: ")
     organization_type = input("Organization type: ")
     wikipedia_page = input("Wikipedia page: ")
@@ -58,7 +58,7 @@ Summary of request: Add a new organization to ROR
 
 Name of organization: {name}
 Website: {website}
-Domains: {website}
+Domains: {domains}
 Link to publications: {link_to_publications}
 Organization type: {organization_type}
 Wikipedia page: {wikipedia_page}
