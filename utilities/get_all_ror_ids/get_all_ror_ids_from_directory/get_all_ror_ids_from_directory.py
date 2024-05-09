@@ -12,7 +12,7 @@ def get_ror_display_name(record):
 def get_all_names_ror_ids(input_dir, output_file):
     with open(output_file, 'w', newline='') as f_out:
         writer = csv.writer(f_out)
-        writer.writerow(['name', 'id'])
+        writer.writerow(['names.types.ror_display', 'id'])
 
         for file in glob.glob(os.path.join(input_dir, "*.json")):
             with open(file, 'r+', encoding='utf8') as f_in:
