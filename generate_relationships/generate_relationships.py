@@ -4,6 +4,7 @@ import os
 import logging
 import requests
 from csv import DictReader
+from datetime import datetime
 import re
 import sys
 
@@ -15,6 +16,7 @@ UPDATED_RECORDS_PATH = "updates/"
 INVERSE_TYPES = ('parent', 'child', 'related')
 REL_INVERSE = {'parent': 'child', 'child': 'parent', 'related': 'related',
                 'successor': 'predecessor', 'predecessor': 'successor'}
+LAST_MOD_DATE =  datetime.now().strftime("%Y-%m-%d")
 
 def check_file(file):
     filepath = ''
@@ -192,6 +194,8 @@ def process_one_relationship(relationship, version):
             file_data = json.load(f)
             file_data['relationships'] = check_relationship(file_data['relationships'], relationship['related_id'], relationship['record_relationship'], version)
             file_data['relationships'].append(relationship_data.copy())
+            if version == 2:
+                file_data['admin']['last_modified']['date'] = LAST_MOD_DATE
             f.seek(0)
             json.dump(file_data, f, ensure_ascii=False, indent=2)
             f.truncate()
@@ -205,6 +209,8 @@ def delete_one_relationship(relationship, version):
         with open(record_filepath, 'r+') as f:
             file_data = json.load(f)
             file_data['relationships'] = check_relationship(file_data['relationships'], relationship['related_id'], relationship['record_relationship'], version)
+            if version == 2:
+                file_data['admin']['last_modified']['date'] = LAST_MOD_DATE
             f.seek(0)
             json.dump(file_data, f, ensure_ascii=False, indent=2)
             f.truncate()
@@ -217,6 +223,8 @@ def delete_one_relationship(relationship, version):
         with open(related_filepath, 'r+') as f:
             file_data = json.load(f)
             file_data['relationships'] = check_relationship(file_data['relationships'], relationship['record_id'], relationship['record_relationship'], version)
+            if version == 2:
+                file_data['admin']['last_modified']['date'] = LAST_MOD_DATE
             f.seek(0)
             json.dump(file_data, f, ensure_ascii=False, indent=2)
             f.truncate()

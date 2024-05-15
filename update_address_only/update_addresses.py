@@ -3,13 +3,19 @@ import os
 import json
 import logging
 import sys
+import copy
+from datetime import datetime
 import update_address
+
 
 RECORDS_PATH = "."
 ERROR_LOG = "address_update_errors.log"
+LAST_MOD_DATE =  datetime.now().strftime("%Y-%m-%d")
 logging.basicConfig(filename=ERROR_LOG,level=logging.ERROR, filemode='w')
 
-def export_json(json_data, json_file):
+def export_json(json_data, json_file, version):
+    if version == 2:
+        json_data['admin']['last_modified']['date'] = LAST_MOD_DATE
     json_file.seek(0)
     json.dump(json_data, json_file, ensure_ascii=False, indent=2)
     json_file.truncate()
@@ -21,6 +27,18 @@ def get_files(top):
             filepaths.append(os.path.join(dirpath, file))
     return filepaths
 
+def compare_locations(original_locations, updated_locations):
+    i = 0
+    is_equal = True
+    for original_location in original_locations:
+        for key in original_location['geonames_details']:
+            if original_location['geonames_details'].get(key) != updated_locations[i]['geonames_details'].get(key) \
+                or not isinstance(original_location['geonames_details'].get(key), type(updated_locations[i]['geonames_details'].get(key))):
+                is_equal = False
+        i += 1
+    return is_equal
+
+
 def update_addresses(filepaths, version):
     for filepath in filepaths:
         filename, file_extension = os.path.splitext(filepath)
@@ -29,12 +47,14 @@ def update_addresses(filepaths, version):
                 with open(filepath, 'r+') as json_in:
                     print("updating " + filepath)
                     json_data = json.load(json_in)
+                    original_locations = copy.deepcopy(json_data['locations'])
                     if version == 2:
-                        json_data = update_address.update_geonames_v2(json_data)
+                        updated_data = update_address.update_geonames_v2(json_data)
                     if version == 1:
-                        json_data = update_address.update_geonames(json_data)
-                    if json_data:
-                        export_json(json_data, json_in)
+                        updated_data = update_address.update_geonames(json_data)
+                    if updated_data:
+                        if not compare_locations(original_locations, updated_data['locations']):
+                            export_json(updated_data, json_in, version)
                     else:
                         logging.error(f"Error updating file {filepath}: {e}")
             except Exception as e:

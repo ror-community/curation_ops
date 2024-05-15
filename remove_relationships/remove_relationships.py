@@ -6,6 +6,7 @@ import logging
 import requests
 import sys
 from urllib.parse import urlparse
+from datetime import datetime
 
 ERROR_LOG = "relationship_errors.log"
 logging.basicConfig(filename=ERROR_LOG,level=logging.ERROR, filemode='w')
@@ -13,8 +14,9 @@ V1_API_URL = "http://api.ror.org/v1/organizations/"
 V2_API_URL = "http://api.ror.org/v2/organizations/"
 UPDATED_RECORDS_PATH = "updates/"
 INACTIVE_STATUSES = ('inactive', 'withdrawn')
+LAST_MOD_DATE =  datetime.now().strftime("%Y-%m-%d")
 
-def remove_relationships_from_file(inactive_id, related_filepath):
+def remove_relationships_from_file(inactive_id, related_filepath, version):
     removed_relationships = {}
     try:
         with open(related_filepath, 'r+') as f:
@@ -23,6 +25,8 @@ def remove_relationships_from_file(inactive_id, related_filepath):
                 original_relationships = file_data['relationships']
                 updated_relationships = [r for r in original_relationships if ((not r['id'] == inactive_id) or (r['id'] == inactive_id and r['type'].lower() == 'predecessor'))]
                 file_data['relationships'] = updated_relationships
+                if version == 2:
+                    file_data['admin']['last_modified']['date'] = LAST_MOD_DATE
                 f.seek(0)
                 json.dump(file_data, f, ensure_ascii=False, indent=2)
                 f.truncate()
@@ -95,7 +99,7 @@ def remove_relationships(version):
                 related_filepath = get_record(relationship['id'], related_filename, inactive_id, version)
             # get_record() returns empty string if record not downloaded bc relationship doesn't exist
             if related_filepath != '':
-                removed_relationships = remove_relationships_from_file(inactive_id, related_filepath)
+                removed_relationships = remove_relationships_from_file(inactive_id, related_filepath, version)
                 all_removed_relationships.append(removed_relationships)
             else:
                 no_relationship_in_related_file.append([inactive_id, relationship])
