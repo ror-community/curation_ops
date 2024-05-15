@@ -209,6 +209,8 @@ def delete_one_relationship(relationship, version):
         with open(record_filepath, 'r+') as f:
             file_data = json.load(f)
             file_data['relationships'] = check_relationship(file_data['relationships'], relationship['related_id'], relationship['record_relationship'], version)
+            if version == 2:
+                file_data['admin']['last_modified']['date'] = LAST_MOD_DATE
             f.seek(0)
             json.dump(file_data, f, ensure_ascii=False, indent=2)
             f.truncate()
@@ -221,6 +223,8 @@ def delete_one_relationship(relationship, version):
         with open(related_filepath, 'r+') as f:
             file_data = json.load(f)
             file_data['relationships'] = check_relationship(file_data['relationships'], relationship['record_id'], relationship['record_relationship'], version)
+            if version == 2:
+                file_data['admin']['last_modified']['date'] = LAST_MOD_DATE
             f.seek(0)
             json.dump(file_data, f, ensure_ascii=False, indent=2)
             f.truncate()
