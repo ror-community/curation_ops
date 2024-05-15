@@ -32,8 +32,6 @@ def compare_locations(original_locations, updated_locations):
     is_equal = True
     for original_location in original_locations:
         for key in original_location['geonames_details']:
-            print(original_location['geonames_details'].get(key))
-            print(updated_locations[i]['geonames_details'].get(key))
             if original_location['geonames_details'].get(key) != updated_locations[i]['geonames_details'].get(key) \
                 or not isinstance(original_location['geonames_details'].get(key), type(updated_locations[i]['geonames_details'].get(key))):
                 is_equal = False
@@ -56,10 +54,6 @@ def update_addresses(filepaths, version):
                         updated_data = update_address.update_geonames(json_data)
                     if updated_data:
                         if not compare_locations(original_locations, updated_data['locations']):
-                            print("original locations:")
-                            print(original_locations)
-                            print("new locations:")
-                            print(updated_data['locations'])
                             export_json(updated_data, json_in, version)
                     else:
                         logging.error(f"Error updating file {filepath}: {e}")
