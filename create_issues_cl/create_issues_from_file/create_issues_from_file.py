@@ -40,30 +40,30 @@ def create_new_issue(repo, record):
     issue_title = f"Add a new organization to ROR: {title_name}"
     relationships = format_relationships(record)
     issue_body = f"""
-    Summary of request: Add a new organization to ROR
-    
-    Add record:
-    Name of organization: {record['Organization name*']}
-    Website: {record['Organization website*']}
-    Website: {record['Domains']}
-    Link to publications: {record['Link to publications associated with this organization*']}
-    Organization type: {record['Type of organization*']}
-    Wikipedia page: {record['Wikipedia page']}
-    Wikidata ID: {record['Wikidata ID']}
-    ISNI ID: {record['ISNI ID']}
-    GRID ID: {record['GRID ID']}
-    Crossref Funder ID: {record['Crossref Funder ID']}
-    Other names for the organization:
-    Aliases: {record['Name variations']}
-    Acronym/abbreviation: {record['Acronym (separate multiples with semicolon)']}
-    Labels: {record['Names in other languages (separate multiples with semicolon)']}
-    Related organizations: {relationships}
-    City: {record['City where org is located*']}
-    Country: {record['Country where org is located*']}
-    Geonames ID: {record['Geonames ID']}
-    Year established: {record['Year established']}
-    Other information about this request: {record['Requestor comments']}
-    """
+Summary of request: Add a new organization to ROR
+
+Add record:
+Name of organization: {record['Organization name*']}
+Website: {record['Organization website*']}
+Domains: {record['Organization domain*']}
+Link to publications: {record['Link to publications associated with this organization*']}
+Organization type: {record['Type of organization*']}
+Wikipedia page: {record['Wikipedia page']}
+Wikidata ID: {record['Wikidata ID']}
+ISNI ID: {record['ISNI ID']}
+GRID ID: {record['GRID ID']}
+Crossref Funder ID: {record['Crossref Funder ID']}
+Other names for the organization:
+Aliases: {record['Name variations']}
+Acronym/abbreviation: {record['Acronym (separate multiples with semicolon)']}
+Labels: {record['Names in other languages (separate multiples with semicolon)']}
+Related organizations: {relationships}
+City: {record['City where org is located*']}
+Country: {record['Country where org is located*']}
+Geonames ID: {record['Geonames ID']}
+Year established: {record['Year established']}
+Other information about this request: {record['Requestor comments']}
+"""
     issue_labels = ["triage needed", "level 1", "new record", "jaguar"]
     issue = repo.create_issue(
         title=issue_title, body=issue_body, labels=issue_labels)
