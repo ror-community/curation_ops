@@ -67,7 +67,7 @@ def format_description(release_data):
             Beginning with release v1.45 on 11 April 2024, data releases contain JSON and CSV files \
             formatted according to both <a href=\"https://github.com/ror-community/ror-schema/blob/master/ror_schema.json\"> \
             schema v1</a> and <a href=\"https://github.com/ror-community/ror-schema/blob/master/ror_schema_v2_0.json\">schema v2</a>. \
-            v2 files have `_schema_v2`  appended to the end of the filename, ex v1.45-2024-04-11-ror-data_schema_v2.json . \
+            v2 files have `_schema_v2`  appended to the end of the filename, ex v1.45-2024-04-11-ror-data_schema_v2.json. \
             In order to maintain compatibility with previous releases, \
             v1 files have no version information in the filename, ex v1.45-2024-04-11-ror-data.json \
             </p> \
@@ -98,7 +98,13 @@ def format_description(release_data):
             Contains changes to data model/structure, as well as the data itself. Major versions will be released with significant advance notice. \
             </li>\n \
             </ul>\n\n \
-            <p>For convenience, the date is also include in the release file name, ex: v1.0-2022-03-15-ror-data.zip.</p>'
+            <p>For convenience, the date is also include in the release file name, ex: v1.0-2022-03-15-ror-data.zip.</p> \
+            <p> \
+            The ROR data dump is provided under the <a href=\"https://creativecommons.org/publicdomain/zero/1.0\"> \
+            Creative Commons CC0 Public Domain Dedication</a>. Location data in ROR comes from GeoNames and is licensed under a \
+            <a href=\"https://creativecommons.org/licenses/by/4.0\">Creative Commons Attribution 4.0 license</a>. \
+            </p>'
+
     return description
 
 
