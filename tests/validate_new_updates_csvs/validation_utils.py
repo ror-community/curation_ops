@@ -74,15 +74,15 @@ def validate_types(field_value):
 
 
 def validate_acronyms(field_value):
-    return [] if field_value and ACRONYMS_PATTERN.match(field_value.split('*')[0]) else [f"Warning in '{field_value}': Potential invalid value(s) - {field_value}. Expected format: uppercase letters, numbers, and spaces"]
+    return [] if field_value and ACRONYMS_PATTERN.match(field_value.split('*')[0]) or field_value == "delete" else [f"Warning in '{field_value}': Potential invalid value(s) - {field_value}. Expected format: uppercase letters, numbers, and spaces"]
 
 
 def validate_names(field_value):
-    return [] if field_value and NAMES_PATTERN.match(field_value) else [f"Warning in '{field_value}':  Expected format: Include language tagging - 'name*language'"]
+    return [] if field_value and NAMES_PATTERN.match(field_value) or field_value == "delete" else [f"Warning in '{field_value}':  Expected format: Include language tagging - 'name*language'"]
 
 
 def validate_links(field_value):
-    return [] if field_value and URL_PATTERN.match(field_value) else [f"Error in 'links': Invalid URL(s) - {field_value}. Expected format: 'http://' or 'https://' followed by the address"]
+    return [] if field_value and URL_PATTERN.match(field_value) or field_value == "delete" else [f"Error in 'links': Invalid URL(s) - {field_value}. Expected format: 'http://' or 'https://' followed by the address"]
 
 
 def validate_established(field_value):
