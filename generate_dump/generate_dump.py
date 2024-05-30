@@ -73,8 +73,6 @@ def remove_existing_records(ror_ids, existing_dump_zip_path, schema_version):
     records_to_remove = []
     with ZipFile(existing_dump_zip_path, "r") as zf:
         json_files = [f for f in zf.namelist() if '.json' in f]
-        print(json_files)
-        print(f"number of files {str(len(json_files))}")
         if len(json_files)==1:
             existing_dump_unzipped = zf.extract(json_files[0], INPUT_PATH)
         elif len(json_files) == 2:
