@@ -79,7 +79,7 @@ def remove_existing_records(ror_ids, existing_dump_zip_path, schema_version):
             existing_dump_unzipped = zf.extract(json_files[0], INPUT_PATH)
         elif len(json_files) == 2:
             if schema_version == 1:
-                v1_dump = [f for f in json_files if V2_SUFFIX not in json_files]
+                v1_dump = [f for f in json_files if V2_SUFFIX not in f]
                 existing_dump_unzipped = zf.extract(v1_dump[0], INPUT_PATH)
             if schema_version == 2:
                 v2_dump = [f for f in json_files if V2_SUFFIX in f]
