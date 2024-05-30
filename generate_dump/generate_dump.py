@@ -67,13 +67,14 @@ def concat_files(filepath, schema_version):
 
 # update to handle either version
 def remove_existing_records(ror_ids, existing_dump_zip_path, schema_version):
-    print("removing existing records")
+    print(f"removing existing records from schema version {schema_version}")
     existing_dump_unzipped = ''
     indexes = []
     records_to_remove = []
     with ZipFile(existing_dump_zip_path, "r") as zf:
         json_files = [f for f in zf.namelist() if '.json' in f]
         print(json_files)
+        print(f"number of files {str(len(json_files))}")
         if len(json_files)==1:
             existing_dump_unzipped = zf.extract(json_files[0], INPUT_PATH)
         elif len(json_files) == 2:
@@ -83,6 +84,7 @@ def remove_existing_records(ror_ids, existing_dump_zip_path, schema_version):
             if schema_version == 2:
                 v2_dump = [f for f in json_files if V2_SUFFIX in f]
                 existing_dump_unzipped = zf.extract(v2_dump[0], INPUT_PATH)
+            print(f"using existing dump {existing_dump_unzipped}")
         else:
             print("Dump zip contains more than 2 files. Something is wrong.")
     try:
@@ -172,10 +174,12 @@ def main():
         updated_record_ids = concat_files(release_dir, base_version)
         remove_existing_records(updated_record_ids, existing_dump_zip_path, base_version)
         create_dump_files(args.releasedirname, base_version)
+        print(f"base version is {base_version}")
         if base_version == 2:
-            schema_version  = 1
+            schema_version = 1
             v1_dir = os.path.join(release_dir, 'v1/')
             os.mkdir(v1_dir)
+            print(f"creating files for other schema version {schema_version}")
             create_other_version_files(release_dir, v1_dir, schema_version)
             updated_record_ids = concat_files(v1_dir, schema_version)
             remove_existing_records(updated_record_ids, existing_dump_zip_path, schema_version)
@@ -184,6 +188,7 @@ def main():
             schema_version  = 2
             v2_dir = os.path.join(release_dir, 'v2/')
             os.mkdir(v2_dir)
+            print(f"creating files for other schema version {schema_version}")
             create_other_version_files(release_dir, v2_dir, schema_version)
             updated_record_ids = concat_files(v2_dir, schema_version)
             remove_existing_records(updated_record_ids, existing_dump_zip_path, schema_version)
