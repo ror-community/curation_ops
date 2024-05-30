@@ -19,6 +19,8 @@ def get_all_data(f):
 	with open(f, 'r+', encoding='utf8') as f_in:
 		json_file = json.load(f_in)
 	for record in json_file:
+		print(f"converting v1 record {record['id']} to csv")
+		print(record)
 		ror_id = record['id']
 		primary_name = record['name']
 		status = record['status']
