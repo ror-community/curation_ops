@@ -42,7 +42,7 @@ def find_between(s, first, last):
 def make_printable(s):
     line_break_chars = set(["\n", "\r"])
     noprint_trans_table = {i: None for i in range(
-        0, sys.maxunicode + 1) if not chr(i).isprintable() and not chr(i) in line_break_chars}
+        0, sys.maxunicode + 1) if not chr(i).isprintable() or chr(i) in line_break_chars}
     return s.translate(noprint_trans_table)
 
 
