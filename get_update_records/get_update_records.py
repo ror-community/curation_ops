@@ -60,6 +60,7 @@ def normalize_text(text):
 def parse_issue_text(issue_text, mappings):
     parsed_data = {}
     parsed_data['id'] = find_between(issue_text, 'ROR ID:', '\n')
+    issue_text = normalize_text(issue_text)
     update_field = find_between(issue_text, "Update:", '$')
     updates = update_field.split('|')
     for update in updates:
@@ -99,8 +100,7 @@ def parse_issue_text(issue_text, mappings):
 
 def process_issue(issue, api_fields, ror_fields, issue_ror_mappings, outfile):
     api_data = [getattr(issue, f, '') for f in api_fields]
-    issue_text = normalize_text(issue.body)
-    record_data = parse_issue_text(issue_text, issue_ror_mappings)
+    record_data = parse_issue_text(issue.body, issue_ror_mappings)
     with open(outfile, 'a') as f_out:
         writer = csv.writer(f_out)
         record_entry = api_data + [record_data.get(k, '') for k in ror_fields]
