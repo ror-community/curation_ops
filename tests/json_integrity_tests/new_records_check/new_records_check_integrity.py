@@ -66,7 +66,7 @@ def check_in_json(input_file, output_file):
 			for field in ror_data_fields:
 				if row[field]:
 					field_value = unquote(row[field]).strip()
-					if field == 'established' or field == 'locations.geonames_id':
+					if field == 'established' or field == 'locations.geonames_id' and ';' not in field_value:
 						field_value = int(field_value)
 					if not isinstance(field_value, int):
 						if ';' in field_value:
@@ -74,6 +74,8 @@ def check_in_json(input_file, output_file):
 							field_value = [f_v.split('*')[0].strip()
 										   for f_v in field_value]
 							for value in field_value:
+								if field == 'locations.geonames_id':
+									value = int(value)
 								if value not in simplified_json[field] and value in simplified_json['all']:
 									writer = csv.writer(f_out)
 									writer.writerow(
