@@ -1,106 +1,135 @@
-import sys
 import os
 import re
 import csv
 import json
 import glob
 import random
-import urllib.parse
 import requests
-import jsondiff
-from time import sleep
-from bs4 import BeautifulSoup
-from selenium import webdriver
-from selenium.webdriver.firefox.options import Options
+import argparse
+from deepdiff import DeepDiff
 
-options = Options()
-options.headless = True
-driver = webdriver.Firefox(options=options)
+
+def get_ror_display_name(json_file):
+    return next((name['value'] for name in json_file.get('names', []) if 'ror_display' in name.get('types', [])), None)
 
 
 def retrieve_api(ror_id):
-    api_url = "https://api.staging.ror.org/organizations/" + ror_id
+    api_url = f"https://api.staging.ror.org/v2/organizations/{ror_id}"
     r = requests.get(api_url)
     if r.status_code == 200:
         return "retrieved"
     return "failed"
 
 
-def compare_api(ror_id):
-    outfile = os.getcwd() + '/jsondiff.csv'
-    api_url = "https://api.staging.ror.org/organizations/" + ror_id
-    api_json = requests.get(api_url).json()
-    json_file_path = os.getcwd() + "/" + ror_id + ".json"
-    with open(json_file_path, 'r+', encoding='utf8') as f_in:
-            json_file = json.load(f_in)
-    file_api_diff = jsondiff.diff(api_json, json_file, syntax='symmetric')
-    if api_json != json_file:
-        with open(outfile, 'a') as f_out:
-            writer = csv.writer(f_out)
-            for key, value in file_api_diff.items():
-                writer.writerow([ror_id, key, value])
-        return "different"
-    return "same"
+def compare_api(ror_id, json_file):
+    api_url = f"https://api.staging.ror.org/v2/organizations/{ror_id}"
+    try:
+        response = requests.get(api_url)
+        response.raise_for_status()
+        api_json = response.json()
+        diff = DeepDiff(api_json, json_file, ignore_order=True)
+        if diff:
+            print(diff)
+            return "different", diff
+        return "same", None
+    except requests.exceptions.RequestException as e:
+        print(f"Error occurred while fetching data from API for ROR ID: {ror_id}")
+        return "api_error", None
+
 
 def search_name_api(org_name):
-    api_url = 'https://api.staging.ror.org/organizations?query="' + \
-        urllib.parse.quote(org_name) + '"' + "&all_status=True"
-    r = requests.get(api_url)
+    api_url = 'https://api.staging.ror.org/v2/organizations'
+    params = {
+        'query': f'"{org_name}"',
+        'all_status': 'True'
+    }
+    r = requests.get(api_url, params=params)
     results = r.json()["items"]
     for result in results:
-        if result["name"] == org_name:
+        ror_display = get_ror_display_name(result)
+        if ror_display == org_name:
             return "retrieved"
     return "failed"
 
 
-def compare_random(ids_in_file):
-    with open(os.getcwd() + "/all_ror_ids.txt") as f_in:
-        all_ror_ids = [line.strip() for line in f_in]
-    all_ror_ids = [ror_id for ror_id in all_ror_ids if ror_id not in ids_in_file]
+def compare_random(compare_ids):
     random_ror_ids = []
-    for _ in range(50):
-        random_ror_ids.append(random.choice(all_ror_ids))
-    for ror_id in random_ror_ids:
-        api_url = "https://api.ror.org/organizations/" + ror_id
-        test_api_url = "https://api.staging.ror.org/organizations/" + ror_id
+    diff_response_ids = []
+    for ror_id in compare_ids:
+        api_url = f"https://api.ror.org/v2/organizations/{ror_id}"
+        staging_api_url = f"https://api.staging.ror.org/v2/organizations/{ror_id}"
         print("Comparing staging and production for", ror_id, "...")
-        r1 = requests.get(api_url).json()
-        r2 = requests.get(test_api_url).json()
-        if r1 != r2:
-            return ror_id
+        prod_response = requests.get(api_url).json()
+        staging_response = requests.get(staging_api_url).json()
+        if prod_response != staging_response:
+            diff_response_ids.append(ror_id)
         else:
-            print("Dev matches production for", ror_id)
-    return None
+            print("Staging matches production for", ror_id)
+    return diff_response_ids
 
 
-def check_release_files():
-    release_tests_outfile = os.getcwd() + "/release_tests.csv"
-    jsondiff_outfile = os.getcwd() + "/jsondiff.csv"
+def check_release_files(release_directory, all_ror_ids_file, release_tests_outfile, jsondiff_outfile):
+    if not os.path.exists(release_directory):
+        print(f"Error: Release directory '{release_directory}' does not exist.")
+        exit(1)
+
     with open(release_tests_outfile, 'w') as f_out:
         writer = csv.writer(f_out)
-        writer.writerow(["ror_id", "org_name", "retrieve_check", "compare_check", "search_name_api_check"])
-    with open(jsondiff_outfile, 'w') as f_out:
+        writer.writerow(["ror_id", "org_name", "retrieve_check",
+                         "compare_check", "search_name_api_check"])
+    with open(jsondiff_outfile, 'a') as f_out:
         writer = csv.writer(f_out)
-        writer.writerow(["ror_id", "field","diff"])
+        writer.writerow(["ror_id", "diff"])
     ids_in_file = []
-    for file in glob.glob("*.json"):
+    json_files = glob.glob(os.path.join(release_directory, "**", "*.json"), recursive=True)
+    for file in json_files:
         with open(file, 'r+', encoding='utf8') as f_in:
             json_file = json.load(f_in)
-            ids_in_file.append(json_file["id"])
-            ror_id = re.sub('https://ror.org/', '', json_file["id"])
-            org_name = json_file["name"]
-            print("Testing -", org_name, "- ROR ID:", ror_id, "...")
-            retrieve_check = retrieve_api(ror_id)
-            compare_check = compare_api(ror_id)
-            search_name_api_check = search_name_api(org_name)
-            with open(release_tests_outfile, 'a') as f_out:
+        ids_in_file.append(json_file["id"])
+        ror_id = re.sub('https://ror.org/', '', json_file["id"])
+        org_name = get_ror_display_name(json_file)
+        print("Testing -", org_name, "- ROR ID:", ror_id, "...")
+        retrieve_check = retrieve_api(ror_id)
+        compare_check, diff_json = compare_api(ror_id, json_file)
+        if diff_json:
+            with open(jsondiff_outfile, 'w') as f_out:
                 writer = csv.writer(f_out)
-                writer.writerow([ror_id, org_name, retrieve_check, compare_check, search_name_api_check])
-    compare_random_check = compare_random(ids_in_file)
-    if compare_random_check is not None:
-        print(compare_random_check,
-              "has changed. Investigate integrity of ROR dataset.")
+                writer.writerow([ror_id, diff_json])
+        search_name_api_check = search_name_api(
+            org_name)
+        with open(release_tests_outfile, 'a') as f_out:
+            writer = csv.writer(f_out)
+            writer.writerow([ror_id, org_name, retrieve_check,
+                             compare_check, search_name_api_check])
+    with open(all_ror_ids_file) as f_in:
+        all_ror_ids = [line.strip()
+                       for line in f_in if line.strip() not in ids_in_file]
+        random_ids = random.sample(all_ror_ids, min(50, len(all_ror_ids)))
+    compare_random_check = compare_random(random_ids)
+    if compare_random_check:
+        print("The following IDs have changed:", compare_random_check,
+              "Investigate integrity of ROR dataset.")
+
+
+def parse_arguments():
+    parser = argparse.ArgumentParser(description='Run release tests for ROR')
+    parser.add_argument('-r', '--release_directory', required=True,
+                        help='Path to the directory containing JSON files')
+    parser.add_argument('-a', '--all_ror_ids_file', default='all_ror_ids.txt',
+                        help='Path to the release tests output file')
+    parser.add_argument('-t', '--release_tests_outfile', default='release_tests.csv',
+                        help='Path to the release tests output file')
+    parser.add_argument('-j', '--jsondiff_outfile', default='jsondiff.csv',
+                        help='Path to the jsondiff output file')
+    args = parser.parse_args()
+    return args
+
+
+def main():
+    args = parse_arguments()
+    check_release_files(args.release_directory, args.all_ror_ids_file,
+                        args.release_tests_outfile, args.jsondiff_outfile)
 
 
 if __name__ == '__main__':
-    check_release_files()
+    main()
