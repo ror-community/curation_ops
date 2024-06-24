@@ -1,6 +1,6 @@
 ## Create records
 
-Script for creating records using the bulk update endpoint in the ROR API. Sllows submitting a CSV file for validation or record creation. See the [ROR API documentation](https://github.com/ror-community/ror-api?tab=readme-ov-file#create-new-record-file-v2-only) for the full details for the bulk update endpoint.
+Script for creating records using the bulk update endpoint in the ROR API. Allows submitting a CSV file for validation or record creation. See the [ROR API documentation](https://github.com/ror-community/ror-api?tab=readme-ov-file#create-new-record-file-v2-only) for the full details for the bulk update endpoint.
 
 ## Installation
 
