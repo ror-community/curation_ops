@@ -21,8 +21,7 @@ def format_v1_relationships(v2_relationships):
 # external_ids
 def get_v1_ext_id_type(v2_ext_id_type):
     type_key = "".join([k for k in v1_enums.EXTERNAL_ID_TYPES if \
-                        (v1_enums.EXTERNAL_ID_TYPES[k]==v2_ext_id_type.upper() or \
-                        v1_enums.EXTERNAL_ID_TYPES[k]==v2_ext_id_type.title())])
+                        v1_enums.EXTERNAL_ID_TYPES[k].lower()==v2_ext_id_type])
     if type_key:
         return v1_enums.EXTERNAL_ID_TYPES[type_key]
     else:
