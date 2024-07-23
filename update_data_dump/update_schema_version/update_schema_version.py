@@ -20,12 +20,17 @@ def save_individual_json(directory, record):
         json.dump(record, file, indent=4, ensure_ascii=False)
 
 
-def update_json_records(data_dump, exclude_ids, schema_version, updates_dir):
+def update_json_records(data_dump, ror_ids, choice_flag, schema_version, updates_dir):
     for record in data_dump:
         record_id = record['id']
-        if record_id not in exclude_ids:
-            record['admin']['last_modified']["schema_version"] = schema_version
-            save_individual_json(updates_dir, record)
+        if choice_flag == 'exclude':
+            if record_id not in ror_ids:
+                record['admin']['last_modified']["schema_version"] = schema_version
+                save_individual_json(updates_dir, record)
+        if choice_flag == 'include':
+            if record_id in ror_ids:
+                record['admin']['last_modified']["schema_version"] = schema_version
+                save_individual_json(updates_dir, record)
     return data_dump
 
 
@@ -45,6 +50,8 @@ def parse_args():
                         help='Path to the output JSON file')
     parser.add_argument('-u', '--updates_dir', default='updates',
                         help='Directory to save individual JSON files')
+    parser.add_argument('-c', '--exclude_or_include', required=True, choices=[
+                    "exclude", "include"], help='Flag for whether to exclude or include IDs in input file from the schema version update')
     parser.add_argument('-s', '--schema_version', required=True, choices=[
                         "1.0", "2.0"], help='Schema version with which to update JSON files')
     return parser.parse_args()
@@ -60,7 +67,7 @@ def main():
     data_dump = parse_json(args.data_dump_file)
     os.makedirs(args.updates_dir, exist_ok=True)
     updated_data_dump = update_json_records(
-        data_dump, exclude_ids, args.schema_version, args.updates_dir)
+        data_dump, exclude_ids, args.exclude_or_include, args.schema_version, args.updates_dir)
     save_json(args.output_file, updated_data_dump)
     print(f'Updated JSON records saved to {args.output_file}')
     print(f'Individual JSON files saved in {args.updates_dir} directory')

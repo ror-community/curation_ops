@@ -2,6 +2,7 @@ import json
 import csv
 import argparse
 from deepdiff import DeepDiff
+from deepdiff.model import PrettyOrderedSet
 
 
 def parse_arguments():
@@ -25,79 +26,124 @@ def load_json_files(file1, file2):
 
 def compare_records(dd_1_records, dd_2_records):
     differences = []
-    for record_id, record1 in dd_1_records.items():
-        record2 = dd_2_records.get(record_id)
-        if record2:
-            diff = DeepDiff(record1, record2, ignore_order=True)
-            if diff:
-                differences.append(
-                    {'id': record_id, 'diff': diff, 'error': None})
-        else:
-            differences.append(
-                {'id': record_id, 'diff': None, 'error': 'Record missing in file2'})
+    # Check for removed records
+    for record_id in dd_1_records.keys() - dd_2_records.keys():
+        differences.append({
+            'id': record_id,
+            'change_type': 'record_removed',
+            'diff': None
+        })
+    # Check for added records
     for record_id in dd_2_records.keys() - dd_1_records.keys():
-        differences.append(
-            {'id': record_id, 'diff': None, 'error': 'Record missing in file1'})
+        differences.append({
+            'id': record_id,
+            'change_type': 'record_added',
+            'diff': None
+        })
+    # Check for changes in existing records
+    for record_id in dd_1_records.keys() & dd_2_records.keys():
+        diff = DeepDiff(dd_1_records[record_id], dd_2_records[record_id], ignore_order=True)
+        if diff:
+            differences.append({
+                'id': record_id,
+                'change_type': 'record_changed',
+                'diff': dict(diff)
+            })
     return differences
 
 
 def parse_diff(diff):
     changes = []
-    for change_type, change_dict in diff.items():
-        for field_path, values in change_dict.items():
-            if change_type == 'type_changes':
-                changes.append({
-                    'field_path': field_path,
-                    'change_type': 'type_change',
-                    'old_value': str(values['old_value']),
-                    'new_value': str(values['new_value'])
-                })
-            elif change_type == 'values_changed':
-                changes.append({
-                    'field_path': field_path,
-                    'change_type': 'value_change',
-                    'old_value': values['old_value'],
-                    'new_value': values['new_value']
-                })
-            elif change_type in ['iterable_item_added', 'dictionary_item_added']:
-                changes.append({
-                    'field_path': field_path,
-                    'change_type': 'item_added',
-                    'old_value': None,
-                    'new_value': values
-                })
-            elif change_type in ['iterable_item_removed', 'dictionary_item_removed']:
-                changes.append({
-                    'field_path': field_path,
-                    'change_type': 'item_removed',
-                    'old_value': values,
-                    'new_value': None
-                })
+    for change_type, change_data in diff.items():
+        if isinstance(change_data, list):
+            for item in change_data:
+                if isinstance(item, str):
+                    field_path = item
+                    values = None
+                else:
+                    field_path, values = next(iter(item.items()))
+                changes.append(parse_change(change_type, field_path, values))
+        elif isinstance(change_data, dict):
+            for field_path, values in change_data.items():
+                changes.append(parse_change(change_type, field_path, values))
     return changes
 
 
+def parse_change(change_type, field_path, values):
+    if change_type == 'dictionary_item_removed':
+        return {
+            'field_path': str(field_path),
+            'change_type': 'item_removed',
+            'old_value': 'Present',
+            'new_value': 'Removed'
+        }
+    elif change_type == 'type_changes':
+        return {
+            'field_path': str(field_path),
+            'change_type': 'type_change',
+            'old_value': str(values['old_value']),
+            'new_value': str(values['new_value'])
+        }
+    elif change_type == 'values_changed':
+        return {
+            'field_path': str(field_path),
+            'change_type': 'value_change',
+            'old_value': str(values['old_value']),
+            'new_value': str(values['new_value'])
+        }
+    elif change_type in ['iterable_item_added', 'dictionary_item_added']:
+        return {
+            'field_path': str(field_path),
+            'change_type': 'item_added',
+            'old_value': 'Not present',
+            'new_value': 'Added'
+        }
+    elif change_type in ['iterable_item_removed']:
+        return {
+            'field_path': str(field_path),
+            'change_type': 'item_removed',
+            'old_value': str(values),
+            'new_value': 'Removed'
+        }
+    else:
+        raise ValueError(f"Unhandled change_type: {change_type} for field_path: {field_path} and values: {values}")
+
+
 def write_differences_to_csv(differences, output_file):
-    with open(output_file, 'w', newline='') as csvfile:
-        fieldnames = ['id', 'field_path',
-                      'change_type', 'old_value', 'new_value']
+    with open(output_file, 'w') as csvfile:
+        fieldnames = ['id', 'change_type', 'field_path', 'old_value', 'new_value']
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
         writer.writeheader()
         for diff in differences:
-            if diff['diff']:
-                changes = parse_diff(diff['diff'])
-                for change in changes:
-                    row = {
-                        'id': diff['id'],
-                        'field_path': change['field_path'],
-                        'change_type': change['change_type'],
-                        'old_value': change['old_value'],
-                        'new_value': change['new_value']
-                    }
-                    writer.writerow(row)
-            if diff['error']:
-                writer.writerow({'id': diff['id'], 'field_path': None,
-                                 'change_type': 'error', 'old_value': None,
-                                 'new_value': diff['error']})
+            if diff['change_type'] in ['record_added', 'record_removed']:
+                writer.writerow({
+                    'id': diff['id'],
+                    'change_type': diff['change_type'],
+                    'field_path': 'entire_record',
+                    'old_value': 'Present' if diff['change_type'] == 'record_removed' else 'Not present',
+                    'new_value': 'Removed' if diff['change_type'] == 'record_removed' else 'Added'
+                })
+            elif diff['change_type'] == 'record_changed':
+                for change_type, change_data in diff['diff'].items():
+                    if isinstance(change_data, (list, PrettyOrderedSet)):
+                        for item in change_data:
+                            change = parse_change(change_type, item, None)
+                            writer.writerow({
+                                'id': diff['id'],
+                                **change
+                            })
+                    elif isinstance(change_data, dict):
+                        for field_path, values in change_data.items():
+                            change = parse_change(change_type, field_path, values)
+                            writer.writerow({
+                                'id': diff['id'],
+                                **change
+                            })
+                    else:
+                        raise ValueError(f"Unexpected change_data type: {type(change_data)} for diff: {diff}")
+            else:
+                raise ValueError(f"Unhandled change_type: {diff['change_type']} for diff: {diff}")
+            print(f"Wrote row for diff: {diff['id']}")
 
 
 def main():
