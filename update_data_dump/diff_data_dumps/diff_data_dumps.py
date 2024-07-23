@@ -143,7 +143,6 @@ def write_differences_to_csv(differences, output_file):
                         raise ValueError(f"Unexpected change_data type: {type(change_data)} for diff: {diff}")
             else:
                 raise ValueError(f"Unhandled change_type: {diff['change_type']} for diff: {diff}")
-            print(f"Wrote row for diff: {diff['id']}")
 
 
 def main():
