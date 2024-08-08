@@ -1,5 +1,5 @@
 # move_to_column.py
-Moves GitHub issues listed in a CSV file to a specified column curationproject.
+Moves GitHub issues listed in a CSV file to a specified column in the curation project.
 
 ## Installation
 ```
