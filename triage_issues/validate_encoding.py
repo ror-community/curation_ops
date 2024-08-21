@@ -1,6 +1,6 @@
 from collections import defaultdict
 
-def validate_encoding_v2(encoding):
+def validate_encoding(encoding):
     valid_fields = ['status', 'established', 'geonames', 'domains', 'fundref.all', 'fundref.preferred', 'grid.all', 'grid.preferred', 'isni.all', 'isni.preferred', 'wikidata.all', 'wikidata.preferred', 'website', 'wikipedia', 'acronym', 'alias', 'label', 'ror_display', 'types']
     non_repeating_fields = ['status', 'established', 'geonames']
     repeating_fields = ['domains', 'fundref.all', 'fundref.preferred', 'grid.all', 'grid.preferred', 'isni.all', 'isni.preferred', 'wikidata.all', 'wikidata.preferred', 'website', 'wikipedia', 'acronym', 'alias', 'label', 'ror_display', 'types']
