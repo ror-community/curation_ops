@@ -35,7 +35,7 @@ def validate_encoding(encoding):
     for field_operation, values in field_values.items():
         concatenated_values = "; ".join(values)
         valid_parts.append(f"{field_operation}=={concatenated_values}")
-    result = "Update_v2: " + " | ".join(valid_parts) + "$"
+    result = "Update: " + " | ".join(valid_parts) + "$"
     if result == "Update_v2:$" or result == "Update_v2: $":
         return None
     return result
