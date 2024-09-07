@@ -16,9 +16,9 @@ def parse_args():
     parser = argparse.ArgumentParser(
         description="Normalize and match URLs from CSV and JSON files.")
     parser.add_argument('-i', '--input_file', required=True,
-                        help="Path to the input CSV file.")
+                        help="Path to the input file.")
     parser.add_argument('-d', '--data_dump', required=True,
-                        help="Path to the input JSON file.")
+                        help="Path to the data dump file.")
     parser.add_argument('-o', '--output_file', default="matched_urls.csv",
                         help="Path to the output file for matched results.")
     return parser.parse_args()
