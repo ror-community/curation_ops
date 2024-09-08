@@ -2,10 +2,12 @@ import os
 import re
 import csv
 import sys
-import json
 import argparse
 import requests
 from github import Github
+from github_project_issues import get_column_issue_numbers
+
+GITHUB_TOKEN = os.environ.get('GITHUB_TOKEN')
 
 
 def get_ror_display_name(record):
@@ -15,7 +17,6 @@ def get_ror_display_name(record):
 def get_ror_name(ror_id, max_retries=3, retry_delay=5):
     print(ror_id)
     url = f'https://api.ror.org/v2/organizations/{ror_id}'
-
     for attempt in range(max_retries):
         try:
             response = requests.get(url)
@@ -32,6 +33,17 @@ def get_ror_name(ror_id, max_retries=3, retry_delay=5):
         except json.decoder.JSONDecodeError as e:
             print(f"Error: Failed to parse JSON response for {ror_id}. Response: {response.text}")
             return ""
+
+
+def find_between(s, first, last):
+    try:
+        start = s.index(first) + len(first)
+        end = s.index(last, start)
+        match = s[start:end]
+        match = match.strip()
+        return match
+    except ValueError:
+        return ''
 
 
 def dict_from_csv(f):
@@ -52,69 +64,46 @@ def dict_from_csv(f):
     return release_ids, ids_k_names_v, names_k_ids_v
 
 
-def find_between(s, first, last):
-    try:
-        start = s.index(first) + len(first)
-        end = s.index(last, start)
-        match = s[start:end]
-        match = match.strip()
-        return match
-    except ValueError:
-        return ''
-
-
-def extract_relationships(input_file, output_file):
+def extract_relationships(issue_numbers, repo, input_file, output_file):
+    g = Github(GITHUB_TOKEN)
+    github_repo = g.get_repo(repo)
     release_ids, ids_k_names_v, names_k_ids_v = dict_from_csv(input_file)
     header = ['Issue # from Github', 'Issue URL', 'Issue title from Github', 'Name of org in Record ID', 'Record ID',
               'Related ID', 'Name of org in Related ID', 'Relationship of Related ID to Record ID', 'Current location of Related ID']
     with open(output_file, 'w') as f_out:
         writer = csv.writer(f_out)
         writer.writerow(header)
-    g = Github(os.environ['GITHUB_TOKEN'])
-    repo = g.get_repo("ror-community/ror-updates")
-    project = repo.get_projects()[0]
-    columns = project.get_columns()
-    ready_for_prod = [column for column in columns if column.name ==
-                      'Ready for production release'][0]
-    cards = ready_for_prod.get_cards()
-    issues = []
-    for card in cards:
-        issue = card.get_content()
-        if issue:
-            issues.append(issue)
-    for issue in issues:
-        issue_number = issue.number
-        issue_title = issue.title
-        org_name, org_ror_id = '', ''
-        issue_body = issue.body
-        issue_text = issue_body + \
-            ' '.join([comment.body for comment in issue.get_comments()])
-        issue_html_url = issue.html_url
-        rel_pattern = re.compile(
-            r'[https]{0,5}\:\/\/ror\.org\/[a-z0-9]{9}\s+\([a-zA-Z\-]{0,}\)')
-        relationships = rel_pattern.findall(issue_text)
-        if relationships:
-            org_ror_id = find_between(issue_body, 'ROR ID:', '\n')
-            org_name = find_between(issue_body, 'Name of organization:', '\n')
-            org_name = org_name.split('*')[0]
-            if not org_ror_id:
-                org_ror_id = names_k_ids_v[org_name]
-            for relationship in relationships:
-                relationship = relationship.split(' ')
-                relationship = [r.strip() for r in relationship if r != '']
-                related_ror_id = relationship[0].strip()
-                relationship_type = relationship[1].strip().lower()
-                relationship_type = re.sub(r'[()]', '', relationship_type)
-                relationship_type = relationship_type.capitalize()
-                if related_ror_id in release_ids:
-                    try:
-                        related_name = ids_k_names_v[related_ror_id]
-                    except KeyError:
-                        related_name = ''
-                else:
-                    related_name = get_ror_name(related_ror_id)
-                with open(output_file, 'a') as f_out:
-                    writer = csv.writer(f_out)
+        for issue_number in issue_numbers:
+            issue = github_repo.get_issue(issue_number)
+            issue_number = str(issue_number)
+            issue_title = issue.title
+            org_name, org_ror_id = '', ''
+            issue_text = issue.body
+            issue_html_url = issue.html_url
+            rel_pattern = re.compile(
+                r'[https]{0,5}\:\/\/ror\.org\/[a-z0-9]{9}\s+\([a-zA-Z\-]{0,}\)')
+            relationships = rel_pattern.findall(issue_text)
+            if relationships:
+                org_ror_id = find_between(issue_text, 'ROR ID:', '\n')
+                org_name = find_between(
+                    issue_text, 'Name of organization:', '\n')
+                org_name = org_name.split('*')[0]
+                if not org_ror_id:
+                    org_ror_id = names_k_ids_v.get(org_name, '')
+                for relationship in relationships:
+                    relationship = relationship.split(' ')
+                    relationship = [r.strip() for r in relationship if r != '']
+                    related_ror_id = relationship[0].strip()
+                    relationship_type = relationship[1].strip().lower()
+                    relationship_type = re.sub(r'[()]', '', relationship_type)
+                    relationship_type = relationship_type.capitalize()
+                    if related_ror_id in release_ids:
+                        try:
+                            related_name = ids_k_names_v[related_ror_id]
+                        except KeyError:
+                            related_name = ''
+                    else:
+                        related_name = get_ror_name(related_ror_id)
                     locations = ['Release', 'Release'] if related_ror_id in release_ids else [
                         'Production', 'Release']
                     entry = [issue_number, issue_html_url, issue_title, org_name, org_ror_id,
@@ -140,15 +129,28 @@ def extract_relationships(input_file, output_file):
                         writer.writerow(inverted_entry)
 
 
-def main():
+def parse_arguments():
     parser = argparse.ArgumentParser(
-        description='Extract relationships from GitHub issues.')
-    parser.add_argument('-i', '--input', required=True,
-                        help='Input CSV file (default: relationships.csv)')
-    parser.add_argument('-o', '--output', default='relationships.csv',
-                        help='Output CSV file (default: output_relationships.csv)')
-    args = parser.parse_args()
-    extract_relationships(args.input, args.output)
+        description='Extract relationships from GitHub issues using GraphQL API.')
+    parser.add_argument('-r', '--repo', default="ror-community/ror-updates",
+                        help='GitHub repository name in the format owner/repo')
+    parser.add_argument('-p', '--project_number', type=int, default=19,
+                        help='GitHub project number')
+    parser.add_argument('-c', '--column_name', default="Ready for production release",
+                        help='Project column name where records are located')
+    parser.add_argument('-i', '--input_file', required=True,
+                        help='Input CSV file with ROR data')
+    parser.add_argument('-o', '--output_file', default='relationships.csv',
+                        help='Output CSV file for relationships')
+    return parser.parse_args()
+
+
+def main():
+    args = parse_arguments()
+    issues = get_column_issue_numbers(
+        args.repo, args.project_number, args.column_name)
+    extract_relationships(issues, args.repo, args.input_file, args.output_file)
+    print(f"Relationships extracted and saved to {args.output_file}")
 
 
 if __name__ == '__main__':
