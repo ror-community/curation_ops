@@ -16,7 +16,7 @@ python get_record_metadata.py -t [new|updates] [-r REPO] [-p PROJECT_NUMBER] [-c
 ```
 
 ### Arguments
-- `-t, --issue_type`: Type of issues to process (required, 'new' or 'updates')
+- `-t, --issue_type`: Type of issues to process (required, 'new' or 'update')
 - `-r, --repo`: GitHub repository (default: "ror-community/ror-updates")
 - `-p, --project_number`: GitHub project number (default: 19, ROR Updates project)
 - `-c, --column_name`: Project column name (default: "Ready for sign-off / metadata QA")
