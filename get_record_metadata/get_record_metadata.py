@@ -240,7 +240,7 @@ def parse_arguments():
                         help='GitHub project number')
     parser.add_argument('-c', '--column_name', default="Ready for sign-off / metadata QA",
                         help='Project column name where records are located')
-    parser.add_argument('-t', '--issue_type', choices=['new', 'updates'], required=True,
+    parser.add_argument('-t', '--issue_type', choices=['new', 'update'], required=True,
                         help='Type of issues to process: new or update')
     parser.add_argument('-f', '--output_file',
                         help='Output file path (default: new_records_metadata.csv or update_records_metadata.csv based on issue type)')
