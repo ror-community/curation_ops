@@ -12,7 +12,7 @@ pip install -r requirements.txt
 
 ## Usage
 ```
-python get_record_metadata.py -t [new|updates] [-r REPO] [-p PROJECT_NUMBER] [-c COLUMN_NAME] [-f OUTPUT_FILE]
+python get_record_metadata.py -t [new|update] [-r REPO] [-p PROJECT_NUMBER] [-c COLUMN_NAME] [-f OUTPUT_FILE]
 ```
 
 ### Arguments
