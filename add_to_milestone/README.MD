@@ -1,22 +1,29 @@
 # add_to_milestone.py
 
-Adds issues in the 'Ready for production release' column of the ror-updates project to a specified milestone.
+Adds issues from a specific project column to a milestone in a GitHub repository.
 
 ## Installation
 
 ```
-pip install -r requirements.txt`
+pip install -r requirements.txt
 ```
 
 ## Setup
 
-1. Set a `GITHUB_TOKEN` environment variable with a valid Github access token with permissions for ror-updates.
+1. Set a `GITHUB_TOKEN` environment variable with a valid GitHub access token with appropriate permissions for the target repository.
 
 ## Usage
 
 ```
-python add_to_milestone.py <milestone_number>
+python add_to_milestone.py -m <milestone_number> [options]
 ```
 
-- `-m, --milestone_number`: (Required) An integer representing the milestone number to add issues to.
+### Required Arguments:
 
+- `-m, --milestone`: An integer representing the milestone number to add issues to.
+
+### Optional Arguments:
+
+- `-r, --repo`: GitHub repository name in the format owner/repo (default is "ror-community/ror-updates")
+- `-p, --project_number`: GitHub project number (default is 19, which is the ror-updates project)
+- `-c, --column_name`: Project column name where issues are located (default is "Ready for production release")
