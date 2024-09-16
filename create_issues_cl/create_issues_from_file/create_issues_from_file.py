@@ -88,14 +88,13 @@ def format_relationships(record):
 def create_update_issue(repo, ror_id, fields, description):
     name = get_ror_name(ror_id)
     issue_title = f"Modify the information in an existing ROR record: {name} - {ror_id}"
-    issue_body = f"""
-    Summary of request: Modify the information in an existing ROR record
+    issue_body = f"""Summary of request: Modify the information in an existing ROR record
+
+Name of organization: {name}
+ROR ID: {ror_id}
+Which part of the record needs to be changed? {fields}
+Description of change: {description}"""
     
-    Name of organization: {name}
-    ROR ID: {ror_id}
-    Which part of the record needs to be changed? {fields}
-    Description of change: {description}
-    """
     labels = ["triage needed", "level 2", "update record", "jaguar"]
     issue = repo.create_issue(
         title=issue_title, body=issue_body, labels=labels)
