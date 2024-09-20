@@ -6,6 +6,7 @@ import logging
 import sys
 import re
 from datetime import date
+from datetime import datetime
 from zipfile import ZipFile, ZIP_DEFLATED
 sys.path.append('../utilities/data_dump_to_csv')
 import convert_to_csv
@@ -16,7 +17,7 @@ import convert_v2_to_v1
 import update_dates_v2
 
 
-TODAY = date.today()
+DEFAULT_DATE = datetime.today().strftime('%Y-%m-%d')
 ERROR_LOG = "errors.log"
 
 logging.basicConfig(filename=ERROR_LOG,level=logging.ERROR, filemode='w')
@@ -64,7 +65,7 @@ def convert_dump(dump_zip_path, output_schema_version, input_path, output_path):
     print(filename)
 
     open(output_path + filename, "w").write(
-        json.dumps(converted_records, indent=4, separators=(',', ': '))
+        json.dumps(converted_records, ensure_ascii=False, indent=4, separators=(',', ': '))
     )
     if os.path.exists(output_path + filename):
         return output_path + filename
@@ -74,20 +75,21 @@ def convert_dump(dump_zip_path, output_schema_version, input_path, output_path):
     #    logging.error(f"Error creating v{output_schema_version} dump file: {e}")
 
 def convert_file(file, output_schema_version, output_path):
+
     try:
         with open(file) as infile:
             record = json.load(infile)
             ror_id = re.sub('https://ror.org/', '', record['id'])
             if output_schema_version == 2:
-                converted_record = convert_v1_to_v2.convert_v1_to_v2(record)
+                converted_record = convert_v1_to_v2.convert_v1_to_v2(record, DEFAULT_DATE)
             else:
                 converted_record = convert_v2_to_v1.convert_v2_to_v1(record)
         with open(output_path + ror_id + ".json", "w") as writer:
             writer.write(
-            json.dumps(converted_record, indent=4, separators=(',', ': '))
+            json.dumps(converted_record, ensure_ascii=False, indent=2, separators=(',', ': '))
             )
     except Exception as e:
-        logging.error(f"Error concatenating files: {e}")
+        logging.error(f"Error converting file: {e}")
 
 
 def get_files(input):
@@ -113,7 +115,7 @@ def main():
     parser.add_argument('-d', '--datesfile', type=str)
     parser.add_argument('-v', '--schemaversion', choices=[1, 2], type=int, required=True, help='Output schema version (1 or 2)')
     args = parser.parse_args()
-    global TODAY
+    global DEFAULT_DATE
 
     if args.dumpfile:
         if os.path.exists(args.dumpfile):
@@ -145,7 +147,7 @@ def main():
             print(f"Converting files to v{args.schemaversion}")
             for file in files:
                 print(f"Processing {file}")
-                convert_v1_file(file, rgs.schemaversion, args.outputpath)
+                convert_file(file, args.schemaversion, args.outputpath)
         else:
             print("No files exist in " + args.inputpath)
 

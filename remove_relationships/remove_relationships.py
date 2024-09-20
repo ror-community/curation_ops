@@ -1,3 +1,4 @@
+import argparse
 from curses import noecho
 import json
 import os
@@ -5,22 +6,27 @@ import logging
 import requests
 import sys
 from urllib.parse import urlparse
+from datetime import datetime
 
 ERROR_LOG = "relationship_errors.log"
 logging.basicConfig(filename=ERROR_LOG,level=logging.ERROR, filemode='w')
-API_URL = "http://api.ror.org/organizations/"
+V1_API_URL = "http://api.ror.org/v1/organizations/"
+V2_API_URL = "http://api.ror.org/v2/organizations/"
 UPDATED_RECORDS_PATH = "updates/"
 INACTIVE_STATUSES = ('inactive', 'withdrawn')
+LAST_MOD_DATE =  datetime.now().strftime("%Y-%m-%d")
 
-def remove_relationships_from_file(inactive_id, related_filepath):
+def remove_relationships_from_file(inactive_id, related_filepath, version):
     removed_relationships = {}
     try:
         with open(related_filepath, 'r+') as f:
             file_data = json.load(f)
             if (file_data['status'] =='active') and len(file_data['relationships']) > 0:
                 original_relationships = file_data['relationships']
-                updated_relationships = [r for r in original_relationships if ((not r['id'] == inactive_id) or (r['id'] == inactive_id and r['type'] == 'Predecessor'))]
+                updated_relationships = [r for r in original_relationships if ((not r['id'] == inactive_id) or (r['id'] == inactive_id and r['type'].lower() == 'predecessor'))]
                 file_data['relationships'] = updated_relationships
+                if version == 2:
+                    file_data['admin']['last_modified']['date'] = LAST_MOD_DATE
                 f.seek(0)
                 json.dump(file_data, f, ensure_ascii=False, indent=2)
                 f.truncate()
@@ -30,9 +36,10 @@ def remove_relationships_from_file(inactive_id, related_filepath):
         logging.error(f"Error opening file {related_filepath}: {e}")
     return removed_relationships_pruned
 
-def get_record(id, filename, inactive_id):
+def get_record(id, filename, inactive_id, version):
     filepath = ''
-    download_url=API_URL + id
+    api_url = V2_API_URL if version == 2 else V1_API_URL
+    download_url=api_url + id
     if not os.path.exists(UPDATED_RECORDS_PATH):
         os.makedirs(UPDATED_RECORDS_PATH)
     try:
@@ -43,7 +50,7 @@ def get_record(id, filename, inactive_id):
     try:
         response = rsp.json()
         if (response['status'] =='active') and len(response['relationships']) > 0:
-            inactive_relationships = [r for r in response['relationships'] if (r['id'] == inactive_id and r['type'] != 'Predecessor')]
+            inactive_relationships = [r for r in response['relationships'] if (r['id'] == inactive_id and r['type'].lower() != 'predecessor')]
             if len(inactive_relationships) > 0:
                 with open(UPDATED_RECORDS_PATH + filename, "w", encoding='utf8') as f:
                     json.dump(response, f,  ensure_ascii=False)
@@ -75,7 +82,7 @@ def get_inactive_ids_relationships():
                     logging.error(f"Error opening file {filepath}: {e}")
     return inactive_ids_relationships
 
-def remove_relationships():
+def remove_relationships(version):
     all_removed_relationships = []
     no_relationship_in_related_file = []
     inactive_ids_relationships = get_inactive_ids_relationships()
@@ -89,18 +96,18 @@ def remove_relationships():
             # download record if it's not already in updates dir
             # get_record() checks if relationship actually exists in record before downloading
             if related_filepath == '':
-                related_filepath = get_record(relationship['id'], related_filename, inactive_id)
+                related_filepath = get_record(relationship['id'], related_filename, inactive_id, version)
             # get_record() returns empty string if record not downloaded bc relationship doesn't exist
             if related_filepath != '':
-                removed_relationships = remove_relationships_from_file(inactive_id, related_filepath)
+                removed_relationships = remove_relationships_from_file(inactive_id, related_filepath, version)
                 all_removed_relationships.append(removed_relationships)
             else:
                 no_relationship_in_related_file.append([inactive_id, relationship])
     all_removed_relationships_pruned = [r for r in all_removed_relationships if r]
     return all_removed_relationships_pruned, no_relationship_in_related_file
 
-def main():
-    removed_relationships, no_relationship_in_related_file = remove_relationships()
+def main(version):
+    removed_relationships, no_relationship_in_related_file = remove_relationships(version)
     print(str(len(removed_relationships)) + " relationship(s) removed")
     if len(removed_relationships) > 0:
         print(removed_relationships)
@@ -117,4 +124,7 @@ def main():
         sys.exit(1)
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description="Script to updated organization names on related records")
+    parser.add_argument('-v', '--schemaversion', choices=[1, 2], type=int, required=True, help='Schema version (1 or 2)')
+    args = parser.parse_args()
+    main(args.schemaversion)

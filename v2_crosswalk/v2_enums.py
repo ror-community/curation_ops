@@ -47,3 +47,13 @@ STATUSES = {
                 "INACTIVE" : "inactive",
                 "WITHDRAWN" : "withdrawn"
             }
+
+SORT_KEYS = {
+    "domains": None,
+    "external_ids": "type",
+    "links": "type",
+    "locations": "geonames_id",
+    "names": "value",
+    "relationships": "type",
+    "types": None
+}

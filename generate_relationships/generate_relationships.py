@@ -1,53 +1,22 @@
+import argparse
 import json
 import os
 import logging
 import requests
 from csv import DictReader
+from datetime import datetime
 import re
 import sys
 
 ERROR_LOG = "relationship_errors.log"
 logging.basicConfig(filename=ERROR_LOG,level=logging.ERROR, filemode='w')
-API_URL = "http://api.ror.org/organizations/"
+V1_API_URL = "https://api.ror.org/v1/organizations/"
+V2_API_URL = "https://api.ror.org/v2/organizations/"
 UPDATED_RECORDS_PATH = "updates/"
-INVERSE_TYPES = ('Parent', 'Child', 'Related')
-REL_INVERSE = {'Parent': 'Child', 'Child': 'Parent', 'Related': 'Related',
-                'Successor': 'Predecessor', 'Predecessor': 'Successor'}
-
-def get_relationships_from_file(file):
-    print("PROCESSING CSV")
-    relation = []
-    rel_dict = {}
-    row_count = 0
-    relationship_count = 0
-    try:
-        with open(file, 'r') as rel:
-            relationships = DictReader(rel)
-            for row in relationships:
-                row_count += 1
-                check_record_id = parse_record_id(row['Record ID'])
-                check_related_id = parse_record_id(row['Related ID'])
-                # check that related ID is an active record
-                check_related_id_status = get_record_status(check_related_id)
-                if (check_record_id and check_related_id):
-                    if check_related_id_status == 'active' or row['Relationship of Related ID to Record ID'].title() == 'Predecessor':
-                        rel_dict['short_record_id'] = check_record_id
-                        rel_dict['short_related_id'] = check_related_id
-                        rel_dict['record_name'] = row['Name of org in Record ID']
-                        rel_dict['record_id'] = row['Record ID']
-                        rel_dict['related_id'] = row['Related ID']
-                        rel_dict['related_name'] = row['Name of org in Related ID']
-                        rel_dict['record_relationship'] = row['Relationship of Related ID to Record ID'].title()
-                        rel_dict['related_location'] = row['Current location of Related ID'].title()
-                        relation.append(rel_dict.copy())
-                        relationship_count += 1
-                    else:
-                        logging.error(f"Related ID from CSV: {check_related_id} has a status other than active and a relationship type other than Predecessor. Relationship row {row_count} cannot be processed")
-        print(str(row_count)+ " rows found")
-        print(str(relationship_count)+ " valid relationships found")
-    except IOError as e:
-        logging.error(f"Reading file {file}: {e}")
-    return relation
+INVERSE_TYPES = ('parent', 'child', 'related')
+REL_INVERSE = {'parent': 'child', 'child': 'parent', 'related': 'related',
+                'successor': 'predecessor', 'predecessor': 'successor'}
+LAST_MOD_DATE =  datetime.now().strftime("%Y-%m-%d")
 
 def check_file(file):
     filepath = ''
@@ -66,7 +35,7 @@ def parse_record_id(id):
         logging.error(f"ROR ID: {id} does not match format: {pattern}. Record will not be processed")
     return parsed_id
 
-def get_record_status(record_id):
+def get_record_status(record_id, version):
     status = ''
     filepath = check_file(record_id + ".json")
     if filepath:
@@ -77,7 +46,8 @@ def get_record_status(record_id):
         except Exception as e:
             logging.error(f"Error reading {filepath}: {e}")
     else:
-        download_url=API_URL + record_id
+        api_url = V2_API_URL if version == 2 else V1_API_URL
+        download_url=api_url + record_id
         try:
             rsp = requests.get(download_url)
             rsp.raise_for_status()
@@ -87,8 +57,9 @@ def get_record_status(record_id):
             logging.error(f"Request for {download_url}: {e}")
     return status
 
-def get_record(id, filename):
-    download_url=API_URL + id
+def get_record(id, filename, version):
+    api_url = V2_API_URL if version == 2 else V1_API_URL
+    download_url=api_url + id
     try:
         rsp = requests.get(download_url)
         rsp.raise_for_status()
@@ -111,18 +82,28 @@ def has_inverse_rel_csv(current_rel, all_rels):
     print("Has inverse is " + str(has_inverse))
     return has_inverse
 
-def download_records(relationships):
+def download_records(relationships, version):
     print("DOWNLOADING PRODUCTION RECORDS")
     downloaded_records_count = 0
     if not os.path.exists(UPDATED_RECORDS_PATH):
         os.makedirs(UPDATED_RECORDS_PATH)
     # download all records that are labeled as in production
     for r in relationships:
-        if r['related_location'] == "Production" and (r['record_relationship'] in INVERSE_TYPES or has_inverse_rel_csv(r, relationships)):
-            filename = r['short_related_id'] + ".json"
-            if not(check_file(filename)):
-                get_record(r['short_related_id'], filename)
-                downloaded_records_count += 1
+        if r['record_relationship'].lower() == 'delete':
+            record_filename = r['short_record_id'] + ".json"
+            if not(check_file(record_filename)):
+                    get_record(r['short_record_id'], record_filename, version)
+                    downloaded_records_count += 1
+            related_filename = r['short_related_id'] + ".json"
+            if not(check_file(related_filename)):
+                    get_record(r['short_related_id'], related_filename, version)
+                    downloaded_records_count += 1
+        else:
+            if r['related_location'].lower() == "production" and (r['record_relationship'] in INVERSE_TYPES or has_inverse_rel_csv(r, relationships)):
+                filename = r['short_related_id'] + ".json"
+                if not(check_file(filename)):
+                    get_record(r['short_related_id'], filename, version)
+                    downloaded_records_count += 1
     print(str(downloaded_records_count) + " records downloaded")
 
 def remove_missing_files(relationships, missing_files):
@@ -149,12 +130,29 @@ def check_missing_files(relationships):
         relationships = remove_missing_files(relationships, missing_files)
     return relationships
 
-def check_relationship(former_relationship, current_relationship_id, current_relationship_type):
-    return [r for r in former_relationship if ((not r['id'] == current_relationship_id) or (r['id'] == current_relationship_id and (not r['type'] == current_relationship_type)))]
+def check_relationship(former_relationship, current_relationship_id, current_relationship_type, version):
+    if not version >= 2:
+        current_relationship_type = current_relationship_type.title()
+    if current_relationship_type.lower() == 'delete':
+        return [r for r in former_relationship if not r['id'] == current_relationship_id]
+    else:
+        return [r for r in former_relationship if ((not r['id'] == current_relationship_id) or (r['id'] == current_relationship_id and (not r['type'] == current_relationship_type)))]
 
-def get_related_name_api(related_id):
+
+def get_record_name(record, version):
+    record_name = None
+    if version == 2:
+        ror_display  = [name for name in record['names'] if 'ror_display' in name['types']]
+        record_name = ror_display[0]['value']
+    if version == 1:
+        record_name = record['name']
+    return record_name
+
+
+def get_related_name_api(related_id, version):
     name = None
-    download_url=API_URL + related_id
+    api_url = V2_API_URL if version == 2 else V1_API_URL
+    download_url=api_url + related_id
     try:
         rsp = requests.get(download_url)
         rsp.raise_for_status()
@@ -163,12 +161,12 @@ def get_related_name_api(related_id):
 
     try:
         response = rsp.json()
-        name = response['name']
+        name = get_record_name(response, version)
     except Exception as e:
         logging.error(f"Getting name for {related_id}: {e}")
     return name
 
-def get_related_name(related_id):
+def get_related_name(related_id, version):
     filename = related_id + ".json"
     filepath = check_file(filename)
     name = None
@@ -176,55 +174,137 @@ def get_related_name(related_id):
         try:
             with open(filepath, 'r') as f:
                 file_data = json.load(f)
-                name = file_data['name']
+                name = get_record_name(file_data, version)
         except Exception as e:
             logging.error(f"Reading {filepath}: {e}")
     else:
-        name = get_related_name_api(related_id)
+        name = get_related_name_api(related_id, version)
     return name
 
-def process_one_relationship(relationship):
+def process_one_relationship(relationship, version):
     filename = relationship['short_record_id'] + ".json"
     filepath = check_file(filename)
     relationship_data = {
-        "label": get_related_name(relationship['short_related_id']),
-        "type": relationship['record_relationship'],
+        "label": get_related_name(relationship['short_related_id'], version),
+        "type": relationship['record_relationship'] if version==2 else relationship['record_relationship'].title(),
         "id": relationship['related_id']
     }
     try:
         with open(filepath, 'r+') as f:
             file_data = json.load(f)
-            file_data['relationships'] = check_relationship(file_data['relationships'], relationship['related_id'], relationship['record_relationship'])
+            file_data['relationships'] = check_relationship(file_data['relationships'], relationship['related_id'], relationship['record_relationship'], version)
             file_data['relationships'].append(relationship_data.copy())
+            if version == 2:
+                file_data['admin']['last_modified']['date'] = LAST_MOD_DATE
             f.seek(0)
             json.dump(file_data, f, ensure_ascii=False, indent=2)
             f.truncate()
     except Exception as e:
         logging.error(f"Writing {filepath}: {e}")
 
-def process_relationships(relationships):
-    print("UPDATING RECORDS")
-    processed_relationships_count = 0
-    for r in relationships:
-        process_one_relationship(r)
-        processed_relationships_count += 1
-    print(str(processed_relationships_count) + " relationships updated")
+def delete_one_relationship(relationship, version):
+    record_filename = relationship['short_record_id'] + ".json"
+    record_filepath = check_file(record_filename)
+    try:
+        with open(record_filepath, 'r+') as f:
+            file_data = json.load(f)
+            file_data['relationships'] = check_relationship(file_data['relationships'], relationship['related_id'], relationship['record_relationship'], version)
+            if version == 2:
+                file_data['admin']['last_modified']['date'] = LAST_MOD_DATE
+            f.seek(0)
+            json.dump(file_data, f, ensure_ascii=False, indent=2)
+            f.truncate()
+    except Exception as e:
+        logging.error(f"Writing {record_filepath}: {e}")
 
-def generate_relationships(file):
+    related_filename = relationship['short_related_id'] + ".json"
+    related_filepath = check_file(related_filename)
+    try:
+        with open(related_filepath, 'r+') as f:
+            file_data = json.load(f)
+            file_data['relationships'] = check_relationship(file_data['relationships'], relationship['record_id'], relationship['record_relationship'], version)
+            if version == 2:
+                file_data['admin']['last_modified']['date'] = LAST_MOD_DATE
+            f.seek(0)
+            json.dump(file_data, f, ensure_ascii=False, indent=2)
+            f.truncate()
+    except Exception as e:
+        logging.error(f"Writing {related_filepath}: {e}")
+
+
+
+def process_add_relationships(add_relationships, version):
+    print("ADDING RELATIONSHIPS")
+    added_relationships_count = 0
+    for r in add_relationships:
+        process_one_relationship(r, version)
+        added_relationships_count += 1
+    print(str(added_relationships_count) + " relationships added")
+
+
+def process_delete_relationships(delete_relationships, version):
+    print("DELETING RELATIONSHIPS")
+    deleted_relationships_count = 0
+    for r in delete_relationships:
+        delete_one_relationship(r, version)
+        deleted_relationships_count += 1
+    print(str(deleted_relationships_count) + " relationships deleted")
+
+
+def get_relationships_from_file(file, version):
+    print("PROCESSING CSV")
+    relationships = []
+    rel_dict = {}
+    row_count = 0
+    relationship_count = 0
+    try:
+        with open(file, 'r') as rel:
+            rel_file_rows = DictReader(rel)
+            for row in rel_file_rows:
+                row_count += 1
+                check_record_id = parse_record_id(row['Record ID'])
+                check_related_id = parse_record_id(row['Related ID'])
+                # check that related ID is an active record
+                check_related_id_status = get_record_status(check_related_id, version)
+                if (check_record_id and check_related_id):
+                    if check_related_id_status == 'active' or \
+                        row['Relationship of Related ID to Record ID'].lower() == 'predecessor' or \
+                        row['Relationship of Related ID to Record ID'].lower() == 'delete':
+                        rel_dict['short_record_id'] = check_record_id
+                        rel_dict['short_related_id'] = check_related_id
+                        rel_dict['record_name'] = row['Name of org in Record ID']
+                        rel_dict['record_id'] = row['Record ID']
+                        rel_dict['related_id'] = row['Related ID']
+                        rel_dict['related_name'] = row['Name of org in Related ID']
+                        rel_dict['record_relationship'] = row['Relationship of Related ID to Record ID'].lower()
+                        rel_dict['related_location'] = row['Current location of Related ID'].title()
+                        relationships.append(rel_dict.copy())
+                        relationship_count += 1
+                    else:
+                        logging.error(f"Related ID from CSV: {check_related_id} has a status other than active and a relationship type other than Predecessor. Relationship row {row_count} cannot be processed")
+        print(str(row_count)+ " rows found")
+        print(str(relationship_count)+ " valid relationships found")
+    except IOError as e:
+        logging.error(f"Reading file {file}: {e}")
+    return relationships
+
+def generate_relationships(file, version):
     if check_file(file):
-        relationships = get_relationships_from_file(file)
+        relationships = get_relationships_from_file(file, version)
         if relationships:
-            download_records(relationships)
+            download_records(relationships, version)
             relationships_missing_files_removed = check_missing_files(relationships)
-            process_relationships(relationships_missing_files_removed)
+            delete_rels = [r for r in relationships_missing_files_removed if r['record_relationship'].lower() == 'delete']
+            add_rels = [r for r in relationships_missing_files_removed if r not in delete_rels]
+            process_delete_relationships(delete_rels, version)
+            process_add_relationships(add_rels, version)
         else:
             logging.error(f"No valid relationships found in {file}")
     else:
         logging.error(f"{file} must exist to process relationship records")
 
-def main():
-    file = sys.argv[1]
-    generate_relationships(file)
+def main(file, version):
+    generate_relationships(file, version)
     file_size = os.path.getsize(ERROR_LOG)
     if (file_size == 0):
         os.remove(ERROR_LOG)
@@ -235,4 +315,8 @@ def main():
         sys.exit(1)
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description="Script to generate relationships in new/udpated records")
+    parser.add_argument('-v', '--schemaversion', choices=[1, 2], type=int, required=True, help='Schema version (1 or 2)')
+    parser.add_argument('file')
+    args = parser.parse_args()
+    main(args.file, args.schemaversion)

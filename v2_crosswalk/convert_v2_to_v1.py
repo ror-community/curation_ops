@@ -1,13 +1,14 @@
 import copy
 import json
 import logging
+import os
 
 import v1_fields
 import v1_enums
 import v2_enums
 
 ERROR_LOG = "errors.log"
-V1_TEMPLATE = "./v1_template.json"
+V1_TEMPLATE = os.path.join(os.path.dirname(__file__), 'v1_template.json')
 
 logging.basicConfig(filename=ERROR_LOG,level=logging.ERROR, filemode='w')
 
@@ -19,7 +20,8 @@ def format_v1_relationships(v2_relationships):
 
 # external_ids
 def get_v1_ext_id_type(v2_ext_id_type):
-    type_key = "".join([k for k in v1_enums.EXTERNAL_ID_TYPES if v1_enums.EXTERNAL_ID_TYPES[k]==v2_ext_id_type.upper()])
+    type_key = "".join([k for k in v1_enums.EXTERNAL_ID_TYPES if \
+                        v1_enums.EXTERNAL_ID_TYPES[k].lower()==v2_ext_id_type])
     if type_key:
         return v1_enums.EXTERNAL_ID_TYPES[type_key]
     else:
@@ -130,7 +132,7 @@ def convert_v2_to_v1(v2_data):
             v1_data = json.load(template_file)
             # these fields don't change
             v1_data['id'] = v2_data['id']
-            v1_data['types'] = [type.title() for type in v2_data['types']]
+            v1_data['types'] = [type.title() for type in v2_data['types'] if type.title() in v1_enums.ORG_TYPES.values()]
             v1_data['status'] = v2_data['status']
             v1_data['established'] = v2_data['established']
             v1_data['email_address'] = None

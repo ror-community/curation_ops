@@ -50,7 +50,7 @@ def get_release_notes_data(release):
 def format_description(release_data):
     description = '<p>Data dump from the Research Organization Registry (ROR), a community-led registry \
             of open identifiers for research organizations.</p>\n\n<p>Release ' + release_data['filename'].split('-', 1)[0] + ' contains ROR IDs and metadata \
-            for ' + release_data['total'] + '&nbsp;research organizations in JSON and CSV format. '
+            for ' + release_data['total'] + '&nbsp;research organizations in JSON and CSV format, in schema versions 1 and 2. '
     if 'updated' in release_data or 'added' in release_data:
         description += 'This includes '
         if 'added' in release_data and 'updated' in release_data:
@@ -61,17 +61,50 @@ def format_description(release_data):
         if 'updated' in release_data and 'added' not in release_data:
             description += 'metadata updates to ' + release_data['updated'] + ' existing records.'
     description += '<a href=\"https://github.com/ror-community/ror-updates/releases/tag/' + release_data['filename'].split('-', 1)[0] + '\">\
-            See the release notes</a>.</p>\n\n<p>Beginning with its <a href=\"https://doi.org/10.5281/zenodo.6347575\">\
-            March 2022 release</a>, ROR is curated independently from GRID. Semantic versioning beginning with v1.0 was added \
-            to reflect this departure from GRID. The existing data structure was not changed.</p>\n\n<p>From March 2022 onward, \
-            data releases are versioned as follows:</p>\n\n<ul>\n\t<li><strong>Minor versions (ex 1.1, 1.2, 1.3):</strong>&nbsp; \
+            See the release notes</a>.</p>\n\n \
+            <h2>Data format</h2> \
+            <p> \
+            Beginning with release v1.45 on 11 April 2024, data releases contain JSON and CSV files \
+            formatted according to both <a href=\"https://github.com/ror-community/ror-schema/blob/master/ror_schema.json\"> \
+            schema v1</a> and <a href=\"https://github.com/ror-community/ror-schema/blob/master/ror_schema_v2_0.json\">schema v2</a>. \
+            v2 files have `_schema_v2`  appended to the end of the filename, ex v1.45-2024-04-11-ror-data_schema_v2.json. \
+            In order to maintain compatibility with previous releases, \
+            v1 files have no version information in the filename, ex v1.45-2024-04-11-ror-data.json \
+            </p> \
+            <p> \
+            For both versions, the CSV file contains a subset of fields from the JSON file, some of which have been flattened for easier parsing. \
+            As ROR records and the ROR schema are maintained in JSON, CSVs are for convenience only. JSON is the format of record. \
+            </p> \
+            <h2>Release versioning</h2> \
+            <p> \
+            Beginning with v1.45 in April 2024, ROR has introduced schema versioning, with files available in \
+            <a href=\"https://github.com/ror-community/ror-schema/blob/master/ror_schema.json\">schema v1</a>\
+            and <a href=\"https://github.com/ror-community/ror-schema/blob/master/ror_schema_v2_0.json\">schema v2</a>. \
+            The ROR API default version, however, remains v1 and will be changed to v2 in April 2025. \
+            To align with the API, the data dump major version will remain 1 until the API default version is changed to v2. \
+            At that time, the data dump major version will be incremented to 2 per below. \
+            </p> \
+            <p> \
+            Data releases are versioned as follows: \
+            </p>\n\n \
+            <ul>\n\t \
+            <li><strong>Minor versions (ex 1.1, 1.2, 1.3):</strong>&nbsp; \
             Contain changes to data, such as a new records and updates to existing records. No changes to the data model/structure.\
-            </li>\n\t<li><strong>Patch versions (ex 1.0.1):</strong>&nbsp;Used infrequently to correct errors in a release. \
-            No changes to the data model/structure.</li>\n\t<li><strong>Major versions (ex 1.x, 2.x, 3.x):</strong>&nbsp; \
+            </li>\n\t \
+            <li><strong>Patch versions (ex 1.0.1):</strong>&nbsp; \
+            Used infrequently to correct errors in a release. No changes to the data model/structure. \
+            </li>\n\t \
+            <li><strong>Major versions (ex 1.x, 2.x, 3.x):</strong>&nbsp; \
             Contains changes to data model/structure, as well as the data itself. Major versions will be released with significant advance notice. \
-            </li>\n</ul>\n\n<p>For convenience, the date is also include in the release file name, ex: v1.0-2022-03-15-ror-data.zip.</p> \
-            <p>Beginning with the 16 Mar 2023 release, a CSV file is included in addition to the canonical JSON. The CSV contains a subset \
-            of fields from the JSON file, some of which have been flattened for easier parsing. The JSON file remains the version of record.</p>'
+            </li>\n \
+            </ul>\n\n \
+            <p>For convenience, the date is also include in the release file name, ex: v1.0-2022-03-15-ror-data.zip.</p> \
+            <p> \
+            The ROR data dump is provided under the <a href=\"https://creativecommons.org/publicdomain/zero/1.0\"> \
+            Creative Commons CC0 Public Domain Dedication</a>. Location data in ROR comes from GeoNames and is licensed under a \
+            <a href=\"https://creativecommons.org/licenses/by/4.0\">Creative Commons Attribution 4.0 license</a>. \
+            </p>'
+
     return description
 
 

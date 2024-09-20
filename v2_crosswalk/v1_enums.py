@@ -1,9 +1,9 @@
 
 EXTERNAL_ID_TYPES = {
-                        "FUNDREF" : "FUNDREF",
+                        "FUNDREF" : "FundRef",
                         "GRID" : "GRID",
                         "ISNI" : "ISNI",
-                        "WIKIDATA" : "WIKIDATA"
+                        "WIKIDATA" : "Wikidata"
                     }
 
 ORG_TYPES = {

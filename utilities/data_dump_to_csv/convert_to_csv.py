@@ -19,6 +19,7 @@ def get_all_data(f):
 	with open(f, 'r+', encoding='utf8') as f_in:
 		json_file = json.load(f_in)
 	for record in json_file:
+		print(f"converting v1 record {record['id']} to csv")
 		ror_id = record['id']
 		primary_name = record['name']
 		status = record['status']
@@ -29,12 +30,16 @@ def get_all_data(f):
 		labels = record['labels']
 		labels_dict = {}
 		if len(labels) > 0:
-			lang_codes = [label['iso639'] for label in labels]
-			for code in lang_codes:
-				labels_dict[code] = []
-				for label in labels:
-					if label['iso639'] == code:
-						labels_dict[code].append(label['label'])
+			for label in labels:
+				code = None
+				if label['iso639']:
+					code = label['iso639']
+				else:
+					code = 'no_lang_code'
+				if code in labels_dict:
+					labels_dict[code].append(label['label'])
+				else:
+					labels_dict[code] = [label['label']]
 		labels_str = str()
 		for code in labels_dict:
 			labels_str += code + ": " + ", ".join(labels_dict[code]) + "; "
