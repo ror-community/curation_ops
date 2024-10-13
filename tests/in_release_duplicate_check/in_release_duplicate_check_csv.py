@@ -30,7 +30,7 @@ def normalize_url_furl(url, context=None):
 
 def parse_csv_row(row):
     return {
-        'id': row['id'],
+        'id': row['html_url'],
         'names': [
             row['names.types.ror_display'],
             *row['names.types.alias'].split('; '),
@@ -64,7 +64,7 @@ def check_name_matches(names1, names2):
 
 def check_duplicates(input_file, output_file):
     all_records = {}
-    with open(input_file, 'r', newline='') as f_in:
+    with open(input_file, 'r') as f_in:
         reader = csv.DictReader(f_in)
         for row in reader:
             parsed_row = parse_csv_row(row)
