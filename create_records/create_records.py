@@ -1,6 +1,10 @@
 import os
+import csv
 import argparse
 import requests
+from time import sleep
+from datetime import datetime
+
 
 
 def read_environment_variables():
@@ -24,7 +28,6 @@ def make_api_request(api_user, api_token, input_file, validate):
     params = {}
     if validate:
         params['validate'] = True
-
     try:
         response = requests.post(url, headers=headers,
                                  files=files, params=params)
@@ -54,13 +57,48 @@ def download_file(url, output_file):
         raise SystemExit(f"An error occurred while saving the downloaded file: {e}")
 
 
+def parse_directory(directory_path):
+    csv_files = []
+    for root, _, files in os.walk(directory_path):
+        for file in files:
+            if file.lower().endswith('.csv'):
+                csv_files.append(os.path.join(root, file))
+    return csv_files
+
+
+def process_single_file(api_user, api_token, input_file, output_dir, validate):
+    response = make_api_request(api_user, api_token, input_file, validate)
+    if validate:
+        output_file = os.path.join(output_dir, f"validation_{os.path.basename(input_file)}")
+        write_output(output_file, response.text)
+        print(f"Validation response written to {output_file}")
+    else:
+        response_json = response.json()
+        file_url = response_json['file']
+        file_name = os.path.basename(file_url)
+        output_file = os.path.join(output_dir, file_name)
+        download_file(file_url, output_file)
+        print(f"File downloaded: {output_file}")
+
+
+def process_batch(api_user, api_token, directory_path, output_dir, validate):
+    csv_files = parse_directory(directory_path)
+    for csv_file in csv_files:
+        print(f"Processing file: {csv_file}")
+        process_single_file(api_user, api_token, csv_file,
+                            output_dir, validate)
+        sleep(5)
+
+
 def parse_arguments():
     parser = argparse.ArgumentParser(
         description='Bulk update script for ROR API')
-    parser.add_argument('-i', '--input_file', type=str,
-                        required=True, help='Path to the CSV file')
-    parser.add_argument('-o', '--output_file', type=str,
-                        default='report.csv', help='Output file path')
+    input_group = parser.add_mutually_exclusive_group(required=True)
+    input_group.add_argument('-i', '--input_file',
+                             type=str, help='Path to the CSV file')
+    input_group.add_argument('-b', '--batch', type=str,
+                             help='Path to the directory containing CSV files')
+    parser.add_argument('-o', '--output_dir', type=str, default=f'batch_{datetime.now().strftime("%Y%m%d_%H%M%S")}', help='Output directory path')
     parser.add_argument('-v', '--validate', action='store_true',
                         help='Validate the bulk update')
     return parser.parse_args()
@@ -70,18 +108,13 @@ def main():
     try:
         args = parse_arguments()
         api_user, api_token = read_environment_variables()
-        response = make_api_request(
-            api_user, api_token, args.input_file, args.validate)
-        if args.validate:
-            write_output(args.output_file, response.text)
-            print(f"Validation response written to {args.output_file}")
+        os.makedirs(args.output_dir, exist_ok=True)
+        if args.batch:
+            process_batch(api_user, api_token, args.batch,
+                          args.output_dir, args.validate)
         else:
-            response_json = response.json()
-            file_url = response_json['file']
-            file_name = os.path.basename(file_url)
-            download_file(file_url, file_name)
-            print(f"File downloaded: {file_name}")
-
+            process_single_file(api_user, api_token,
+                                args.input_file, args.output_dir, args.validate)
     except ValueError as e:
         print(f"Error: {e}")
     except Exception as e:
