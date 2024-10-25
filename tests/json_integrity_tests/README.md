@@ -1,6 +1,6 @@
-# ROR JSON Integrity Check Scripts
+# JSON Integrity Checks
 
-Scripts for validating ROR JSON records against their  CSV inputs:
+Scripts for validating ROR records against the CSV inputs used to create them.
 
 ## New Records Check
 ```bash

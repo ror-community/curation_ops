@@ -4,7 +4,16 @@ import sys
 import csv
 import json
 import argparse
-from urllib.parse import unquote
+from urllib.parse import unquote, quote
+
+
+def normalize_wikipedia_url(url):
+    if not url or not url.startswith('https://'):
+        return url
+    base = url[:url.rfind('/') + 1]
+    path = url[url.rfind('/') + 1:]
+    normalized_path = quote(unquote(path))
+    return base + normalized_path
 
 
 def simplify_json(j):
@@ -20,7 +29,11 @@ def simplify_json(j):
     for name_type in name_types:
         simplified[f'names.types.{name_type}'] = [name['value'] for name in j.get('names', []) if name_type in name.get('types', [])]
     for link_type in link_types:
-        simplified[f'links.type.{link_type}'] = [link['value'] for link in j.get('links', []) if link.get('type') == link_type]
+        values = [link['value']
+                  for link in j.get('links', []) if link.get('type') == link_type]
+        if link_type == 'wikipedia':
+            values = [normalize_wikipedia_url(v) for v in values]
+        simplified[f'links.type.{link_type}'] = values
     for id_type in external_id_types:
         ids_of_type = [ext_id for ext_id in j.get(
             'external_ids', []) if ext_id.get('type') == id_type]
@@ -56,51 +69,54 @@ def check_in_json(input_file, json_directory, output_file):
     ]
     with open(input_file, 'r+') as f_in, open(output_file, 'w') as f_out:
         reader = csv.DictReader(f_in)
+        writer = csv.writer(f_out)
+        writer.writerow(['id', 'type', 'field', 'value'])  # Write header
+
         for row in reader:
             ror_id = row['id']
             ror_id_file_prefix = re.sub('https://ror.org/', '', ror_id)
             json_file_path = os.path.join(json_directory, f'{ror_id_file_prefix}.json')
+
             with open(json_file_path, 'r+', encoding='utf8') as f_in:
                 json_file = json.load(f_in)
                 simplified_json = simplify_json(json_file)
+
             for field in ror_data_fields:
                 if row[field]:
                     field_value = unquote(row[field]).strip()
-                    if field == 'established' or field == 'locations.geonames_id' and ';' not in field_value:
+                    if field == 'links.type.wikipedia':
+                        field_value = normalize_wikipedia_url(field_value)
+                    if field in ['established', 'locations.geonames_id'] and ';' not in field_value:
                         field_value = int(field_value)
                     if not isinstance(field_value, int):
                         if ';' in field_value:
                             field_value = field_value.split(';')
                             field_value = [f_v.split('*')[0].strip()
                                            for f_v in field_value]
+                            if field == 'links.type.wikipedia':
+                                field_value = [normalize_wikipedia_url(
+                                    v) for v in field_value]
                             for value in field_value:
                                 if field == 'locations.geonames_id':
                                     value = int(value)
                                 if value not in simplified_json[field] and value in simplified_json['all']:
-                                    writer = csv.writer(f_out)
                                     writer.writerow(
                                         [ror_id, 'transposition', field, field_value])
                                 if value not in simplified_json['all']:
-                                    writer = csv.writer(f_out)
                                     writer.writerow(
                                         [ror_id, 'missing', field, value])
-
                         else:
                             field_value = field_value.split('*')[0].strip()
                             if field_value not in simplified_json[field] and field_value in simplified_json['all']:
-                                writer = csv.writer(f_out)
                                 writer.writerow(
                                     [ror_id, 'transposition', field, field_value])
                             if field_value not in simplified_json['all']:
-                                writer = csv.writer(f_out)
                                 writer.writerow(
                                     [ror_id, 'missing', field, field_value])
                     elif field_value not in simplified_json[field] and field_value in simplified_json['all']:
-                        writer = csv.writer(f_out)
                         writer.writerow(
                             [ror_id, 'transposition', field, field_value])
                     elif field_value not in simplified_json['all']:
-                        writer = csv.writer(f_out)
                         writer.writerow(
                             [ror_id, 'missing', field, field_value])
 
