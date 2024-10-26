@@ -14,7 +14,8 @@ def parse_update_field(update_str):
     for part in parts:
         subparts = part.split('==', 1)
         if len(subparts) == 2:
-            current_change_type, value = subparts[0].strip(), subparts[1].strip()
+            current_change_type, value = subparts[0].strip(
+            ), subparts[1].strip()
             if current_change_type in updates:
                 updates[current_change_type].append(value)
             else:
@@ -102,7 +103,7 @@ def simplify_and_invert_json(j):
     return simplified, inverted
 
 
-def check_if_updates_applied(input_file, output_file):
+def check_if_updates_applied(input_file, json_directory, output_file):
     record_updates = parse_record_updates_file(input_file)
     header = ['html_url', 'ror_id', 'field',
               'type', 'value', 'position', 'status']
@@ -111,7 +112,7 @@ def check_if_updates_applied(input_file, output_file):
         writer.writerow(header)
     for ror_id, updates in record_updates.items():
         ror_id_file_prefix = re.sub('https://ror.org/', '', ror_id)
-        json_file_path = f'{ror_id_file_prefix}.json'
+        json_file_path = os.path.join(json_directory, f'{ror_id_file_prefix}.json')
         with open(json_file_path, 'r+', encoding='utf8') as f_in:
             json_file = json.load(f_in)
         simplified_json, inverted_json = simplify_and_invert_json(json_file)
@@ -153,6 +154,8 @@ def parse_arguments():
         description="Check integrity of JSON files based on update records CSV.")
     parser.add_argument("-i", "--input_file", required=True,
                         help="Input CSV file path.")
+    parser.add_argument("-d", "--directory", required=True,
+                        help="Directory containing JSON files.")
     parser.add_argument("-o", "--output_file",
                         default="update_records_integrity_check.csv", help="Output CSV file path.")
     return parser.parse_args()
@@ -160,7 +163,7 @@ def parse_arguments():
 
 def main():
     args = parse_arguments()
-    check_if_updates_applied(args.input_file, args.output_file)
+    check_if_updates_applied(args.input_file, args.directory, args.output_file)
 
 
 if __name__ == '__main__':
