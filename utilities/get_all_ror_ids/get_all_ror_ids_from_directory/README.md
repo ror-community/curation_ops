@@ -1,4 +1,4 @@
-# Get Names and ROR IDs ad directory
+# Get Names and ROR IDs from directory
 
 Extracts names and ROR IDs from JSON files in a specified directory and saves them to a CSV file.
 
