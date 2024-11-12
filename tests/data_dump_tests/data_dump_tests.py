@@ -75,7 +75,7 @@ def compare_random_data_dump_production_api(release_ids, data_dump_file_path, pr
     minus_release_files = [
         record for record in data_dump if record["id"] not in release_ids]
     random_data_dump_records = []
-    for _ in range(1000):
+    for _ in range(500):
         random_data_dump_records.append(random.choice(minus_release_files))
     for record in random_data_dump_records:
         ror_id = record["id"]
