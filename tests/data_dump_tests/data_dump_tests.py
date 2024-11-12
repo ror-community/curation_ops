@@ -69,7 +69,7 @@ def compare_old_data_dump_new_data_dump(release_ids, data_dump_file_path, old_da
                     writer.writerow([key, record_diff])
 
 
-def compare_random_data_dump_production_api(release_ids, data_dump_file_path, prod_data_dump_discrepancies_file, schema_version, staging_flag):
+def compare_random_data_dump_production_api(release_ids, data_dump_file_path, prod_data_dump_discrepancies_file, schema_version, environment):
     with open(data_dump_file_path, 'r+', encoding='utf8') as f_in:
         data_dump = json.load(f_in)
     minus_release_files = [
@@ -79,7 +79,7 @@ def compare_random_data_dump_production_api(release_ids, data_dump_file_path, pr
         random_data_dump_records.append(random.choice(minus_release_files))
     for record in random_data_dump_records:
         ror_id = record["id"]
-        if staging_flag:
+        if environment=="stg":
             api_url = f"https://api.staging.ror.org/v{schema_version}/organizations/{ror_id}"
         else:
             api_url = f"https://api.ror.org/v{schema_version}/organizations/{ror_id}"
@@ -114,8 +114,8 @@ def parse_arguments():
                         help='Path to the jsondiff output file')
     parser.add_argument('-v', '--schema-version', choices=[
                         "1", "2"], default="2", help='ROR Schema version. 1 or 2. Default is 2')
-    parser.add_argument('-s', '--staging_flag', choices=[
-                        True, False], type=bool, default=False, help='Use staging for tests. True or False. Default is False')
+    parser.add_argument('-e', '--environment', choices=[
+                        'stg', 'prd'], default="prd", help='Use staging for tests. stg (staging) or prd (prod). Default is prod.')
     args = parser.parse_args()
     return args
 
@@ -127,7 +127,7 @@ def main():
     compare_old_data_dump_new_data_dump(
         release_ids, args.new_data_dump_file, args.old_data_dump_file, args.jsondiff_outfile)
     compare_random_data_dump_production_api(
-        release_ids, args.new_data_dump_file, args.prod_data_dump_discrepancies_file, args.schema_version, args.staging_flag)
+        release_ids, args.new_data_dump_file, args.prod_data_dump_discrepancies_file, args.schema_version, args.environment)
 
 
 if __name__ == '__main__':
