@@ -22,10 +22,17 @@ def parse_arguments():
 
 def find_json_files(input_dir):
     json_files = []
+    logging.info(f"Searching for JSON files in: {input_dir}")
+    if not os.path.exists(input_dir):
+        logging.error(f"Input directory does not exist: {input_dir}")
+        return json_files
     for root, dirs, files in os.walk(input_dir):
+        logging.info(f"Checking directory: {root}")
+        logging.info(f"Found files: {files}")
         for file in files:
             if file.endswith('.json'):
-                json_files.append(os.path.join(root, file))
+                json_files.append(os.path.join(root, file))   
+    logging.info(f"Total JSON files found: {len(json_files)}")
     return json_files
 
 

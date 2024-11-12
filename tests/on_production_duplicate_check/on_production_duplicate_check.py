@@ -8,6 +8,41 @@ import argparse
 import itertools
 import requests
 from thefuzz import fuzz
+import time
+import logging
+import multiprocessing
+from functools import partial
+
+MAX_PARALLEL_REQUESTS = 5
+RATE_LIMIT_CALLS = 1000
+RATE_LIMIT_PERIOD = 300
+
+logging.basicConfig(level=logging.INFO,
+                    format='%(asctime)s - %(levelname)s - %(message)s')
+
+
+class GlobalRateLimiter:
+    def __init__(self, max_calls, period, shared_calls, shared_lock):
+        self.max_calls = max_calls
+        self.period = period
+        self.calls = shared_calls
+        self.lock = shared_lock
+
+    def wait(self):
+        with self.lock:
+            now = time.time()
+            self.calls[:] = [t for t in self.calls if now - t < self.period]
+            if len(self.calls) >= self.max_calls:
+                sleep_time = self.period - (now - self.calls[0])
+                time.sleep(max(sleep_time, 0))
+            self.calls.append(now)
+
+
+def init_shared_rate_limiter():
+    manager = multiprocessing.Manager()
+    shared_calls = manager.list()
+    shared_lock = manager.Lock()
+    return GlobalRateLimiter(RATE_LIMIT_CALLS, RATE_LIMIT_PERIOD, shared_calls, shared_lock)
 
 
 def normalize_text(org_name):
@@ -34,7 +69,7 @@ def get_country_code(record):
     return None
 
 
-def ror_search(org_name, record_country_code):
+def ror_search(org_name, record_country_code, rate_limiter):
     base_url = 'https://api.ror.org/v2/organizations'
     normalized_name = normalize_text(org_name)
     params_query = {'query': normalized_name}
@@ -42,6 +77,7 @@ def ror_search(org_name, record_country_code):
     all_params = [params_query, params_affiliation]
     ror_matches = []
     for params in all_params:
+        rate_limiter.wait()
         r = requests.get(base_url, params=params)
         print(r.url)
         api_response = r.json()
@@ -58,8 +94,8 @@ def ror_search(org_name, record_country_code):
                         name_mr = fuzz.ratio(
                             normalized_name, normalize_text(result_name))
                         if name_mr >= 90:
-                            ror_matches.append(
-                                [ror_id, result_name, name_mr])
+                            ror_matches.append([ror_id, result_name, name_mr])
+
     ror_matches = list(ror_matches for ror_matches,
                        _ in itertools.groupby(ror_matches))
     return ror_matches
@@ -71,20 +107,35 @@ def check_duplicates(input_dir, output_file):
     with open(output_file, 'w') as f_out:
         writer = csv.writer(f_out)
         writer.writerow(header)
-    for file in glob.glob(f"{input_dir}/*.json"):
-        with open(file, 'r+') as f_in:
-            json_file = json.load(f_in)
-        ror_id = json_file['id']
-        record_country_code = get_country_code(json_file)
-        record_names = get_all_names(json_file)
-        for record_name in record_names:
-            print("Searching", ror_id, "-", record_name, "...")
-            ror_matches = ror_search(record_name, record_country_code)
-            if ror_matches:
-                for match in ror_matches:
-                    with open(output_file, 'a') as f_out:
-                        writer = csv.writer(f_out)
-                        writer.writerow([ror_id, record_name] + match)
+    files = glob.glob(f"{input_dir}/*.json")
+    shared_rate_limiter = init_shared_rate_limiter()
+    pool = multiprocessing.Pool(MAX_PARALLEL_REQUESTS)
+    process_file_partial = partial(
+        process_file, rate_limiter=shared_rate_limiter)
+    for result in pool.imap_unordered(process_file_partial, files):
+        if result:
+            with open(output_file, 'a') as f_out:
+                writer = csv.writer(f_out)
+                writer.writerows(result)
+    pool.close()
+    pool.join()
+
+
+def process_file(file, rate_limiter):
+    with open(file, 'r+') as f_in:
+        json_file = json.load(f_in)
+    ror_id = json_file['id']
+    record_country_code = get_country_code(json_file)
+    record_names = get_all_names(json_file)
+    results = []
+    for record_name in record_names:
+        print("Searching", ror_id, "-", record_name, "...")
+        ror_matches = ror_search(
+            record_name, record_country_code, rate_limiter)
+        if ror_matches:
+            for match in ror_matches:
+                results.append([ror_id, record_name] + match)
+    return results
 
 
 def parse_arguments():
