@@ -1,6 +1,6 @@
 # ROR Data Dump Testing Script
 
-Python script for validating ROR (Research Organization Registry) data dump integrity. Compares data dumps against release files and production API responses.
+Script for validating ROR data dump integrity. Compares data dumps against release files and production API responses.
 
 ## Functionality
 - Verifies release files are present in data dumps
@@ -16,7 +16,7 @@ pip install -r requirements.txt
 
 ## Usage
 ```bash
-python script.py -r /path/to/release/dir -o old_dump.json -n new_dump.json [-v 1|2] [-e stg|prd]
+python script.py -r /path/to/release/dir -o old_dump.json -n new_dump.json [-v 1|2] [-e stg|prd] [-a]
 ```
 
 ### Arguments
@@ -25,6 +25,7 @@ python script.py -r /path/to/release/dir -o old_dump.json -n new_dump.json [-v 1
 - `-n, --new_data_dump_file`: Path to new data dump file (required)
 - `-v, --schema-version`: ROR Schema version [1|2] (default: 2)
 - `-e, --environment`: API environment [stg|prd] (default: prd)
+- `-a, --api-tests`: Run API tests (optional, default: False)
 - `-m, --missing_ids_outfile`: Missing IDs report file (default: missing_ids.csv)
 - `-d, --release_diff_outfile`: Release differences report file (default: release_file_data_dump_file_diff.csv)
 - `-p, --prod_data_dump_discrepancies_file`: Production discrepancies report file (default: prod_data_dump_discrepancies.csv)
