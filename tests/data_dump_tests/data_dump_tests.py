@@ -112,10 +112,11 @@ def parse_arguments():
                         help='Path to the prod/datadump discrepancies output file')
     parser.add_argument('-j', '--jsondiff_outfile', default='jsondiff.csv',
                         help='Path to the jsondiff output file')
-    parser.add_argument('-v', '--schema-version', choices=[
+    parser.add_argument('-v', '--schema_version', choices=[
                         "1", "2"], default="2", help='ROR Schema version. 1 or 2. Default is 2')
     parser.add_argument('-e', '--environment', choices=[
                         'stg', 'prd'], default="prd", help='Use staging for tests. stg (staging) or prd (prod). Default is prod.')
+    parser.add_argument('-a', '--api-tests', action='store_true', help='Run API tests. Default: False')
     args = parser.parse_args()
     return args
 
@@ -126,8 +127,9 @@ def main():
         args.new_data_dump_file, args.release_dir, args.missing_ids_outfile, args.release_diff_outfile)
     compare_old_data_dump_new_data_dump(
         release_ids, args.new_data_dump_file, args.old_data_dump_file, args.jsondiff_outfile)
-    compare_random_data_dump_production_api(
-        release_ids, args.new_data_dump_file, args.prod_data_dump_discrepancies_file, args.schema_version, args.environment)
+    if args.api_tests:
+        compare_random_data_dump_production_api(
+            release_ids, args.new_data_dump_file, args.prod_data_dump_discrepancies_file, args.schema_version, args.environment)
 
 
 if __name__ == '__main__':
