@@ -1,8 +1,12 @@
 v2_location_template = {
                 "geonames_id": 0,
                 "geonames_details": {
+                    "continent_code": None,
+                    "continent_name": None,
                     "country_code": None,
                     "country_name": None,
+                    "country_subdivision_code": None,
+                    "country_subdivision_name": None,
                     "lat": None,
                     "lng": None,
                     "name": ""
