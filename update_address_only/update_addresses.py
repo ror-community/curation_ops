@@ -20,11 +20,9 @@ NEW_V2_1_FIELDS = (
 )
 logging.basicConfig(filename=ERROR_LOG,level=logging.ERROR, filemode='w')
 
-def export_json(json_data, json_file, version):
-    if version == 2:
-        json_data['admin']['last_modified']['date'] = LAST_MOD_DATE
+def export_json(json_data, json_file):
     json_file.seek(0)
-    json.dump(json_data, json_file, ensure_ascii=False, indent=2)
+    json.dump(json_data, json_file, ensure_ascii=False, indent=4)
     json_file.truncate()
 
 def get_files(top):
@@ -32,6 +30,7 @@ def get_files(top):
     for dirpath, dirs, files in os.walk(top, topdown=True):
         for file in files:
             filepaths.append(os.path.join(dirpath, file))
+    print(filepaths)
     return filepaths
 
 def compare_locations(original_locations, updated_locations):
@@ -50,10 +49,11 @@ def compare_locations(original_locations, updated_locations):
 
 def update_record_locations(json_data, version):
     if version == 2:
-        updated_data = update_address.update_geonames_v2(json_data)
+        updated_data,cache_hit = update_address.update_geonames_v2(json_data)
+        updated_data['admin']['last_modified']['date'] = LAST_MOD_DATE
     if version == 1:
-        updated_data = update_address.update_geonames(json_data)
-    return updated_data
+        updated_data,cache_hit = update_address.update_geonames(json_data)
+    return updated_data,cache_hit
 
 def update_addresses_dump(dump_zip_path, version):
     dump_unzipped = ''
@@ -73,30 +73,55 @@ def update_addresses_dump(dump_zip_path, version):
     f = open(dump_unzipped, 'r')
     records = json.load(f)
     print(str(len(records)) + f" records in v{version} dump")
+    cache_hits = 0
+    geonames_requests = 0
     for record in records:
         print("processing dump record " + str(record['id']))
-        updated_record = update_record_locations(record, version)
+        updated_record,cache_hit = update_record_locations(record, version)
         updated_records.append(updated_record)
+        if cache_hit:
+            cache_hits += 1
+        else:
+            geonames_requests += 1
     open(dump_unzipped, "w").write(
         json.dumps(updated_records, ensure_ascii=False, indent=4, separators=(',', ': '))
     )
+    return cache_hits,geonames_requests
     #except:
     #    logging.error(f"Error creating v{output_schema_version} dump file: {e}")
 
-
 def update_addresses(filepaths, version):
+    cache_hits = 0
+    geonames_requests = 0
     for filepath in filepaths:
         filename, file_extension = os.path.splitext(filepath)
         if file_extension == '.json':
             #try:
             with open(filepath, 'r+') as json_in:
-                print("updating " + filepath)
-                record = json.load(json_in)
-                original_locations = copy.deepcopy(record['locations'])
-                updated_record = update_record_locations(record, version)
-                if updated_record:
-                    if not compare_locations(original_locations, updated_record['locations']):
-                        export_json(updated_record, json_in, version)
+                record_data = json.load(json_in)
+                if isinstance(record_data, list):
+                    updated_records = []
+                    for record in record_data:
+                        original_locations = copy.deepcopy(record['locations'])
+                        updated_record,cache_hit = update_record_locations(record, version)
+                        updated_records.append(updated_record)
+                        if cache_hit:
+                            cache_hits += 1
+                        else:
+                            geonames_requests += 1
+                    export_json(updated_records, json_in)
+                if isinstance(record_data, dict):
+                    print("updating " + filepath)
+                    original_locations = copy.deepcopy(record_data['locations'])
+                    updated_record,cache_hit = update_record_locations(record_data, version)
+                    if cache_hit:
+                            cache_hits += 1
+                    else:
+                        geonames_requests += 1
+                    if updated_record:
+                        if not compare_locations(original_locations, updated_record['locations']):
+                            export_json(updated_record, json_in)
+    return cache_hits,geonames_requests
         #except Exception as e:
              #   logging.error(f"Error updating file {filepath}: {e}")
 
@@ -104,12 +129,14 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Script to update location information")
     parser.add_argument('-v', '--schemaversion', choices=[1, 2], type=int, required=True, help='Output schema version (1 or 2)')
     parser.add_argument('-f', '--dumpfile', type=str)
+    parser.add_argument('-i', '--inputpath', type=str, default=RECORDS_PATH)
     args = parser.parse_args()
     if args.dumpfile:
         if os.path.exists(args.dumpfile):
-            update_addresses_dump(args.dumpfile, args.schemaversion)
+            cache_hits,geonames_requests = update_addresses_dump(args.dumpfile, args.schemaversion)
     else:
-        update_addresses(get_files(RECORDS_PATH), args.schemaversion)
+        cache_hits,geonames_requests = update_addresses(get_files(args.inputpath), args.schemaversion)
+    print(f"{str(cache_hits)} cache hits, {str(geonames_requests)} geonames requests")
     file_size = os.path.getsize(ERROR_LOG)
     if (file_size == 0):
         os.remove(ERROR_LOG)
