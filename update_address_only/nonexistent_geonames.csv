@@ -1,0 +1,13 @@
+geonames_id,error,UI redirect
+6949678,Http Error: 404 Client Error: 404 for url: http://api.geonames.org/getJSON?geonameId=6949678&username=roradmin,1668295
+6691781,Http Error: 404 Client Error: 404 for url: http://api.geonames.org/getJSON?geonameId=6691781&username=roradmin,
+8299623,Http Error: 404 Client Error: 404 for url: http://api.geonames.org/getJSON?geonameId=8299623&username=roradmin,
+2644597,Http Error: 404 Client Error: 404 for url: http://api.geonames.org/getJSON?geonameId=2644597&username=roradmin,8224216
+1797132,Http Error: 404 Client Error: 404 for url: http://api.geonames.org/getJSON?geonameId=1797132&username=roradmin,9072919
+3336587,Http Error: 404 Client Error: 404 for url: http://api.geonames.org/getJSON?geonameId=3336587&username=roradmin,
+6316741,Http Error: 404 Client Error: 404 for url: http://api.geonames.org/getJSON?geonameId=6316741&username=roradmin,3467723
+2966839,Http Error: 404 Client Error: 404 for url: http://api.geonames.org/getJSON?geonameId=2966839&username=roradmin,3313472
+8617692,Http Error: 404 Client Error: 404 for url: http://api.geonames.org/getJSON?geonameId=8617692&username=roradmin,4005937
+4703387,Http Error: 404 Client Error: 404 for url: http://api.geonames.org/getJSON?geonameId=4703387&username=roradmin,7534469
+195902,Http Error: 404 Client Error: 404 for url: http://api.geonames.org/getJSON?geonameId=195902&username=roradmin,8299780
+12179257,Http Error: 404 Client Error: 404 for url: http://api.geonames.org/getJSON?geonameId=12179257&username=roradmin,6616111
