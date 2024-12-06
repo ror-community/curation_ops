@@ -6,6 +6,7 @@ import sys
 import copy
 from datetime import datetime
 from zipfile import ZipFile, ZIP_DEFLATED
+sys.path.append('../../update_address')
 import update_address
 
 
