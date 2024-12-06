@@ -14,7 +14,7 @@ ORG_TYPES = {
                 "NONPROFIT" : "Nonprofit",
                 "GOVERNMENT" : "Government",
                 "FACILITY" : "Facility",
-                "FUNDER" : "Funder"
+                "FUNDER" : "Funder",
                 "OTHER" : "Other"
             }
 
