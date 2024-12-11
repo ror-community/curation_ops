@@ -130,18 +130,9 @@ def process_file(args):
     return ror_id, org_name, json_file
 
 
-def perform_ui_tests(file_data, driver):
-    ui_test_results = []
-    for ror_id, org_name, _ in file_data:
-        retrieve_result = retrieve_from_ui(ror_id, driver)
-        search_result = search_name_ui(org_name, driver)
-        ui_test_results.append(
-            (ror_id, org_name, retrieve_result, search_result))
-    return ui_test_results
-
-
-def retrieve_from_ui(ror_id, driver):
-    ui_url = f"https://ror.org/{ror_id}"
+def retrieve_from_ui(ror_id, driver, environment='prd'):
+    base_url = "https://ror.org" if environment == 'prd' else "https://staging.ror.org"
+    ui_url = f"{base_url}/{ror_id}"
     href_value = "/" + ror_id
     driver.get(ui_url)
     time.sleep(2)
@@ -150,14 +141,25 @@ def retrieve_from_ui(ror_id, driver):
     return "retrieved" if link_in_ui is not None else "failed"
 
 
-def search_name_ui(org_name, driver):
+def search_name_ui(org_name, driver, environment='prd'):
+    base_url = "https://ror.org" if environment == 'prd' else "https://staging.ror.org"
     quoted_name = urllib.parse.quote(org_name)
-    ui_url = f'https://ror.org/search?filter=status:active,status:inactive,status:withdrawn&query="{quoted_name}"'
+    ui_url = f'{base_url}/search?filter=status:active,status:inactive,status:withdrawn&query="{quoted_name}"'
     driver.get(ui_url)
     sleep(2)
     soup = BeautifulSoup(driver.page_source, features="html.parser")
     name_in_ui = soup.find('h2', string=org_name)
     return "retrieved" if name_in_ui is not None else "failed"
+
+
+def perform_ui_tests(file_data, driver, environment='prd'):
+    ui_test_results = []
+    for ror_id, org_name, _ in file_data:
+        retrieve_result = retrieve_from_ui(ror_id, driver, environment)
+        search_result = search_name_ui(org_name, driver, environment)
+        ui_test_results.append(
+            (ror_id, org_name, retrieve_result, search_result))
+    return ui_test_results
 
 
 def compare_single(args):
@@ -180,7 +182,7 @@ def compare_random(compare_ids, shared_rate_limiter, base_url, version):
     return [ror_id for ror_id in results if ror_id is not None]
 
 
-def check_release_files(release_directory, all_ror_ids_file, release_tests_outfile, jsondiff_outfile, ui_tests_outfile, shared_rate_limiter, base_url, version):
+def check_release_files(release_directory, all_ror_ids_file, release_tests_outfile, jsondiff_outfile, ui_tests_outfile, shared_rate_limiter, base_url, version, environment='prd'):
     if not os.path.exists(release_directory):
         logging.error(f"Release directory '{release_directory}' does not exist.")
         exit(1)
@@ -258,7 +260,7 @@ def check_release_files(release_directory, all_ror_ids_file, release_tests_outfi
     options = Options()
     options.headless = True
     with webdriver.Firefox(options=options) as driver:
-        ui_test_results = perform_ui_tests(ui_test_files, driver)
+        ui_test_results = perform_ui_tests(ui_test_files, driver, environment)
 
     logging.info("Writing UI test results...")
     with open(ui_tests_outfile, 'w', newline='') as f_out:
@@ -303,10 +305,12 @@ def main():
         args.ui_tests_outfile,
         shared_rate_limiter,
         base_url,
-        args.version
+        args.version,
+        args.environment
     )
 
     end_time = time.time
+
 
 if __name__ == '__main__':
     main()
