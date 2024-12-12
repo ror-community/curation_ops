@@ -57,8 +57,8 @@ def get_all_data(f):
                         'external_ids.type.grid.all', 'external_ids.type.grid.preferred', 'external_ids.type.isni.all', 'external_ids.type.isni.preferred',
                         'external_ids.type.wikidata.all', 'external_ids.type.wikidata.preferred', 'links.type.website', 'links.type.wikipedia',
                         'locations.geonames_id', 'locations.geonames_details.continent_code', 'locations.geonames_details.continent_name',
-                        'locations.geonames_details.country_subdivision_code', 'locations.geonames_details.country_subdivision_name',
                         'locations.geonames_details.country_code', 'locations.geonames_details.country_name',
+                        'locations.geonames_details.country_subdivision_code', 'locations.geonames_details.country_subdivision_name',
                         'locations.geonames_details.lat', 'locations.geonames_details.lng', 'locations.geonames_details.name',
                         'names.types.acronym', 'names.types.alias', 'names.types.label', 'names.types.ror_display', 'ror_display_lang', 'relationships', 'status', 'types'])
     with open(f, 'r+', encoding='utf8') as f_in:

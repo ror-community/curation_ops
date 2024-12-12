@@ -2,7 +2,6 @@ import argparse
 import os
 import json
 import logging
-import sys
 import copy
 from datetime import datetime
 from zipfile import ZipFile, ZIP_DEFLATED
@@ -12,6 +11,7 @@ import update_address
 RECORDS_PATH = "."
 ERROR_LOG = "address_update_errors.log"
 LAST_MOD_DATE =  datetime.now().strftime("%Y-%m-%d")
+CURRENT_SCHEMA_VERSION = "2.1"
 NEW_V2_1_FIELDS = (
     'continent_code',
     'continent_name',
@@ -51,6 +51,7 @@ def update_record_locations(json_data, version):
     if version == 2:
         updated_data = update_address.update_geonames_v2(json_data)
         updated_data['admin']['last_modified']['date'] = LAST_MOD_DATE
+        updated_data['admin']['last_modified']['schema_version'] = CURRENT_SCHEMA_VERSION
     if version == 1:
         updated_data = update_address.update_geonames(json_data)
     return updated_data
