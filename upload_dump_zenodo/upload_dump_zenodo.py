@@ -66,7 +66,7 @@ def format_description(release_data):
             <p> \
             Beginning with release v1.45 on 11 April 2024, data releases contain JSON and CSV files \
             formatted according to both <a href=\"https://github.com/ror-community/ror-schema/blob/master/ror_schema.json\"> \
-            schema v1</a> and <a href=\"https://github.com/ror-community/ror-schema/blob/master/ror_schema_v2_0.json\">schema v2</a>. \
+            schema v1</a> and <a href=\"https://github.com/ror-community/ror-schema/blob/schema-v2-1/ror_schema_v2_1.json\">schema v2</a>. \
             v2 files have `_schema_v2`  appended to the end of the filename, ex v1.45-2024-04-11-ror-data_schema_v2.json. \
             In order to maintain compatibility with previous releases, \
             v1 files have no version information in the filename, ex v1.45-2024-04-11-ror-data.json \
@@ -79,7 +79,7 @@ def format_description(release_data):
             <p> \
             Beginning with v1.45 in April 2024, ROR has introduced schema versioning, with files available in \
             <a href=\"https://github.com/ror-community/ror-schema/blob/master/ror_schema.json\">schema v1</a>\
-            and <a href=\"https://github.com/ror-community/ror-schema/blob/master/ror_schema_v2_0.json\">schema v2</a>. \
+            and <a href=\"https://github.com/ror-community/ror-schema/blob/schema-v2-1/ror_schema_v2_1.json\">schema v2</a>. \
             The ROR API default version, however, remains v1 and will be changed to v2 in April 2025. \
             To align with the API, the data dump major version will remain 1 until the API default version is changed to v2. \
             At that time, the data dump major version will be incremented to 2 per below. \
