@@ -240,9 +240,8 @@ def check_release_files(release_directory, all_ror_ids_file, release_tests_outfi
 
     logging.info("Reading all ROR IDs for unprocessed IDs and random selection...")
     with open(all_ror_ids_file) as f_in:
-        all_ror_ids = set(line.strip() for line in f_in)
-    
-    unprocessed_ids = list(all_ror_ids - processed_ids)
+        all_ror_ids = set(re.sub('https://ror.org/', '', line.strip()).lower() for line in f_in)
+    unprocessed_ids = list(all_ror_ids - set(ror_id.lower() for ror_id in processed_ids))
     random_ids = random.sample(unprocessed_ids, min(500, len(unprocessed_ids)))
     logging.info(f"Selected {len(random_ids)} random unprocessed IDs for comparison.")
 
@@ -263,7 +262,7 @@ def check_release_files(release_directory, all_ror_ids_file, release_tests_outfi
         ui_test_results = perform_ui_tests(ui_test_files, driver, environment)
 
     logging.info("Writing UI test results...")
-    with open(ui_tests_outfile, 'w', newline='') as f_out:
+    with open(ui_tests_outfile, 'w') as f_out:
         writer = csv.writer(f_out)
         writer.writerow(["ror_id", "org_name", "retrieve_from_ui", "search_name_ui"])
         writer.writerows(ui_test_results)
