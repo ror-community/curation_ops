@@ -39,7 +39,7 @@ def sort_by_issue_number(issue_list):
     return sorted(issue_list, key=lambda x: x['issue_number'])
 
 
-def find_issues_with_labels(repo_path, label, start_number=None, issue_number=None):
+def find_issues_with_labels(repo_path, label, start_number=None, end_number=None, issue_number=None):
     g = Github(TOKEN)
     repo = g.get_repo(repo_path)
     issues = []
@@ -48,9 +48,11 @@ def find_issues_with_labels(repo_path, label, start_number=None, issue_number=No
         issue = repo.get_issue(issue_number)
         issues = [issue]
     elif start_number:
-        query = f'repo:{repo_path} is:open is:issue label:"{label}"'
-        results = g.search_issues(query=query)
-        issues = [issue for issue in results if issue.number >= start_number]
+        all_open_issues = repo.get_issues(state="open")
+        for issue in all_open_issues:
+            if any(label.name == "triage needed" for label in issue.labels):
+                if issue.number >= start_number and (end_number is None or issue.number <= end_number):
+                    issues.append(issue)
 
     processed_issues = []
     for issue in issues:
@@ -97,12 +99,12 @@ def add_comment_to_issue(repo_path, issue_number, comment_text):
     print(f'Added comment to issue #{issue_number}')
 
 
-def triage_requests(start_number=None, issue_number=None):
+def triage_requests(start_number=None, end_number=None, issue_number=None):
     repo_path = 'ror-community/ror-updates'
     label = 'triage needed'
 
     records = find_issues_with_labels(
-        repo_path, label, start_number=start_number, issue_number=issue_number)
+        repo_path, label, start_number=start_number, end_number=end_number, issue_number=issue_number)
 
     new_records = [record for record in records if record['type'] == 'new']
     update_records = [
@@ -141,12 +143,19 @@ def parse_arguments():
     group.add_argument('-s', '--start', type=int, help='Start issue number')
     group.add_argument('-i', '--issue', type=int,
                        help='Specific issue number to process')
-    return parser.parse_args()
+    parser.add_argument('-e', '--end', type=int, 
+                       help='End issue number (inclusive) when using --start')
+    args = parser.parse_args()
+    if args.end is not None and args.issue is not None:
+        parser.error("--end can only be used with --start")
+    if args.end is not None and args.start is not None and args.end < args.start:
+        parser.error("--end must be greater than or equal to --start")
+    return args
 
 
 if __name__ == '__main__':
     args = parse_arguments()
     if args.start:
-        triage_requests(start_number=args.start)
+        triage_requests(start_number=args.start, end_number=args.end)
     elif args.issue:
         triage_requests(issue_number=args.issue)
