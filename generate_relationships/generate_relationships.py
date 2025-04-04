@@ -19,9 +19,11 @@ REL_INVERSE = {'parent': 'child', 'child': 'parent', 'related': 'related',
 LAST_MOD_DATE =  datetime.now().strftime("%Y-%m-%d")
 
 def check_file(file):
+    print(f"Checking for file: {file}")
     filepath = ''
     for root, dirs, files in os.walk(".", topdown=True):
         if file in files:
+            print(f"Filepath: {file}")
             filepath = (os.path.join(root, file))
     return filepath
 
@@ -264,6 +266,8 @@ def get_relationships_from_file(file, version):
                 row_count += 1
                 check_record_id = parse_record_id(row['Record ID'])
                 check_related_id = parse_record_id(row['Related ID'])
+                print(f"Record ID: {check_record_id}")
+                print(f"Related ID: {check_related_id}")
                 # check that related ID is an active record
                 check_related_id_status = get_record_status(check_related_id, version)
                 if (check_record_id and check_related_id):

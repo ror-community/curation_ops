@@ -56,7 +56,9 @@ def get_all_data(f):
                         'domains', 'established', 'external_ids.type.fundref.all', 'external_ids.type.fundref.preferred',
                         'external_ids.type.grid.all', 'external_ids.type.grid.preferred', 'external_ids.type.isni.all', 'external_ids.type.isni.preferred',
                         'external_ids.type.wikidata.all', 'external_ids.type.wikidata.preferred', 'links.type.website', 'links.type.wikipedia',
-                        'locations.geonames_id', 'locations.geonames_details.country_code', 'locations.geonames_details.country_name',
+                        'locations.geonames_id', 'locations.geonames_details.continent_code', 'locations.geonames_details.continent_name',
+                        'locations.geonames_details.country_code', 'locations.geonames_details.country_name',
+                        'locations.geonames_details.country_subdivision_code', 'locations.geonames_details.country_subdivision_name',
                         'locations.geonames_details.lat', 'locations.geonames_details.lng', 'locations.geonames_details.name',
                         'names.types.acronym', 'names.types.alias', 'names.types.label', 'names.types.ror_display', 'ror_display_lang', 'relationships', 'status', 'types'])
     with open(f, 'r+', encoding='utf8') as f_in:
@@ -80,8 +82,12 @@ def get_all_data(f):
         #locations
         geonames_id = record['locations'][0]['geonames_id']
         geonames_name = record['locations'][0]['geonames_details']['name']
+        geonames_continent_code = record['locations'][0]['geonames_details']['continent_code']
+        geonames_continent_name = record['locations'][0]['geonames_details']['continent_name']
         geonames_country_code = record['locations'][0]['geonames_details']['country_code']
         geonames_country_name = record['locations'][0]['geonames_details']['country_name']
+        geonames_country_subdivision_code = record['locations'][0]['geonames_details']['country_subdivision_code']
+        geonames_country_subdivision_name = record['locations'][0]['geonames_details']['country_subdivision_name']
         geonames_lat = record['locations'][0]['geonames_details']['lat']
         geonames_lng = record['locations'][0]['geonames_details']['lng']
         # names
@@ -121,7 +127,8 @@ def get_all_data(f):
             writer.writerow([ror_id, created_date, created_schema, last_mod_date, last_mod_schema, domains, established,
                             all_ids['fundref'], preferred_ids['fundref'], all_ids['grid'], preferred_ids['grid'],
                             all_ids['isni'], preferred_ids['isni'], all_ids['wikidata'], preferred_ids['wikidata'],
-                            links_website, links_wikipedia, geonames_id, geonames_country_code, geonames_country_name,
+                            links_website, links_wikipedia, geonames_id, geonames_continent_code, geonames_continent_name,
+                            geonames_country_code, geonames_country_name, geonames_country_subdivision_code, geonames_country_subdivision_name,
                             geonames_lat, geonames_lng, geonames_name, acronyms_str, aliases_str, labels_str, ror_display_str,
                             ror_display_lang, rels_str, status, types])
 

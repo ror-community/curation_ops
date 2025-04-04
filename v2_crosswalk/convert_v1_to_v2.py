@@ -89,6 +89,15 @@ def format_v2_locations(v1_data):
                 v2_location['geonames_id'] = address['geonames_city']['id']
             if address['geonames_city']['city']:
                 v2_location['geonames_details']['name'] = address['geonames_city']['city']
+            if address['geonames_city']['geonames_admin1']:
+                if address['geonames_city']['geonames_admin1']['code']:
+                    if '.' in address['geonames_city']['geonames_admin1']['code']:
+                        code = address['geonames_city']['geonames_admin1']['code'].split('.')[1]
+                    else:
+                        code = address['geonames_city']['geonames_admin1']['code']
+                    v2_location['geonames_details']['country_subdivision_code'] = code
+                if address['geonames_city']['geonames_admin1']['name']:
+                    v2_location['geonames_details']['country_subdivision_name'] = address['geonames_city']['geonames_admin1']['name']
         if v1_data['country']['country_code']:
             v2_location['geonames_details']['country_code'] = v1_data['country']['country_code']
         if v1_data['country']['country_name']:

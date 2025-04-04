@@ -71,6 +71,10 @@ def format_v1_addresses(v2_locations):
     if v2_location['geonames_id']:
         v1_address['geonames_city']['id'] = v2_location['geonames_id']
     if v2_location['geonames_details']:
+        if v2_location['geonames_details']['country_subdivision_code']:
+            v1_address['geonames_city']['geonames_admin1']['code'] = f"{v2_location['geonames_details']['country_code']}.{v2_location['geonames_details']['country_subdivision_code']}"
+        if v2_location['geonames_details']['country_subdivision_name']:
+            v1_address['geonames_city']['geonames_admin1']['name'] = v2_location['geonames_details']['country_subdivision_name']
         if v2_location['geonames_details']['lat']:
             v1_address['lat'] = v2_location['geonames_details']['lat']
         if v2_location['geonames_details']['lng']:
@@ -80,6 +84,7 @@ def format_v1_addresses(v2_locations):
             v1_address['geonames_city']['city'] = v2_location['geonames_details']['name']
     v1_addresses.append(v1_address)
     return v1_addresses
+
 
 # country
 def format_v1_country(v2_locations):
