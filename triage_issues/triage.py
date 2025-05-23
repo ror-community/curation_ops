@@ -5,8 +5,6 @@ import string
 import urllib
 import itertools
 import requests
-import openai
-from ast import literal_eval
 from collections import defaultdict
 from github import Github
 from thefuzz import fuzz
