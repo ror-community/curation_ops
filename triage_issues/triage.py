@@ -34,83 +34,6 @@ def normalize_text(text):
     return ''.join(ch for ch in re.sub(r'[^\w\s-]', '', text.lower()) if ch not in set(string.punctuation))
 
 
-def get_issue_comments(issue):
-    comments_content = ''
-    try:
-        for comment in issue.get_comments():
-            if comment.body:
-                comments_content += ' ' + comment.body
-    except Exception as e:
-        print(f"Error fetching comments for issue #{issue.number}: {e}")
-    return comments_content
-
-
-@catch_requests_exceptions
-def check_existing_issues(org_name, ror_id=None):
-    existing_issues = {}
-    in_issues_list = []
-    if not TOKEN:
-        print("Error: GITHUB_TOKEN not found for check_existing_issues.")
-        return None
-    g = Github(TOKEN)
-    repo_path = os.environ.get('GITHUB_REPOSITORY', 'ror-community/ror-updates')
-    try:
-        repo = g.get_repo(repo_path)
-    except Exception as e:
-        print(f"Error accessing repository {repo_path}: {e}")
-        return None
-
-    states = ['open', 'closed']
-    for state in states:
-        try:
-            issues = repo.get_issues(state=state, sort='created', direction='desc')
-            issue_count = 0
-            max_issues_to_check_per_state = 2000
-            for issue in issues:
-                if issue_count >= max_issues_to_check_per_state:
-                    break
-                issue_html_url = issue.html_url
-                if ror_id:
-                    issue_body_content = issue.body if issue.body else ""
-                    issue_text = issue_body_content
-                    if ror_id in issue_body_content:
-                        if ror_id in issue_text:
-                             in_issues_list.append(issue_html_url)
-                    elif ror_id not in issue_body_content :
-                        comments = get_issue_comments(issue)
-                        if ror_id in comments:
-                            in_issues_list.append(issue_html_url)
-
-                issue_number = issue.number
-                if issue_number in [892, 862]:
-                    continue
-                issue_title = re.sub(r'[\n()]', '', issue.title if issue.title else "")
-                label_names = [label.name for label in issue.labels if issue.labels]
-                if 'new record' in label_names:
-                    try:
-                        pattern = re.compile(r'(?<=\:)(.*)($)')
-                        title_name = pattern.search(issue_title).group(0).strip()
-                        existing_issues[issue_number] = {
-                            'title_name': title_name, 'html_url': issue_html_url}
-                    except AttributeError:
-                        pass
-                issue_count += 1
-        except Exception as e:
-            print(f"Error fetching or processing issues for state '{state}': {e}")
-            continue
-
-    for key, value in existing_issues.items():
-        title_to_compare = value.get('title_name')
-        if title_to_compare:
-            mr = fuzz.ratio(normalize_text(org_name),
-                            normalize_text(title_to_compare))
-            if mr > 90 or normalize_text(org_name) in normalize_text(title_to_compare):
-                in_issues_list.append(value['html_url'])
-
-    if in_issues_list:
-        return '; '.join(sorted(list(set(in_issues_list))))
-    else:
-        return None
 
 
 @catch_requests_exceptions
@@ -561,8 +484,6 @@ def triage(record):
     org_metadata['ORCID affiliation usage'] = search_orcid(all_names)
     org_metadata['Possible ROR matches'] = search_ror(all_names)
 
-    if org_name:
-        org_metadata['Previous requests'] = check_existing_issues(org_name, ror_id=record.get('ror_id'))
 
     if record.get('city') and record.get('country'):
         location = f"{record['city']}, {record['country']}"
