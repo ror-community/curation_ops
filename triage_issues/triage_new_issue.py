@@ -70,7 +70,7 @@ def get_section_content(issue_body, current_section_header_literal):
     else:
         end_lookahead_pattern_str = rf"(?:{'|'.join(lookahead_terms)})|$"
     
-    full_regex_str = rf"{start_pattern}([\s\S]*?)(?={end_lookahead_pattern_str})"
+    full_regex_str = rf"{start_pattern}([\s\S]*)(?={end_lookahead_pattern_str})"
 
     if current_section_header_literal == "Update record:":
         print(f"DEBUG_GET_SECTION (Update record): Compiling regex: '{full_regex_str}'")
