@@ -316,8 +316,6 @@ def process_single_issue(issue_object, repo_path_str):
                 print(f'Triaging update record request - issue #{processed_details["issue_number"]}...')
                 if not OPENAI_API_KEY:
                     print("Error: OPENAI_API_KEY is not set. Cannot encode update.")
-                    add_comment_to_issue_object(
-                        issue_object, "Error: System configuration issue (OPENAI_API_KEY not set). Cannot process update encoding.")
                     return
 
                 update_encoding = encode_update(
@@ -329,21 +327,15 @@ def process_single_issue(issue_object, repo_path_str):
                             issue_object, validated_update)
                     else:
                         print(f"Invalid encoding generated for issue #{issue_object.number}. Original: {update_encoding}")
-                        add_comment_to_issue_object(issue_object, f"Error: Generated encoding was invalid and could not be corrected. Original attempt: `{update_encoding}`. Needs manual review.")
                 else:
                     print(f"No encoding generated for update on issue #{issue_object.number}")
-                    add_comment_to_issue_object(
-                        issue_object, "Error: Could not generate an update encoding. Needs manual review.")
 
     except TimeoutError:
         print(f'Timed out while processing issue #{processed_details["issue_number"]}')
-        add_comment_to_issue_object(
-            issue_object, "Error: Processing timed out. Needs manual review.")
     except Exception as e:
         print(f'An unexpected error occurred while processing issue #{processed_details["issue_number"]}: {e}')
         import traceback
         traceback.print_exc()
-        add_comment_to_issue_object(issue_object, f"An unexpected error occurred: {str(e)}. Needs manual review.")
 
 
 def main():

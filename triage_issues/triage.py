@@ -1,8 +1,6 @@
 import os
 import re
-import sys
 import string
-import urllib
 import itertools
 import requests
 from collections import defaultdict
