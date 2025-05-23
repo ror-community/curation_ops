@@ -119,57 +119,79 @@ def process_issue_details(issue):
             print(f"Issue #{issue.number} (Add new): Could not find or parse 'Add record:' section.")
 
     elif 'Modify the information' in issue.title:
-        update_record_section_content = get_section_content(
-            issue_body, "Update record:")
-        other_info_section_content = get_section_content(
-            issue_body, "Other information about this request:")
+        print("DEBUG: Entered 'Modify the information' block.") # New debug print
+        print(f"DEBUG: Raw issue_body received by process_issue_details:\n>>>\n{issue_body}\n<<<")
+
+        update_record_section_content = get_section_content(issue_body, "Update record:")
+        print(f"DEBUG: update_record_section_content from get_section_content:\n>>>\n{update_record_section_content}\n<<<")
+
+        other_info_section_content = get_section_content(issue_body, "Other information about this request:")
+        print(f"DEBUG: other_info_section_content from get_section_content:\n>>>\n{other_info_section_content}\n<<<")
 
         if not update_record_section_content:
-            print(f"Warning: Could not isolate 'Update record:' section for issue #{issue.number}. Fallback may occur.")
+            print(f"DEBUG: update_record_section_content is None or empty. Falling back to full issue_body for parsing_content_for_update_fields.") # New debug print
             parsing_content_for_update_fields = issue_body
         else:
             parsing_content_for_update_fields = update_record_section_content
-
-        organization_name = get_matched_value(
-            name_pattern, parsing_content_for_update_fields)
+        
+        print(f"DEBUG: parsing_content_for_update_fields:\n>>>\n{parsing_content_for_update_fields}\n<<<")
+        
+        organization_name = get_matched_value(name_pattern, parsing_content_for_update_fields)
+        print(f"DEBUG: Extracted organization_name: '{organization_name}'")
 
         ror_id = None
-        ror_id_field_match = re.search(
-            ror_id_field_pattern, parsing_content_for_update_fields, re.IGNORECASE)
+        ror_id_field_match = re.search(ror_id_field_pattern, parsing_content_for_update_fields, re.IGNORECASE)
         if ror_id_field_match:
-            ror_id_value = ror_id_field_match.group(
-                2) or ror_id_field_match.group(3)
+            ror_id_value = ror_id_field_match.group(2) or ror_id_field_match.group(3)
             if ror_id_value:
-                ror_id = "https://ror.org/" + ror_id_value
+                 ror_id = "https://ror.org/" + ror_id_value
+            print(f"DEBUG: ROR ID from field_match: '{ror_id}' (value: '{ror_id_value}')")
         else:
-            ror_id_general_match = re.search(
-                ror_id_general_pattern, issue_body, re.IGNORECASE | re.MULTILINE)
+            print(f"DEBUG: ROR ID field_match failed. Trying general pattern.")
+            ror_id_general_match = re.search(ror_id_general_pattern, issue_body, re.IGNORECASE | re.MULTILINE)
             if ror_id_general_match:
                 if ror_id_general_match.group(1):
                     ror_id = ror_id_general_match.group(1)
                 elif ror_id_general_match.group(2):
                     ror_id = "https://ror.org/" + ror_id_general_match.group(2)
-
+                print(f"DEBUG: ROR ID from general_match: '{ror_id}'")
+            else:
+                print(f"DEBUG: ROR ID general_match also failed.")
+        
         if ror_id:
             ror_id = ror_id.strip()
+        print(f"DEBUG: Final ROR ID after strip: '{ror_id}'")
+
 
         description_of_change = None
-        desc_match = re.search(
-            description_of_change_section_pattern, parsing_content_for_update_fields)
+        print(f"DEBUG: About to search for description. Pattern: '{description_of_change_section_pattern}' on parsing_content_for_update_fields") # New debug print
+        desc_match = re.search(description_of_change_section_pattern, parsing_content_for_update_fields)
         if desc_match:
+            print(f"DEBUG: desc_match for description found.")
+            print(f"DEBUG: desc_match.group(0):\n>>>\n{desc_match.group(0)}\n<<<")
+            print(f"DEBUG: desc_match.group(1) (before strip):\n>>>\n{desc_match.group(1)}\n<<<")
             description_of_change = desc_match.group(1).strip()
+            print(f"DEBUG: description_of_change from pattern (after strip): '{description_of_change}'")
+        else:
+            print("DEBUG: desc_match for description NOT found.")
+            description_of_change = None 
 
         if other_info_section_content:
+            print(f"DEBUG: other_info_section_content is not empty ('{other_info_section_content}'). Considering for description.") # New debug print
             if not description_of_change or len(description_of_change) < 20:
+                print(f"DEBUG: description_of_change is short or empty. Appending other_info.")
                 full_description = other_info_section_content
                 if description_of_change:
-                    full_description = description_of_change + \
-                        "\n\n--- Additional Information ---\n" + other_info_section_content
+                    full_description = description_of_change + "\n\n--- Additional Information ---\n" + other_info_section_content
                 description_of_change = full_description.strip()
-            elif description_of_change:
-                description_of_change += "\n\n--- Additional Information ---\n" + \
-                    other_info_section_content
-                description_of_change = description_of_change.strip()
+            elif description_of_change: 
+                 print(f"DEBUG: description_of_change is not short. Appending other_info.")
+                 description_of_change += "\n\n--- Additional Information ---\n" + other_info_section_content
+                 description_of_change = description_of_change.strip()
+        else:
+            print(f"DEBUG: other_info_section_content is empty. Not appending to description.")
+        
+        print(f"DEBUG: Final description_of_change before check: '{description_of_change}'")
 
         if ror_id and description_of_change:
             processed_issue = {'issue_number': issue.number, 'ror_id': ror_id,
