@@ -57,6 +57,8 @@ def issue_has_bot_comment(issue, bot_name=BOT_NAME):
 
 
 def get_section_content(issue_body, current_section_header_literal):
+    print(f"DEBUG_GET_SECTION: Called with current_section_header_literal: '{current_section_header_literal}'")
+
     start_pattern = rf"^{re.escape(current_section_header_literal)}\s*"
     lookahead_terms = []
     for h in ALL_MAJOR_SECTION_HEADERS:
@@ -64,18 +66,39 @@ def get_section_content(issue_body, current_section_header_literal):
             lookahead_terms.append(rf"\n^\s*{re.escape(h)}\s*")
 
     if not lookahead_terms:
-        end_lookahead_pattern = r"$"
+        end_lookahead_pattern_str = r"$"
     else:
-        end_lookahead_pattern = rf"(?:{'|'.join(lookahead_terms)})|$"
+        end_lookahead_pattern_str = rf"(?:{'|'.join(lookahead_terms)})|$"
+    
+    full_regex_str = rf"{start_pattern}([\s\S]*?)(?={end_lookahead_pattern_str})"
 
-    full_regex = rf"{start_pattern}([\s\S]*?)(?={end_lookahead_pattern})"
-    pattern = re.compile(full_regex, re.MULTILINE | re.IGNORECASE)
+    if current_section_header_literal == "Update record:":
+        print(f"DEBUG_GET_SECTION (Update record): Compiling regex: '{full_regex_str}'")
+        print(f"DEBUG_GET_SECTION (Update record): ALL_MAJOR_SECTION_HEADERS was: {ALL_MAJOR_SECTION_HEADERS}")
+        print(f"DEBUG_GET_SECTION (Update record): Lookahead terms generated: {lookahead_terms}")
+
+    try:
+        pattern = re.compile(full_regex_str, re.MULTILINE | re.IGNORECASE)
+    except Exception as e:
+        print(f"DEBUG_GET_SECTION: ERROR COMPILING REGEX: {e}")
+        print(f"DEBUG_GET_SECTION: Faulty regex string was: {full_regex_str}")
+        return None
+
     match = pattern.search(issue_body)
 
     if match:
+        if current_section_header_literal == "Update record:":
+            print(f"DEBUG_GET_SECTION (Update record): Match found!")
+            try:
+                print(f"DEBUG_GET_SECTION (Update record): match.group(0) (whole match):\n>>>\n{match.group(0)}\n<<<")
+                print(f"DEBUG_GET_SECTION (Update record): match.group(1) (captured content before strip):\n>>>\n{match.group(1)}\n<<<")
+            except IndexError:
+                print(f"DEBUG_GET_SECTION (Update record): Match found, but error accessing groups.")
+        
         return match.group(1).strip()
     else:
-        pass
+        if current_section_header_literal == "Update record:":
+            print(f"DEBUG_GET_SECTION (Update record): No match found by pattern.search().")
     return None
 
 
