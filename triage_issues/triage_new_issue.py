@@ -14,7 +14,7 @@ BOT_NAME = "ror-curator-bot"
 ALL_MAJOR_SECTION_HEADERS = [
     "Summary of request:",
     "Update record:",
-    # "Merge/split/deprecate records:",
+    "Merge/split/deprecate records:",
     "Add record:",
     "Other information about this request:"
 ]
