@@ -1,12 +1,11 @@
 import os
 import re
 import signal
-import argparse
 from github import Github, GithubException
-from triage import triage
-from contextlib import contextmanager
+from triage import triage 
 from encode_updates import encode_update
 from validate_encoding import validate_encoding
+from contextlib import contextmanager
 
 TOKEN = os.environ.get('GITHUB_TOKEN')
 OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY')
@@ -49,6 +48,19 @@ def issue_has_bot_comment(issue, bot_name=BOT_NAME):
     return False
 
 
+def get_section_content(issue_body, section_name):
+    section_header = f"{section_name}:"
+    pattern = re.compile(
+        rf"^{re.escape(section_header)}\s*([\s\S]*?)"
+        rf"(?=(?:\n^\s*(?:Name of organization|ROR ID|Which part of the record needs to be changed|Description of change|Merge\/split\/deprecate records|Organizations affected by this change|How should the record\(s\) be changed|Add record|Website|Domains|Link to publications|Organization type|Wikipedia page|Wikidata ID|ISNI ID|GRID ID|Crossref Funder ID|Aliases|Labels|Acronym\/abbreviation|Related organizations|City|Country|Geonames ID|Year established|How will a ROR ID|Other information about this request):\s*)|$)",
+        re.MULTILINE | re.IGNORECASE
+    )
+    match = pattern.search(issue_body)
+    if match:
+        return match.group(1).strip()
+    return None
+
+
 def process_issue_details(issue):
     processed_issue = None
     issue_body = issue.body if issue.body else ""
@@ -59,49 +71,91 @@ def process_issue_details(issue):
     city_pattern = r"City:[ \t]*([^\n]*)"
     country_pattern = r"Country:[ \t]*([^\n]*)"
 
-    ror_id_match_pattern = r'https://ror.org/(0[a-z0-9]{6}[0-9]{2})|^(0[a-z0-9]{6}[0-9]{2})$'
-    description_of_change_pattern = r'Description of change:\s*([\s\S]*?)(?=\n(?:Merge\/split\/deprecate records:|Additional information:)|$)'
+    ror_id_field_pattern = r"ROR ID:[ \t]*(https://ror\.org/(0[a-z0-9]{6}[0-9]{2})|(0[a-z0-9]{6}[0-9]{2}))"
+    ror_id_general_pattern = r"(https://ror\.org/0[a-z0-9]{6}[0-9]{2})\b|\b(0[a-z0-9]{6}[0-9]{2})\b"
+
+    description_of_change_section_pattern = r"Description of change:\s*([\s\S]*?)(?=\n(?:Merge\/split\/deprecate records:|Additional information:)|$)"
 
     if 'Add a new' in issue.title:
-        organization_name = get_matched_value(name_pattern, issue_body)
-        aliases = get_matched_value(aliases_pattern, issue_body)
-        website = get_matched_value(website_pattern, issue_body)
-        city = get_matched_value(city_pattern, issue_body)
-        country = get_matched_value(country_pattern, issue_body)
+        active_section_content = get_section_content(issue_body, "Add record")
+        if not active_section_content:
+            print(f"Warning: Could not isolate 'Add record:' section for issue #{issue.number}. Attempting to parse from full body as fallback.")
+            active_section_content = issue_body 
 
-        if organization_name:
-            processed_issue = {'issue_number': issue.number, 'body': issue_body,
-                               'name': organization_name, 'aliases': aliases, 'url': website,
-                               'city': city, 'country': country, 'type': 'new', 'issue_object': issue}
+        if active_section_content:
+            organization_name = get_matched_value(name_pattern, active_section_content)
+            aliases = get_matched_value(aliases_pattern, active_section_content)
+            website = get_matched_value(website_pattern, active_section_content)
+            city = get_matched_value(city_pattern, active_section_content)
+            country = get_matched_value(country_pattern, active_section_content)
+
+            if organization_name: 
+                processed_issue = {'issue_number': issue.number, 'body': issue_body,
+                                   'name': organization_name, 'aliases': aliases, 'url': website,
+                                   'city': city, 'country': country, 'type': 'new', 'issue_object': issue}
+            else:
+                print(f"Issue #{issue.number} (Add new): 'Name of organization' not found in the relevant section.")
+        else:
+            print(f"Issue #{issue.number} (Add new): Could not find or parse 'Add record:' section.")
+
     elif 'Modify the information' in issue.title:
-        organization_name = get_matched_value(name_pattern, issue_body)
+        update_record_section_content = get_section_content(issue_body, "Update record")
+        other_info_section_content = get_section_content(issue_body, "Other information about this request")
+
+        if not update_record_section_content:
+            print(f"Warning: Could not isolate 'Update record:' section for issue #{issue.number}. Attempting to parse from full body as fallback.")
+            parsing_content_for_update_fields = issue_body
+        else:
+            parsing_content_for_update_fields = update_record_section_content
+
+        organization_name = get_matched_value(name_pattern, parsing_content_for_update_fields)
 
         ror_id = None
-        ror_id_search_match = re.search(
-            ror_id_match_pattern, issue_body, re.IGNORECASE | re.MULTILINE)
-        if ror_id_search_match:
-            ror_id = ror_id_search_match.group(
-                1) or ror_id_search_match.group(2)
+        ror_id_field_match = re.search(ror_id_field_pattern, parsing_content_for_update_fields, re.IGNORECASE)
+        if ror_id_field_match:
+            ror_id_value = ror_id_field_match.group(2) or ror_id_field_match.group(3)
+            if ror_id_value:
+                ror_id = "https://ror.org/" + ror_id_value
+        else:
+            ror_id_general_match = re.search(ror_id_general_pattern, issue_body, re.IGNORECASE | re.MULTILINE)
+            if ror_id_general_match:
+                if ror_id_general_match.group(1): 
+                    ror_id = ror_id_general_match.group(1)
+                elif ror_id_general_match.group(2): 
+                    ror_id = "https://ror.org/" + ror_id_general_match.group(2)
+        
+        if ror_id:
             ror_id = ror_id.strip()
-            if not ror_id.startswith("https://ror.org/"):
-                ror_id = "https://ror.org/" + ror_id
 
-        description_match = re.search(
-            description_of_change_pattern, issue_body)
-        description_of_change = description_match.group(
-            1).strip() if description_match else None
+        description_of_change = None
+        desc_match = re.search(description_of_change_section_pattern, parsing_content_for_update_fields)
+        if desc_match:
+            description_of_change = desc_match.group(1).strip()
+
+        if other_info_section_content:
+            if not description_of_change or len(description_of_change) < 20: 
+                full_description = other_info_section_content
+                if description_of_change: 
+                    full_description = description_of_change + "\n\n--- Additional Information ---\n" + other_info_section_content
+                description_of_change = full_description.strip()
+            elif description_of_change: 
+                description_of_change += "\n\n--- Additional Information ---\n" + other_info_section_content
+                description_of_change = description_of_change.strip()
+
 
         if ror_id and description_of_change:
             processed_issue = {'issue_number': issue.number, 'ror_id': ror_id,
-                               'name': organization_name,
+                               'name': organization_name, 
                                'change': description_of_change,
                                'type': 'update', 'issue_object': issue}
         else:
-            print(f"Could not extract ROR ID or description of change for issue #{issue.number}")
+            print(f"Could not extract required ROR ID or full description of change for update issue #{issue.number}.")
             if not ror_id:
-                print("ROR ID missing or malformed.")
+                print(f"ROR ID missing or malformed for issue #{issue.number}.")
             if not description_of_change:
-                print("Description of change missing or empty.")
+                print(f"Description of change missing or empty for issue #{issue.number} (even after checking 'Other information').")
+    else:
+        print(f"Issue #{issue.number} title '{issue.title}' does not match 'Add a new' or 'Modify the information'. Skipping detailed parsing.")
 
     return processed_issue
 
@@ -117,9 +171,14 @@ def convert_dict_to_comment(d):
         "Possible ROR matches", "Previous requests", "Geonames match"
     ]
 
+    temp_dict = d.copy() 
+    if 'issue_object' in temp_dict:
+        del temp_dict['issue_object']
+
+
     for key in preferred_order:
-        if key in d and d[key]:
-            value = d[key]
+        if key in temp_dict and temp_dict[key]: 
+            value = temp_dict[key]
             if isinstance(value, list):
                 value_str = '; '.join(map(str, value))
             elif isinstance(value, dict):
@@ -127,9 +186,10 @@ def convert_dict_to_comment(d):
             else:
                 value_str = str(value)
             comment_parts.append(f'**{key}**: {value_str}')
+            del temp_dict[key] 
 
-    for key, value in d.items():
-        if key not in preferred_order and value and key != 'issue_object':
+    for key, value in temp_dict.items():
+        if value: 
             if isinstance(value, list):
                 value_str = '; '.join(map(str, value))
             elif isinstance(value, dict):
@@ -137,7 +197,7 @@ def convert_dict_to_comment(d):
             else:
                 value_str = str(value)
             comment_parts.append(f'**{key}**: {value_str}')
-
+            
     return '\n'.join(comment_parts).strip()
 
 
@@ -149,39 +209,38 @@ def add_comment_to_issue_object(issue_object, comment_text):
         print(f"Failed to add comment to issue #{issue_object.number}: {e}")
 
 
-def process_single_issue(issue_object, repo_path_str):
+def process_single_issue(issue_object, repo_path_str): 
     if issue_has_bot_comment(issue_object):
         print(f"Skipping issue #{issue_object.number} as it already has a bot comment from {BOT_NAME}")
         return
 
     processed_details = process_issue_details(issue_object)
     if not processed_details:
-        print(f"Could not process details for issue #{issue_object.number}, skipping.")
+        print(f"Could not process details for issue #{issue_object.number} into a structured format, skipping automated comment.")
         return
 
     try:
         if processed_details['type'] == 'new':
-            with time_limit(300):
+            with time_limit(300): 
                 print(f'Triaging new record request - issue #{processed_details["issue_number"]}...')
-                triage_input_data = {
-                    k: v for k, v in processed_details.items() if k != 'issue_object'}
-
+                triage_input_data = {k: v for k, v in processed_details.items() if k != 'issue_object'}
+                
                 if 'body' not in triage_input_data and 'body' in processed_details:
-                    triage_input_data['body'] = processed_details['body']
+                        triage_input_data['body'] = processed_details['body']
 
-                triaged_record = triage(triage_input_data)
+                triaged_record = triage(triage_input_data) 
                 if triaged_record:
                     triaged_comment = convert_dict_to_comment(triaged_record)
                     if triaged_comment:
                         add_comment_to_issue_object(
                             issue_object, triaged_comment)
                     else:
-                        print(f"No comment generated for new record triage on issue #{issue_object.number}")
+                        print(f"No comment generated from triage data for new record on issue #{issue_object.number}")
                 else:
-                    print(f"Triage returned no data for issue #{issue_object.number}")
+                    print(f"Triage returned no data for new record issue #{issue_object.number}")
 
         elif processed_details['type'] == 'update':
-            with time_limit(300):
+            with time_limit(300): 
                 print(f'Triaging update record request - issue #{processed_details["issue_number"]}...')
                 if not OPENAI_API_KEY:
                     print("Error: OPENAI_API_KEY is not set. Cannot encode update.")
@@ -224,13 +283,13 @@ def main():
         print("Error: Missing required environment variables (ISSUE_NUMBER, GITHUB_REPOSITORY, GITHUB_TOKEN).")
         return
 
-    global TOKEN
+    global TOKEN 
     TOKEN = github_token
 
-    global OPENAI_API_KEY
+    global OPENAI_API_KEY 
     OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY')
     if not OPENAI_API_KEY:
-        print("Warning: OPENAI_API_KEY environment variable is not set. Update encoding will fail.")
+        print("Warning: OPENAI_API_KEY environment variable is not set. Update encoding will likely fail.")
 
     try:
         issue_number = int(issue_number_str)
