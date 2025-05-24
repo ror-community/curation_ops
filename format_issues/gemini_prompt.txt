@@ -47,7 +47,7 @@ You will process GitHub issues in the ror-community/ror-updates repository to fo
 
 1. **Separate multiple values with semicolons**
 
-2. **Format relationships** using the pattern `https://ror.org/{ror_id} (relationship_type)`:
+2. **Format relationships using the pattern `https://ror.org/{{ror_id}} (relationship_type)`:
     - No semicolons needed between relationships
 
 ## 5. Format External Identifiers
@@ -109,5 +109,4 @@ Current Issue Title:
 {issue_title}
 
 Current Issue Body:
-```markdown
 {issue_body}
