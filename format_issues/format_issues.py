@@ -116,16 +116,22 @@ def call_gemini_to_format_issue(issue_title, issue_body):
         print("Error: Gemini prompt template is not loaded. Cannot format issue.")
         return None
 
-    genai.configure(api_key=GEMINI_API_KEY)
-    model = genai.GenerativeModel('gemini-1.5-flash')
+    try:
+        client = genai.Client(api_key=GEMINI_API_KEY)
+    except Exception as e:
+        print(f"Error creating Gemini client: {e}")
+        return None
 
     prompt = GEMINI_PROMPT_TEMPLATE.format(
         issue_title=issue_title, issue_body=issue_body)
 
     print(f"Sending request to Gemini API for issue: '{issue_title}'...")
     try:
-        with time_limit(120):
-            response = model.generate_content(prompt)
+        with time_limit(120): # Your existing timeout
+            response = client.models.generate_content(
+                model='gemini-1.5-flash', # Your model
+                contents=prompt
+            )
             formatted_body = response.text
             if formatted_body.startswith("```markdown\n"):
                 formatted_body = formatted_body[len("```markdown\n"):]
@@ -140,8 +146,6 @@ def call_gemini_to_format_issue(issue_title, issue_body):
         return None
     except Exception as e:
         print(f"An error occurred with the Gemini API: {e}")
-        if hasattr(e, 'response') and e.response:
-            print(f"Gemini API Error Response: {e.response.text}")
         return None
 
 
