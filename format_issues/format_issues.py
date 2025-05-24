@@ -2,9 +2,10 @@ import os
 import re
 import json
 import signal
-from github import Github, GithubException
-import google.generativeai as genai
 from contextlib import contextmanager
+from google import genai
+from github import Github, GithubException
+
 
 GITHUB_TOKEN = os.environ.get('GITHUB_TOKEN')
 GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY')
