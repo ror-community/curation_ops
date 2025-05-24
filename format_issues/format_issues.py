@@ -18,7 +18,8 @@ DRY_RUN_STR = os.environ.get('DRY_RUN', 'false').lower()
 DRY_RUN = DRY_RUN_STR in ['true', '1', 'yes']
 
 BOT_COMMENT_SIGNATURE = "\n\n---\n*This issue body was automatically formatted by the ROR Curator Bot.*"
-PROMPT_FILE_PATH = "gemini_prompt.txt"
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+PROMPT_FILE_PATH = os.path.join(SCRIPT_DIR, "gemini_prompt.txt")
 
 
 def load_prompt_template(file_path):
