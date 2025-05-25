@@ -7,10 +7,12 @@ client = OpenAI(api_key=os.environ.get('OPENAI_API_KEY'))
 
 
 def encode_update(ror_id, description_of_change):
+	script_dir = os.path.dirname(os.path.abspath(__file__))
+	prompt_file_path = os.path.join(script_dir, "encode_prompt.txt")
 	ror_api_url = 'https://api.ror.org/v2/organizations/' + ror_id
 	r = requests.get(ror_api_url)
 	if r.status_code == requests.codes.ok:
-		with open('encode_prompt.txt', 'r') as file:
+		with open(prompt_file_path, 'r', encoding="utf-8") as file:
 			encode_prompt = file.read()
 		record = str(r.json())
 		try:
