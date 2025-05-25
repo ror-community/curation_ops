@@ -20,11 +20,13 @@ except Exception as e:
     print(f"CRITICAL: Failed to initialize Lingua Language Detector: {e}. Language detection will not work.")
     LINGUA_DETECTOR = None
 
+
 def catch_requests_exceptions(func):
     def wrapper(*args, **kwargs):
         try:
             return func(*args, **kwargs)
-        except requests.exceptions.RequestException:
+        except requests.exceptions.RequestException as e:
+            print(f"DEBUG: RequestException in {func.__name__}: {e}")
             return None
     return wrapper
 
@@ -34,8 +36,6 @@ def normalize_text(text):
     return ''.join(ch for ch in re.sub(r'[^\w\s-]', '', text.lower()) if ch not in set(string.punctuation))
 
 
-
-
 @catch_requests_exceptions
 def search_wikidata(all_names):
     best_match_ratio = 0
@@ -43,15 +43,18 @@ def search_wikidata(all_names):
     wikidata_label_match = None
 
     if LINGUA_DETECTOR is None:
-        print("Lingua detector not available. Skipping language detection in search_wikidata.")
+        print(
+            "Lingua detector not available. Skipping language detection in search_wikidata.")
 
     for name in all_names:
-        if not name: continue
+        if not name:
+            continue
 
         language_code_for_api = 'en'
         if LINGUA_DETECTOR:
             try:
-                detected_language_obj = LINGUA_DETECTOR.detect_language_of(name)
+                detected_language_obj = LINGUA_DETECTOR.detect_language_of(
+                    name)
                 if detected_language_obj:
                     iso_code_obj = detected_language_obj.iso_code_639_1
                     if iso_code_obj and hasattr(iso_code_obj, 'name'):
@@ -59,10 +62,13 @@ def search_wikidata(all_names):
             except Exception as e:
                 print(f"Error during Lingua language detection for '{name}': {e}. Defaulting to 'en'.")
 
-        params = {"action": "wbsearchentities", "search": name, "language": language_code_for_api, "format": "json", "uselang": language_code_for_api}
-        headers = {'User-Agent': 'ROROrgTriageBot/1.0 (ror.org, mailto:support@ror.org)'}
+        params = {"action": "wbsearchentities", "search": name,
+                  "language": language_code_for_api, "format": "json", "uselang": language_code_for_api}
+        headers = {
+            'User-Agent': 'ROROrgTriageBot/1.0 (ror.org, mailto:support@ror.org)'}
         try:
-            r = requests.get("https://www.wikidata.org/w/api.php", params=params, headers=headers, timeout=10)
+            r = requests.get("https://www.wikidata.org/w/api.php",
+                             params=params, headers=headers, timeout=10)
             r.raise_for_status()
             api_response = r.json()
         except requests.exceptions.RequestException as e:
@@ -73,9 +79,11 @@ def search_wikidata(all_names):
         normalized_query_name = normalize_text(name)
         for result in search_results:
             current_label = result.get('label', '')
-            if not current_label: continue
+            if not current_label:
+                continue
 
-            match_ratio = fuzz.ratio(normalized_query_name, normalize_text(current_label))
+            match_ratio = fuzz.ratio(
+                normalized_query_name, normalize_text(current_label))
             if match_ratio > best_match_ratio and match_ratio >= 85:
                 if 'id' in result and 'label' in result:
                     wikidata_id_match, wikidata_label_match = result['id'], result['label']
@@ -89,11 +97,14 @@ def search_wikidata(all_names):
 
 @catch_requests_exceptions
 def get_location_entity(wikidata_id):
-    if not wikidata_id: return None, None
+    if not wikidata_id:
+        return None, None
     url = 'https://www.wikidata.org/w/api.php?action=wbgetentities'
     params = {'ids': wikidata_id, 'format': 'json'}
-    headers = {'User-Agent': 'ROROrgTriageBot/1.0 (ror.org, mailto:support@ror.org)'}
-    api_response = requests.get(url, params=params, headers=headers, timeout=10).json()
+    headers = {
+        'User-Agent': 'ROROrgTriageBot/1.0 (ror.org, mailto:support@ror.org)'}
+    api_response = requests.get(
+        url, params=params, headers=headers, timeout=10).json()
 
     entity = api_response.get('entities', {}).get(wikidata_id)
     if not entity:
@@ -121,14 +132,18 @@ def get_location_entity(wikidata_id):
 
 @catch_requests_exceptions
 def get_wikipedia_url(wikidata_id):
-    if not wikidata_id: return None
+    if not wikidata_id:
+        return None
     url = 'https://www.wikidata.org/w/api.php?action=wbgetentities'
     params = {'props': 'sitelinks/urls', 'ids': wikidata_id, 'format': 'json'}
-    headers = {'User-Agent': 'ROROrgTriageBot/1.0 (ror.org, mailto:support@ror.org)'}
-    api_response = requests.get(url, params=params, headers=headers, timeout=10).json()
+    headers = {
+        'User-Agent': 'ROROrgTriageBot/1.0 (ror.org, mailto:support@ror.org)'}
+    api_response = requests.get(
+        url, params=params, headers=headers, timeout=10).json()
 
     entity = api_response.get('entities', {}).get(wikidata_id)
-    if not entity: return None
+    if not entity:
+        return None
 
     if 'sitelinks' in entity:
         sitelinks = entity['sitelinks']
@@ -151,7 +166,8 @@ def get_wikidata_claims(org_name, wikidata_id, match_ratio):
     org_metadata = {"Wikidata Name": org_name, "Wikidata ID": wikidata_id,
                     "Wikidata name match ratio": match_ratio}
     url = f"https://www.wikidata.org/w/api.php?action=wbgetentities&ids={wikidata_id}&format=json"
-    headers = {'User-Agent': 'ROROrgTriageBot/1.0 (ror.org, mailto:support@ror.org)'}
+    headers = {
+        'User-Agent': 'ROROrgTriageBot/1.0 (ror.org, mailto:support@ror.org)'}
     api_response = requests.get(url, headers=headers, timeout=10).json()
 
     if 'entities' not in api_response or wikidata_id not in api_response['entities']:
@@ -182,25 +198,31 @@ def get_wikidata_claims(org_name, wikidata_id, match_ratio):
         admin_terr_id = safe_get_claim('P131', [], is_location=True)
         if admin_terr_id:
             admin_name, admin_geonames = get_location_entity(admin_terr_id)
-            if admin_name: org_metadata["Wikidata Admin territory name"] = admin_name
-            if admin_geonames: org_metadata["Wikidata Admin territory Geonames ID"] = admin_geonames
+            if admin_name:
+                org_metadata["Wikidata Admin territory name"] = admin_name
+            if admin_geonames:
+                org_metadata["Wikidata Admin territory Geonames ID"] = admin_geonames
 
         city_loc_id = safe_get_claim('P276', [], is_location=True)
         if city_loc_id:
             city_name, city_geonames = get_location_entity(city_loc_id)
-            if city_name: org_metadata["Wikidata City"] = city_name
-            if city_geonames: org_metadata["Wikidata City Geonames ID"] = city_geonames
+            if city_name:
+                org_metadata["Wikidata City"] = city_name
+            if city_geonames:
+                org_metadata["Wikidata City Geonames ID"] = city_geonames
 
         country_id = safe_get_claim('P17', [], is_location=True)
         if country_id:
             country_name, _ = get_location_entity(country_id)
-            if country_name: org_metadata["Wikidata Country"] = country_name
+            if country_name:
+                org_metadata["Wikidata Country"] = country_name
 
         org_metadata["Wikidata links"] = safe_get_claim('P856', [])
         org_metadata["Wikidata GRID ID"] = safe_get_claim('P2427', [])
 
         ror_id_val = safe_get_claim('P6782', [])
-        if ror_id_val: org_metadata["Wikidata ROR ID"] = 'https://ror.org/' + ror_id_val
+        if ror_id_val:
+            org_metadata["Wikidata ROR ID"] = 'https://ror.org/' + ror_id_val
 
         org_metadata["Wikidata ISNI ID"] = safe_get_claim('P213', [])
 
@@ -211,33 +233,40 @@ def get_wikidata_claims(org_name, wikidata_id, match_ratio):
 
 @catch_requests_exceptions
 def search_ror(all_names):
-    headers = {'User-Agent': 'ROROrgTriageBot/1.0 (ror.org, mailto:support@ror.org)'}
+    headers = {
+        'User-Agent': 'ROROrgTriageBot/1.0 (ror.org, mailto:support@ror.org)'}
     for org_name in all_names:
-        if not org_name: continue
+        if not org_name:
+            continue
         current_name_ror_matches = []
         base_url = "https://api.ror.org/v2/organizations"
         params = {'affiliation': org_name}
 
-        api_response = requests.get(base_url, params=params, headers=headers, timeout=10).json()
+        api_response = requests.get(
+            base_url, params=params, headers=headers, timeout=10).json()
         results = api_response.get('items', [])
         for result in results:
             record = result.get('organization')
-            if not record: continue
+            if not record:
+                continue
             ror_id = record.get('id')
             for name_entry in record.get('names', []):
                 name_value = name_entry.get('value')
                 name_types_list = name_entry.get('types', [])
                 name_type = name_types_list[0] if name_types_list else 'N/A'
 
-                if not name_value or not ror_id: continue
+                if not name_value or not ror_id:
+                    continue
 
                 name_mr = fuzz.ratio(normalize_text(org_name),
                                      normalize_text(name_value))
                 if name_mr >= 90:
-                    current_name_ror_matches.append([ror_id, name_value, name_type])
+                    current_name_ror_matches.append(
+                        [ror_id, name_value, name_type])
 
         if current_name_ror_matches:
-            deduplicated_matches = sorted(list(set(map(tuple, current_name_ror_matches))))
+            deduplicated_matches = sorted(
+                list(set(map(tuple, current_name_ror_matches))))
 
             if len(deduplicated_matches) == 1:
                 match_tuple = deduplicated_matches[0]
@@ -249,15 +278,18 @@ def search_ror(all_names):
 
 @catch_requests_exceptions
 def search_isni(all_names):
-    headers = {'User-Agent': 'ROROrgTriageBot/1.0 (ror.org, mailto:support@ror.org)'}
+    headers = {
+        'User-Agent': 'ROROrgTriageBot/1.0 (ror.org, mailto:support@ror.org)'}
     for org_name in all_names:
-        if not org_name: continue
+        if not org_name:
+            continue
         matches = []
         normalized_name_query = normalize_text(org_name)
         query_url = 'https://isni.ringgold.com/api/stable/search'
         params = {'q': normalized_name_query}
 
-        response = requests.get(query_url, params=params, headers=headers, timeout=15)
+        response = requests.get(query_url, params=params,
+                                headers=headers, timeout=15)
         response.raise_for_status()
         api_response = response.json()
 
@@ -269,12 +301,15 @@ def search_isni(all_names):
                 isni_alt_names = institution.get('alt_names', [])
 
                 all_isni_names_for_record = []
-                if isni_primary_name: all_isni_names_for_record.append(isni_primary_name)
+                if isni_primary_name:
+                    all_isni_names_for_record.append(isni_primary_name)
                 all_isni_names_for_record.extend(isni_alt_names)
 
                 for isni_name_variant in all_isni_names_for_record:
-                    if not isni_name_variant: continue
-                    match_ratio = fuzz.ratio(normalize_text(org_name), normalize_text(isni_name_variant))
+                    if not isni_name_variant:
+                        continue
+                    match_ratio = fuzz.ratio(normalize_text(
+                        org_name), normalize_text(isni_name_variant))
                     if match_ratio > 90:
                         matches.append((isni_id, isni_name_variant))
 
@@ -289,17 +324,21 @@ def search_isni(all_names):
 
 @catch_requests_exceptions
 def search_funder_registry(all_names):
-    headers = {'User-Agent': 'ROROrgTriageBot/1.0 (ror.org, mailto:support@ror.org)'}
+    headers = {
+        'User-Agent': 'ROROrgTriageBot/1.0 (ror.org, mailto:support@ror.org)'}
     for org_name in all_names:
-        if not org_name: continue
+        if not org_name:
+            continue
         base_url = 'https://api.crossref.org/funders'
         params = {'query': org_name, 'mailto': 'support@ror.org'}
-        api_response = requests.get(base_url, params=params, headers=headers, timeout=10).json()
-        funders = api_response.get('message',{}).get('items',[])
+        api_response = requests.get(
+            base_url, params=params, headers=headers, timeout=10).json()
+        funders = api_response.get('message', {}).get('items', [])
         if funders:
             for funder in funders:
-                funder_name = funder.get('name','')
-                match_ratio = fuzz.token_set_ratio(org_name, normalize_text(funder_name))
+                funder_name = funder.get('name', '')
+                match_ratio = fuzz.token_set_ratio(
+                    org_name, normalize_text(funder_name))
                 if match_ratio > 90:
                     return funder['id']
                 alt_names = funder.get('alt-names', [])
@@ -310,9 +349,11 @@ def search_funder_registry(all_names):
 
 @catch_requests_exceptions
 def search_orcid(all_names):
-    headers = {'User-Agent': 'ROROrgTriageBot/1.0 (ror.org, mailto:support@ror.org)'}
+    headers = {
+        'User-Agent': 'ROROrgTriageBot/1.0 (ror.org, mailto:support@ror.org)'}
     for org_name in all_names:
-        if not org_name: continue
+        if not org_name:
+            continue
         orcid_urls = []
         search_url = f"https://pub.orcid.org/v3.0/expanded-search/?q=affiliation-org-name:\"{org_name}\"&fl=orcid,current-institution-affiliation-name,past-institution-affiliation-name"
         response = requests.get(search_url, headers=headers, timeout=15)
@@ -328,14 +369,16 @@ def search_orcid(all_names):
                     orcid_url = f"https://orcid.org/{orcid_id}"
                     orcid_urls.append(orcid_url)
 
-                orcid_urls = orcid_urls[:5] if len(orcid_urls) >= 5 else orcid_urls
+                orcid_urls = orcid_urls[:5] if len(
+                    orcid_urls) >= 5 else orcid_urls
                 if orcid_urls:
                     return '; '.join(orcid_urls)
     return None
 
 
 def generate_substring_permutations(org_name, limit=6):
-    if not org_name: return [org_name]
+    if not org_name:
+        return [org_name]
     org_name_substrings = org_name.split(' ')
     if len(org_name_substrings) <= limit and len(org_name_substrings) > 1:
         return [' '.join(permutation) for permutation in itertools.permutations(org_name_substrings)]
@@ -344,42 +387,61 @@ def generate_substring_permutations(org_name, limit=6):
 
 
 def all_affiliation_usage_to_string(result_dict):
+    print(f"DEBUG: all_affiliation_usage_to_string received result_dict: {result_dict}")
     csv_compatible = []
     for key, values in result_dict.items():
         values = [v for v in values if v]
         if values:
             csv_row = f"{key}: {', '.join(values)}"
             csv_compatible.append(csv_row)
-    if not csv_compatible: return None
+    if not csv_compatible:
+        print("DEBUG: all_affiliation_usage_to_string: No CSV compatible rows generated, returning None.")
+        return None
     csv_compatible_str = "; ".join(csv_compatible)
+    print(f"DEBUG: all_affiliation_usage_to_string returning: {csv_compatible_str}")
     return csv_compatible_str
 
 
 @catch_requests_exceptions
 def search_openalex(org_name):
-    if not org_name: return None
+    print(f"DEBUG: search_openalex called with org_name: '{org_name}'")
+    if not org_name:
+        print("DEBUG: search_openalex: org_name is empty, returning None.")
+        return None
     normalized_name = normalize_text(org_name)
+    print(f"DEBUG: search_openalex: normalized_name: '{normalized_name}'")
     base_url = 'https://api.openalex.org/works'
     params = {
         'filter': f'raw_affiliation_string.search:"{normalized_name}"',
         'per-page': '100',
         'mailto': 'support@ror.org'
     }
-    headers = {'User-Agent': 'ROROrgTriageBot/1.0 (ror.org, mailto:support@ror.org)'}
-    api_response = requests.get(base_url, params=params, headers=headers, timeout=20).json()
-    results = api_response.get('results')
+    request_url = requests.Request(
+        'GET', base_url, params=params).prepare().url
+    print(f"DEBUG: search_openalex: Requesting URL: {request_url}")
+
+    headers = {
+        'User-Agent': 'ROROrgTriageBot/1.0 (ror.org, mailto:support@ror.org)'}
+    api_response_json = requests.get(
+        base_url, params=params, headers=headers, timeout=20).json()
+
+    results = api_response_json.get('results')
     if not results:
+        print(f"DEBUG: search_openalex: No 'results' in API response for '{org_name}'. Returning None.")
         return None
+    print(f"DEBUG: search_openalex: Found {len(results)} results from OpenAlex for '{org_name}'.")
 
     substring_permutations = generate_substring_permutations(org_name)
+    print(f"DEBUG: search_openalex: Substring permutations for '{org_name}': {substring_permutations}")
     match_dict = defaultdict(set)
 
-    for work in results:
+    for i, work in enumerate(results):
         authorships = work.get('authorships', [])
         for author in authorships:
             raw_affiliations_list = author.get('raw_affiliation_strings', [])
             if not isinstance(raw_affiliations_list, list):
-                raw_affiliations_list = [raw_affiliations_list] if raw_affiliations_list else []
+                raw_affiliations_list = [
+                    raw_affiliations_list] if raw_affiliations_list else []
 
             if not raw_affiliations_list:
                 raw_single_aff = author.get('raw_affiliation_string')
@@ -389,10 +451,13 @@ def search_openalex(org_name):
                     continue
 
             for raw_affiliation in raw_affiliations_list:
-                if not raw_affiliation: continue
+                if not raw_affiliation:
+                    continue
                 normalized_affiliation = normalize_text(raw_affiliation)
-                partial_ratio = fuzz.partial_ratio(normalized_name, normalized_affiliation)
-                token_set_ratio = fuzz.token_set_ratio(normalized_name, normalized_affiliation)
+                partial_ratio = fuzz.partial_ratio(
+                    normalized_name, normalized_affiliation)
+                token_set_ratio = fuzz.token_set_ratio(
+                    normalized_name, normalized_affiliation)
                 max_ratio = max(partial_ratio, token_set_ratio)
 
                 for substring in substring_permutations:
@@ -414,17 +479,25 @@ def search_openalex(org_name):
     for key in match_dict.keys():
         match_dict[key] = list(match_dict[key])[:10]
 
-    return all_affiliation_usage_to_string(match_dict) if match_dict else None
+    print(f"DEBUG: search_openalex: match_dict before all_affiliation_usage_to_string: {match_dict}")
+    final_result_str = all_affiliation_usage_to_string(
+        match_dict) if match_dict else None
+    print(f"DEBUG: search_openalex: Returning from search_openalex for '{org_name}': {final_result_str}")
+    return final_result_str
 
 
 def get_publication_affiliation_usage(record, all_names):
+    print(f"DEBUG: get_publication_affiliation_usage: Called with record (keys: {record.keys() if isinstance(record, dict) else type(record)}) and all_names: {all_names}")
     affiliation_aliases = []
     body_content = record.get('body')
     potential_aliases_from_body = []
     if body_content:
         try:
+            print(f"DEBUG: get_publication_affiliation_usage: Generating aliases from body_content (length {len(body_content)}).")
             generated = generate_aliases(body_content)
-            if generated: potential_aliases_from_body.extend(g for g in generated if g)
+            if generated:
+                potential_aliases_from_body.extend(g for g in generated if g)
+            print(f"DEBUG: get_publication_affiliation_usage: Aliases from body: {potential_aliases_from_body}")
         except NameError:
             print("Warning: generate_aliases function is not defined.")
         except Exception as e:
@@ -434,56 +507,75 @@ def get_publication_affiliation_usage(record, all_names):
     if potential_aliases_from_body:
         extended_all_names.extend(potential_aliases_from_body)
 
-    unique_search_names = sorted(list(set(n for n in extended_all_names if n)), key=len, reverse=True)
+    unique_search_names = sorted(
+        list(set(n for n in extended_all_names if n)), key=len, reverse=True)
+    print(f"DEBUG: get_publication_affiliation_usage: Unique search names for OpenAlex: {unique_search_names}")
 
     pub_affiliation_usage_parts = []
 
-    for name in unique_search_names:
+    for name_idx, name in enumerate(unique_search_names):
+        print(f"DEBUG: get_publication_affiliation_usage: Iteration {name_idx + 1}/{len(unique_search_names)} - Searching OpenAlex for: '{name}'")
         affiliation_usage = search_openalex(name)
+        print(f"DEBUG: get_publication_affiliation_usage: Received from search_openalex for '{name}': '{affiliation_usage}'")
         if affiliation_usage:
             pub_affiliation_usage_parts.append(affiliation_usage)
             affiliation_aliases.append(name)
+            print(f"DEBUG: get_publication_affiliation_usage: Added to pub_affiliation_usage_parts. Current parts: {pub_affiliation_usage_parts}")
             if len(pub_affiliation_usage_parts) >= 2:
+                print(
+                    "DEBUG: get_publication_affiliation_usage: Reached 2 affiliation usage parts, breaking loop.")
                 break
 
-    final_pub_affiliation_usage = ' | '.join(pub_affiliation_usage_parts) if pub_affiliation_usage_parts else None
-    final_affiliation_aliases_str = '; '.join(sorted(list(set(affiliation_aliases)))) if affiliation_aliases else None
+    final_pub_affiliation_usage = ' | '.join(
+        pub_affiliation_usage_parts) if pub_affiliation_usage_parts else None
+    final_affiliation_aliases_str = '; '.join(
+        sorted(list(set(affiliation_aliases)))) if affiliation_aliases else None
 
+    print(f"DEBUG: get_publication_affiliation_usage: Returning final_pub_affiliation_usage: '{final_pub_affiliation_usage}'")
+    print(f"DEBUG: get_publication_affiliation_usage: Returning final_affiliation_aliases_str: '{final_affiliation_aliases_str}'")
     return final_pub_affiliation_usage, final_affiliation_aliases_str
 
 
 def triage(record):
+    print(f"DEBUG: triage: Starting triage for record (keys: {record.keys() if isinstance(record, dict) else type(record)})")
     org_metadata = {}
     raw_org_name = record.get('name')
-    org_name = raw_org_name.split("*")[0].strip() if isinstance(raw_org_name, str) else ""
+    org_name = raw_org_name.split(
+        "*")[0].strip() if isinstance(raw_org_name, str) else ""
 
     raw_aliases = record.get('aliases')
     aliases_list = []
     if isinstance(raw_aliases, str):
-        aliases_list = [alias.split("*")[0].strip() for alias in raw_aliases.split(';') if alias.strip()]
+        aliases_list = [alias.split("*")[0].strip()
+                        for alias in raw_aliases.split(';') if alias.strip()]
 
     all_names = [name for name in [org_name] + aliases_list if name]
+    print(f"DEBUG: triage: Initial all_names: {all_names}")
 
     if not all_names:
         org_metadata['Error'] = "No organization name or aliases found in issue."
+        print("DEBUG: triage: No organization name or aliases found. Returning early.")
         return org_metadata
 
     wikidata_name, wikidata_id, best_match_ratio = search_wikidata(all_names)
     if wikidata_id:
-        wikidata_claims_data = get_wikidata_claims(wikidata_name, wikidata_id, best_match_ratio)
+        wikidata_claims_data = get_wikidata_claims(
+            wikidata_name, wikidata_id, best_match_ratio)
         if wikidata_claims_data:
             org_metadata.update(wikidata_claims_data)
 
     org_metadata['ISNI'] = search_isni(all_names)
     org_metadata['Funder ID'] = search_funder_registry(all_names)
 
-    pub_usage, potential_als = get_publication_affiliation_usage(record, all_names)
+    print("DEBUG: triage: About to call get_publication_affiliation_usage.")
+    pub_usage, potential_als = get_publication_affiliation_usage(
+        record, all_names)
+    print(f"DEBUG: triage: Received from get_publication_affiliation_usage - pub_usage: '{pub_usage}', potential_als: '{potential_als}'")
     org_metadata['Publication affiliation usage'] = pub_usage
     org_metadata['Potential aliases'] = potential_als
 
     org_metadata['ORCID affiliation usage'] = search_orcid(all_names)
     org_metadata['Possible ROR matches'] = search_ror(all_names)
-
 
     if record.get('city') and record.get('country'):
         location = f"{record['city']}, {record['country']}"
@@ -496,4 +588,8 @@ def triage(record):
         except Exception as e:
             print(f"Error in search_geonames: {e}")
 
-    return {k: v for k, v in org_metadata.items() if v is not None}
+    print(f"DEBUG: triage: org_metadata before final filtering: {org_metadata}")
+    filtered_metadata = {k: v for k,
+                         v in org_metadata.items() if v is not None}
+    print(f"DEBUG: triage: org_metadata after final filtering: {filtered_metadata}")
+    return filtered_metadata
