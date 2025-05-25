@@ -2,10 +2,10 @@ import os
 import re
 import json
 import signal
+import difflib
 from contextlib import contextmanager
 from google import genai
 from github import Github, GithubException
-
 
 GITHUB_TOKEN = os.environ.get('GITHUB_TOKEN')
 GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY')
@@ -18,9 +18,10 @@ END_ISSUE_STR = os.environ.get('END_ISSUE')
 DRY_RUN_STR = os.environ.get('DRY_RUN', 'false').lower()
 DRY_RUN = DRY_RUN_STR in ['true', '1', 'yes']
 
-BOT_COMMENT_SIGNATURE = "\n\n---\n*This issue body was automatically formatted by the ROR Curator Bot.*"
+BOT_COMMENT_SIGNATURE = "\n\n---\n*Issue body was automatically formatted by ROR Curator Bot.*"
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROMPT_FILE_PATH = os.path.join(SCRIPT_DIR, "gemini_prompt.txt")
+REQUIRED_TITLE_PHRASE = 'Add a new organization to ROR'
 
 
 def load_prompt_template(file_path):
@@ -59,7 +60,7 @@ def get_issues_to_process(repo, issue_number=None, start_issue=None, end_issue=N
     if issue_number:
         try:
             issue = repo.get_issue(number=int(issue_number))
-            if issue.state == 'open' and 'Add a new organization to ROR' in issue.title:
+            if issue.state == 'open' and REQUIRED_TITLE_PHRASE in issue.title:
                 issues_to_fetch = [issue]
                 print(f"Targeting single open issue #{issue.number} ('{issue.title}') matching title criteria.")
             else:
@@ -87,26 +88,40 @@ def get_issues_to_process(repo, issue_number=None, start_issue=None, end_issue=N
             except GithubException as e:
                 print(f"Error fetching issue #{issue_num}: {e}. Skipping this number.")
                 continue
+        if not issues_to_fetch:
+            print(f"No open issues matching title criteria found in range #{start_num} to #{end_num}.")
     else:
-        print("No specific issue or range provided. Exiting.")
-        return []
+        print("No specific issue or range provided. Processing all open issues matching title criteria.")
+        open_issues = repo.get_issues(state='open')
+        count = 0
+        for issue in open_issues:
+            if REQUIRED_TITLE_PHRASE in issue.title:
+                issues_to_fetch.append(issue)
+                count +=1
+        print(f"Found {count} open issues matching title criteria.")
+        if not issues_to_fetch:
+             print(f"No open issues matching title criteria ('{REQUIRED_TITLE_PHRASE}') found in the repository.")
+
+    return issues_to_fetch
 
 
-def update_github_issue_body(issue_object, new_body_content, add_comment=True):
+def update_github_issue_body(issue_object, new_body_content, comment_to_add=None):
     try:
         issue_object.edit(body=new_body_content)
         print(f"Successfully updated body for issue #{issue_object.number}.")
-        if add_comment:
+
+        if comment_to_add:
             try:
-                has_bot_signature = False
+                has_bot_signature_comment = False
                 for comment in issue_object.get_comments():
                     if BOT_COMMENT_SIGNATURE.strip() in comment.body:
-                        has_bot_signature = True
-                        print(f"Bot signature comment already exists on issue #{issue_object.number}.")
+                        has_bot_signature_comment = True
+                        print(f"Bot signature comment already exists on issue #{issue_object.number}. New diff comment will not be added.")
                         break
-                if not has_bot_signature:
-                    issue_object.create_comment(BOT_COMMENT_SIGNATURE)
-                    print(f"Added bot signature comment to issue #{issue_object.number}.")
+                
+                if not has_bot_signature_comment:
+                    issue_object.create_comment(comment_to_add)
+                    print(f"Added comment with changes and bot signature to issue #{issue_object.number}.")
             except GithubException as e:
                 print(f"Failed to add comment to issue #{issue_object.number}: {e}")
 
@@ -134,11 +149,8 @@ def call_gemini_to_format_issue(issue_title, issue_body):
     print(f"Sending request to Gemini API for issue: '{issue_title}'...")
     try:
         with time_limit(120):
-            response = client.models.generate_content(
-                model='gemini-2.5-flash',
-                contents=prompt
-            )
-            formatted_body = response.text
+            response = client.generate_text(prompt=prompt)
+            formatted_body = response.result 
             if formatted_body.startswith("```markdown\n"):
                 formatted_body = formatted_body[len("```markdown\n"):]
             if formatted_body.startswith("```\n"):
@@ -165,6 +177,7 @@ def process_single_issue(issue_object):
 
     if BOT_COMMENT_SIGNATURE in original_body:
         print(f"Issue #{issue_object.number} body already contains bot signature. Skipping re-formatting.")
+        return
 
     formatted_body = call_gemini_to_format_issue(
         issue_object.title, original_body)
@@ -174,15 +187,41 @@ def process_single_issue(issue_object):
             print(f"Gemini proposed no changes to the body of issue #{issue_object.number}.")
         else:
             print(f"Gemini proposed changes for issue #{issue_object.number}.")
+
+            diff_lines = difflib.unified_diff(
+                original_body.splitlines(keepends=True),
+                formatted_body.splitlines(keepends=True),
+                fromfile='Original Body',
+                tofile='Formatted Body',
+                lineterm=''
+            )
+            diff_text = "".join(diff_lines)
+            
+            comment_with_diff = None
+            if diff_text:
+                comment_intro = (
+                    f"ROR Curator Bot has automatically formatted this issue body. "
+                    f"Review the changes below:\n\n"
+                )
+                diff_markdown_block = f"```diff\n{diff_text}\n```"
+                comment_with_diff = f"{comment_intro}{diff_markdown_block}\n{BOT_COMMENT_SIGNATURE}"
+
             if DRY_RUN:
                 print(f"DRY RUN: Would update issue #{issue_object.number} with new body:")
                 print("---------- Proposed New Body ----------")
                 print(formatted_body)
                 print("--------------------------------------")
+                if comment_with_diff:
+                    print("---------- Proposed Comment with Diff ----------")
+                    print(comment_with_diff)
+                    print("---------------------------------------------")
+                elif diff_text:
+                    print("DRY RUN: Diff was generated but comment was not formed. Diff:")
+                    print(diff_text)
             else:
-                final_body_to_update = formatted_body
                 update_github_issue_body(
-                    issue_object, final_body_to_update, add_comment=True)
+                    issue_object, formatted_body, comment_to_add=comment_with_diff
+                )
     else:
         print(f"Failed to get formatted body from Gemini for issue #{issue_object.number}.")
 
@@ -204,12 +243,9 @@ def main():
     if not TARGET_REPO_PATH:
         print("Error: Target repository (REPO_PATH or GITHUB_REPOSITORY) not specified.")
         return
-
+    
     if ISSUE_NUMBER_STR and (START_ISSUE_STR or END_ISSUE_STR):
         print("Error: Cannot specify both single issue (ISSUE_NUMBER) and issue range (START_ISSUE, END_ISSUE).")
-        return
-    if not ISSUE_NUMBER_STR and not (START_ISSUE_STR and END_ISSUE_STR):
-        print("Error: Must specify either ISSUE_NUMBER or both START_ISSUE and END_ISSUE.")
         return
 
     try:
