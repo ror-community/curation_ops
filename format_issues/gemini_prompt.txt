@@ -1,0 +1,111 @@
+# Instructions for ROR Organization Record Formatting
+
+<task_context>
+You will process GitHub issues in the ror-community/ror-updates repository to format organizational records in the Research Organization Registry (ROR). Your task is to carefully and conservatively ensure consistent formatting of organization details according to ROR standards. This formatting is critical for data integrity across the global research infrastructure.
+</task_context>
+
+<instructions>
+## 1. Clean Up Issue Template
+
+1. **Remove only empty template sections** based on request type:
+    - For "Add record" requests: Remove the "Update record" and "Merge/split/deprecate records" sections entirely
+
+2. **Preserve all fields within the relevant section**:
+    - Keep all fields in the relevant section even if they are empty (e.g., "Wikipedia page:", "Wikidata ID:")
+    - Preserve the "Summary of request" and "Other information" sections completely
+
+3. **Remove placeholder values**:
+    - Delete instances of "N/A", "None", "n/a", "none", or similar placeholder values
+    - Leave the field empty instead (but keep the field label)
+
+## 2. Format Name Fields with Language Tags
+
+1. **Add language tags to all name-related fields** using the format `[Name]*[language code]`:
+    - Primary organization name
+    - Aliases/alternate names
+    - Acronyms/abbreviations
+    - Labels
+
+2. **Use ISO 639-1 language codes** (preferred) or language names:
+    - No spaces between name and asterisk or between asterisk and language code
+
+3. **Special formatting for company names**:
+    - Add country in parentheses to the name if and only if the record type is Company
+    - Additionally add the name without the country to the labels field
+
+## 3. Correct Website Values and Add Domains
+
+1. **Fix incomplete website URLs**:
+    - Add appropriate protocol prefix (usually "https://") if missing
+    - Remove trailing backslashes if there is no path in the URL
+
+2. **Infer and add domain information**:
+    - If the "Domains" field is empty but a website is provided, extract the domain from the website
+    - Only derive domains from values in the website field
+
+## 4. Format Multiple Values
+
+1. **Separate multiple values with semicolons**
+
+2. **Format relationships using the pattern `https://ror.org/{{ror_id}} (relationship_type)`:
+    - No semicolons needed between relationships
+
+## 5. Format ISNI ID
+
+1. **Format ISNI identifiers** with spaces:
+    - Four digits/characters separated by individual spaces
+
+## 6. **Remove URL formatting** from all Wikidata ID, ISNI ID, and Crossref Funder ID
+
+## 7. Do Not Make Any Other Changes Than Specified in 1-6
+1. Never change anything in the issue body other than is specified in steps 1-6
+
+<examples>
+## Examples of Correct Formatting
+
+### Name Fields with Language Tags
+- **Primary name**: "University of Oxford*en"
+- **Aliases**: "Oxford University*en; Universidad de Oxford*es; Université d'Oxford*fr"
+- **Acronyms**: "UO*en; OX*en"
+- **Company name**: "Acme Corporation (United States)*en"
+- **Labels for company**: "Acme Corporation*en"
+
+### Website and Domain Formatting
+- **Incorrect website**: "jrc.ac/" → **Correct**: "https://jrc.ac"
+- **Domain extraction**: From website "https://www.oxford.ac.uk" → Domain field: "oxford.ac.uk"
+
+### Multiple Values
+- **Multiple aliases**: "European Research Center*en; Centre de Recherche Européen*fr; Centro de Investigación Europeo*es"
+- **Relationships**: "https://ror.org/02mhbdp94 (parent) https://ror.org/05gq02987 (child)"
+
+### External Identifiers
+- **ISNI**: "0000 0004 1936 7301" (not "0000000419367301" or "ISNI:0000000419367301")
+- **Wikidata**: "Q34433" (not "https://www.wikidata.org/wiki/Q34433")
+
+### Placeholder Removal
+- **Before**: "Wikipedia page: N/A" → **After**: "Wikipedia page:"
+- **Before**: "Wikidata ID: None" → **After**: "Wikidata ID:"
+</examples>
+
+<process>
+When processing each issue, follow these steps:
+
+1. First, identify the request type (Add/Update/Merge) to determine which sections to keep. You can infer this from the issue title or the structure of the content provided.
+2. Remove placeholder values like "N/A" or "None" while preserving field labels.
+3. For each field in the remaining template:
+    a. Check if the field requires language tagging (name fields).
+    b. Check if the field is a website that needs URL correction.
+    c. Check if you need to extract domain information.
+    d. Check if the field contains multiple values that need semicolon separation.
+    e. Check if the field contains Wikidata ID, ISNI ID, and Crossref Funder ID values that need special formatting.
+
+4. Apply all formatting rules consistently throughout the document.
+5. Review the entire document for consistency before completing the task.
+6. Your response should be ONLY the complete, updated GitHub issue body text. Do not include any other explanatory text, greetings, or markdown formatting around the body itself unless it's part of the issue content.
+</process>
+
+Current Issue Title:
+{issue_title}
+
+Current Issue Body:
+{issue_body}
