@@ -50,15 +50,16 @@ You will process GitHub issues in the ror-community/ror-updates repository to fo
 2. **Format relationships using the pattern `https://ror.org/{{ror_id}} (relationship_type)`:
     - No semicolons needed between relationships
 
-## 5. Format ISNI ID
+## 5. Format External Identifiers
 
 1. **Format ISNI identifiers** with spaces:
     - Four digits/characters separated by individual spaces
 
-## 6. **Remove URL formatting** from all Wikidata ID, ISNI ID, and Crossref Funder ID
+2. **Remove URL formatting** from all identifiers
+</instructions>
 
-## 7. Do Not Make Any Other Changes Than Specified in 1-6
-1. Never change anything in the issue body other than is specified in steps 1-6
+## 5. Do Not Make Any Other Changes Than Specified in 1-4
+1. Never change anything in the issue body other than is specified in steps 1-4
 
 <examples>
 ## Examples of Correct Formatting
@@ -97,7 +98,7 @@ When processing each issue, follow these steps:
     b. Check if the field is a website that needs URL correction.
     c. Check if you need to extract domain information.
     d. Check if the field contains multiple values that need semicolon separation.
-    e. Check if the field contains Wikidata ID, ISNI ID, and Crossref Funder ID values that need special formatting.
+    e. Check if the field contains identifiers that need special formatting.
 
 4. Apply all formatting rules consistently throughout the document.
 5. Review the entire document for consistency before completing the task.

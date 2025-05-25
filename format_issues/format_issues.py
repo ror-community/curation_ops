@@ -97,10 +97,10 @@ def get_issues_to_process(repo, issue_number=None, start_issue=None, end_issue=N
         for issue in open_issues:
             if REQUIRED_TITLE_PHRASE in issue.title:
                 issues_to_fetch.append(issue)
-                count += 1
+                count +=1
         print(f"Found {count} open issues matching title criteria.")
         if not issues_to_fetch:
-            print(f"No open issues matching title criteria ('{REQUIRED_TITLE_PHRASE}') found in the repository.")
+             print(f"No open issues matching title criteria ('{REQUIRED_TITLE_PHRASE}') found in the repository.")
 
     return issues_to_fetch
 
@@ -118,7 +118,7 @@ def update_github_issue_body(issue_object, new_body_content, comment_to_add=None
                         has_bot_signature_comment = True
                         print(f"Bot signature comment already exists on issue #{issue_object.number}. New diff comment will not be added.")
                         break
-
+                
                 if not has_bot_signature_comment:
                     issue_object.create_comment(comment_to_add)
                     print(f"Added comment with changes and bot signature to issue #{issue_object.number}.")
@@ -191,53 +191,19 @@ def process_single_issue(issue_object):
         else:
             print(f"Gemini proposed changes for issue #{issue_object.number}.")
 
-            original_body_lines = original_body.splitlines(keepends=True)
-            formatted_body_lines = formatted_body.splitlines(keepends=True)
-
-            unified_diff_iter = difflib.unified_diff(
-                original_body_lines,
-                formatted_body_lines,
+            diff_lines = difflib.unified_diff(
+                original_body.splitlines(keepends=True),
+                formatted_body.splitlines(keepends=True),
                 fromfile='Original Body',
                 tofile='Formatted Body',
-                lineterm='',
-                n=3
+                lineterm=''
             )
-
-            enhanced_diff_output_lines = []
-            raw_unified_lines = list(unified_diff_iter)
-
-            idx = 0
-            while idx < len(raw_unified_lines):
-                current_line = raw_unified_lines[idx]
-                enhanced_diff_output_lines.append(current_line)
-
-                if current_line.startswith('-') and \
-                   not current_line.startswith('---') and \
-                   (idx + 1 < len(raw_unified_lines)):
-
-                    next_line = raw_unified_lines[idx+1]
-                    if next_line.startswith('+') and not next_line.startswith('+++'):
-                        enhanced_diff_output_lines.append(next_line)
-
-                        old_line_content = current_line[1:]
-                        new_line_content = next_line[1:]
-
-                        pair_ndiff_hints = list(difflib.ndiff(
-                            [old_line_content], [new_line_content]))
-
-                        for hint_line in pair_ndiff_hints:
-                            if hint_line.startswith('? '):
-                                enhanced_diff_output_lines.append(hint_line)
-
-                        idx += 1
-                idx += 1
-
-            diff_text = "".join(enhanced_diff_output_lines)
-
+            diff_text = "".join(diff_lines)
+            
             comment_with_diff = None
             if diff_text:
                 comment_intro = (
-                    f"The ROR Curator Bot has automatically formatted this issue body. "
+                    f"ROR Curator Bot has automatically formatted this issue body. "
                     f"Review the changes below:\n\n"
                 )
                 diff_markdown_block = f"```diff\n{diff_text}\n```"
@@ -253,8 +219,7 @@ def process_single_issue(issue_object):
                     print(comment_with_diff)
                     print("---------------------------------------------")
                 elif diff_text:
-                    print(
-                        "DRY RUN: Diff was generated but comment was not formed. Diff:")
+                    print("DRY RUN: Diff was generated but comment was not formed. Diff:")
                     print(diff_text)
             else:
                 update_github_issue_body(
@@ -281,7 +246,7 @@ def main():
     if not TARGET_REPO_PATH:
         print("Error: Target repository (REPO_PATH or GITHUB_REPOSITORY) not specified.")
         return
-
+    
     if ISSUE_NUMBER_STR and (START_ISSUE_STR or END_ISSUE_STR):
         print("Error: Cannot specify both single issue (ISSUE_NUMBER) and issue range (START_ISSUE, END_ISSUE).")
         return
