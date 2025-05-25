@@ -59,8 +59,12 @@ def get_issues_to_process(repo, issue_number=None, start_issue=None, end_issue=N
     if issue_number:
         try:
             issue = repo.get_issue(number=int(issue_number))
-            issues_to_fetch = [issue]
-            print(f"Processing single issue #{issue.number}: {issue.title}")
+            if issue.state == 'open' and 'Add a new organization to ROR' in issue.title:
+                issues_to_fetch = [issue]
+                print(f"Targeting single open issue #{issue.number} ('{issue.title}') matching title criteria.")
+            else:
+                print(f"Issue #{issue.number} ('{issue.title}') is either not open (state: {issue.state}) or does not contain '{REQUIRED_TITLE_PHRASE}' in its title. Skipping.")
+                return []
         except GithubException as e:
             print(f"Error fetching issue #{issue_number}: {e}")
             return []
@@ -70,20 +74,22 @@ def get_issues_to_process(repo, issue_number=None, start_issue=None, end_issue=N
         if start_num > end_num:
             print(f"Error: Start issue #{start_num} is greater than end issue #{end_num}.")
             return []
-        print(f"Processing issue range #{start_num} to #{end_num}")
+        print(f"Checking issue range #{start_num} to #{end_num} for open issues matching title criteria ('{REQUIRED_TITLE_PHRASE}')...")
         for issue_num in range(start_num, end_num + 1):
             try:
                 issue = repo.get_issue(number=issue_num)
                 if issue:
-                    issues_to_fetch.append(issue)
-                    print(f"Added issue #{issue.number} ('{issue.title}') to processing queue.")
+                    if issue.state == 'open' and REQUIRED_TITLE_PHRASE in issue.title:
+                        issues_to_fetch.append(issue)
+                        print(f"Added open issue #{issue.number} ('{issue.title}') matching criteria to processing queue.")
+                    else:
+                        print(f"Skipping issue #{issue.number} ('{issue.title}'). Reason: Not open (state: {issue.state}) or title does not contain '{REQUIRED_TITLE_PHRASE}'.")
             except GithubException as e:
-                print(f"Error fetching issue #{issue_num}: {e}. Skipping.")
+                print(f"Error fetching issue #{issue_num}: {e}. Skipping this number.")
                 continue
     else:
         print("No specific issue or range provided. Exiting.")
         return []
-    return issues_to_fetch
 
 
 def update_github_issue_body(issue_object, new_body_content, add_comment=True):
@@ -127,9 +133,9 @@ def call_gemini_to_format_issue(issue_title, issue_body):
 
     print(f"Sending request to Gemini API for issue: '{issue_title}'...")
     try:
-        with time_limit(120): # Your existing timeout
+        with time_limit(120):
             response = client.models.generate_content(
-                model='gemini-1.5-flash', # Your model
+                model='gemini-2.5-flash',
                 contents=prompt
             )
             formatted_body = response.text
