@@ -193,49 +193,72 @@ def process_single_issue(issue_object):
 
             original_body_lines = original_body.splitlines(keepends=True)
             formatted_body_lines = formatted_body.splitlines(keepends=True)
-
+            
             unified_diff_iter = difflib.unified_diff(
                 original_body_lines,
                 formatted_body_lines,
                 fromfile='Original Body',
                 tofile='Formatted Body',
-                lineterm='',
+                lineterm='\n',
                 n=3
             )
-
-            enhanced_diff_output_lines = []
+            
             raw_unified_lines = list(unified_diff_iter)
-
+            enhanced_diff_output_lines = []
             idx = 0
             while idx < len(raw_unified_lines):
                 current_line = raw_unified_lines[idx]
-                enhanced_diff_output_lines.append(current_line)
 
-                if current_line.startswith('-') and \
-                   not current_line.startswith('---') and \
-                   (idx + 1 < len(raw_unified_lines)):
+                if current_line.startswith('@@'):
+                    enhanced_diff_output_lines.append(current_line)
+                    idx += 1
+                    while idx < len(raw_unified_lines) and not raw_unified_lines[idx].startswith('@@') and \
+                          not raw_unified_lines[idx].startswith('---') and not raw_unified_lines[idx].startswith('+++'):
+                        
+                        block_minus_lines_raw = []
+                        block_minus_lines_content = []
+                        initial_idx_in_hunk = idx
+                        
+                        while idx < len(raw_unified_lines) and \
+                              raw_unified_lines[idx].startswith('-') and \
+                              not raw_unified_lines[idx].startswith('---'):
+                            line = raw_unified_lines[idx]
+                            block_minus_lines_raw.append(line)
+                            block_minus_lines_content.append(line[1:])
+                            idx += 1
+                        
+                        block_plus_lines_raw = []
+                        block_plus_lines_content = []
+                        while idx < len(raw_unified_lines) and \
+                              raw_unified_lines[idx].startswith('+') and \
+                              not raw_unified_lines[idx].startswith('+++'):
+                            line = raw_unified_lines[idx]
+                            block_plus_lines_raw.append(line)
+                            block_plus_lines_content.append(line[1:])
+                            idx += 1
 
-                    next_line = raw_unified_lines[idx+1]
-                    if next_line.startswith('+') and not next_line.startswith('+++'):
-                        enhanced_diff_output_lines.append(next_line)
-
-                        old_line_content = current_line[1:]
-                        new_line_content = next_line[1:]
-
-                        pair_ndiff_hints = list(difflib.ndiff(
-                            [old_line_content], [new_line_content]))
-
-                        for hint_line in pair_ndiff_hints:
-                            if hint_line.startswith('? '):
-                                enhanced_diff_output_lines.append(hint_line)
-
-                        idx += 1
-                idx += 1
-
+                        if block_minus_lines_raw or block_plus_lines_raw:
+                            enhanced_diff_output_lines.extend(block_minus_lines_raw)
+                            enhanced_diff_output_lines.extend(block_plus_lines_raw)
+                            
+                            if block_minus_lines_content or block_plus_lines_content:
+                                ndiff_hints = list(difflib.ndiff(block_minus_lines_content, block_plus_lines_content))
+                                for hint_line in ndiff_hints:
+                                    if hint_line.startswith('? '):
+                                        enhanced_diff_output_lines.append(hint_line)
+                        elif idx == initial_idx_in_hunk: 
+                            if idx < len(raw_unified_lines):
+                                enhanced_diff_output_lines.append(raw_unified_lines[idx])
+                                idx +=1
+                
+                else:
+                    enhanced_diff_output_lines.append(current_line)
+                    idx += 1
+            
             diff_text = "".join(enhanced_diff_output_lines)
-
+            
             comment_with_diff = None
-            if diff_text:
+            if diff_text: 
                 comment_intro = (
                     f"The ROR Curator Bot has automatically formatted this issue body. "
                     f"Review the changes below:\n\n"
@@ -253,8 +276,7 @@ def process_single_issue(issue_object):
                     print(comment_with_diff)
                     print("---------------------------------------------")
                 elif diff_text:
-                    print(
-                        "DRY RUN: Diff was generated but comment was not formed. Diff:")
+                    print("DRY RUN: Diff was generated but comment was not formed. Diff:")
                     print(diff_text)
             else:
                 update_github_issue_body(
