@@ -203,8 +203,7 @@ def process_single_issue(issue_object):
             comment_with_diff = None
             if diff_text:
                 comment_intro = (
-                    f"ROR Curator Bot has automatically formatted this issue body. "
-                    f"Review the changes below:\n\n"
+                    f"Review the issue updates below:\n\n"
                 )
                 diff_markdown_block = f"```diff\n{diff_text}\n```"
                 comment_with_diff = f"{comment_intro}{diff_markdown_block}\n{BOT_COMMENT_SIGNATURE}"
