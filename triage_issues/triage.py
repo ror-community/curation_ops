@@ -412,7 +412,7 @@ def search_openalex(org_name):
     print(f"DEBUG: search_openalex: normalized_name: '{normalized_name}'")
     base_url = 'https://api.openalex.org/works'
     params = {
-        'filter': f'raw_affiliation_string.search:"{normalized_name}"',
+        'filter': f'raw_affiliation_strings.search:"{normalized_name}"',
         'per-page': '100',
         'mailto': 'support@ror.org'
     }
