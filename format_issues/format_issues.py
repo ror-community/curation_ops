@@ -149,8 +149,11 @@ def call_gemini_to_format_issue(issue_title, issue_body):
     print(f"Sending request to Gemini API for issue: '{issue_title}'...")
     try:
         with time_limit(120):
-            response = client.generate_text(prompt=prompt)
-            formatted_body = response.result 
+            response = client.models.generate_content(
+                model='gemini-2.5-flash',
+                contents=prompt
+            )
+            formatted_body = response.text
             if formatted_body.startswith("```markdown\n"):
                 formatted_body = formatted_body[len("```markdown\n"):]
             if formatted_body.startswith("```\n"):
