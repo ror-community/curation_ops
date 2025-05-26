@@ -18,7 +18,7 @@ END_ISSUE_STR = os.environ.get('END_ISSUE')
 DRY_RUN_STR = os.environ.get('DRY_RUN', 'false').lower()
 DRY_RUN = DRY_RUN_STR in ['true', '1', 'yes']
 
-BOT_COMMENT_SIGNATURE = "\n\n---\n*Issue body was automatically formatted by ROR Curator Bot.*"
+BOT_COMMENT_SIGNATURE = "\n\n---\n*Issue body was automatically formatted by a ROR curation bot.*"
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROMPT_FILE_PATH = os.path.join(SCRIPT_DIR, "gemini_prompt.txt")
 REQUIRED_TITLE_PHRASE = 'Add a new organization to ROR'
