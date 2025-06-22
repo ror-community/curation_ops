@@ -565,8 +565,17 @@ def triage(record):
         aliases_list = [alias.split("*")[0].strip()
                         for alias in raw_aliases.split(';') if alias.strip()]
 
-    all_names = [name for name in [org_name] + aliases_list if name]
+    raw_labels = record.get('labels', [])
+    labels_list = []
+    if isinstance(raw_labels, list):
+        labels_list = [label.strip() for label in raw_labels if label.strip()]
+
+    all_names = [name for name in [org_name] + aliases_list + labels_list if name]
     print(f"DEBUG: triage: Initial all_names: {all_names}")
+    print(f"DEBUG: triage: Labels extracted: {labels_list}")
+    print(f"DEBUG: triage: Names from org_name: {[org_name] if org_name else []}")
+    print(f"DEBUG: triage: Names from aliases: {aliases_list}")
+    print(f"DEBUG: triage: Names from labels: {labels_list}")
 
     if not all_names:
         org_metadata['Error'] = "No organization name or aliases found in issue."

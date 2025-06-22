@@ -106,6 +106,14 @@ def process_issue_details(issue):
     processed_issue = None
     issue_body = issue.body if issue.body else ""
 
+    # Extract labels from GitHub issue
+    labels = [label.name for label in issue.labels if label.name]
+    # Filter out common non-organization labels
+    excluded_labels = ['bug', 'enhancement', 'question', 'help', 'duplicate', 'wontfix', 'invalid', 'good first issue']
+    org_labels = [label for label in labels if not label.lower() in excluded_labels]
+    print(f"DEBUG: Extracted labels from issue #{issue.number}: {labels}")
+    print(f"DEBUG: Filtered organization labels: {org_labels}")
+
     name_pattern = r"Name of organization:[ \t]*([^\n]*)"
     aliases_pattern = r"Aliases:[ \t]*([^\n]*)"
     website_pattern = r"Website:[ \t]*([^\n]*)"
@@ -134,7 +142,7 @@ def process_issue_details(issue):
 
             if organization_name:
                 processed_issue = {'issue_number': issue.number, 'body': issue_body,
-                                   'name': organization_name, 'aliases': aliases, 'url': website,
+                                   'name': organization_name, 'aliases': aliases, 'labels': org_labels, 'url': website,
                                    'city': city, 'country': country, 'type': 'new', 'issue_object': issue}
             else:
                 print(f"Issue #{issue.number} (Add new): 'Name of organization' not found in the relevant section.")
@@ -217,7 +225,7 @@ def process_issue_details(issue):
 
         if ror_id and description_of_change:
             processed_issue = {'issue_number': issue.number, 'ror_id': ror_id,
-                               'name': organization_name,
+                               'name': organization_name, 'labels': org_labels,
                                'change': description_of_change,
                                'type': 'update', 'issue_object': issue}
         else:
