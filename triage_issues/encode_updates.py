@@ -3,7 +3,10 @@ import re
 import requests
 from openai import OpenAI
 
-client = OpenAI(api_key=os.environ.get('OPENAI_API_KEY'))
+client = OpenAI(
+	api_key=os.environ.get('GEMINI_API_KEY'),
+	base_url="https://generativelanguage.googleapis.com/v1beta/openai/"
+)
 
 
 def encode_update(ror_id, description_of_change):
@@ -17,7 +20,7 @@ def encode_update(ror_id, description_of_change):
 		record = str(r.json())
 		try:
 			encode_request = encode_prompt + record + description_of_change
-			encode_response = client.chat.completions.create(model="gpt-4-1106-preview",
+			encode_response = client.chat.completions.create(model="gemini-2.5-pro",
 			messages=[{"role": "user", "content": encode_request}])
 			update = encode_response.choices[0].message.content
 			return update
