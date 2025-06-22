@@ -24,5 +24,11 @@ def encode_update(ror_id, description_of_change):
 			messages=[{"role": "user", "content": encode_request}])
 			update = encode_response.choices[0].message.content
 			return update
-		except Exception:
+		except Exception as e:
+			print(f"Error encoding update for ROR ID {ror_id}: {e}")
+			import traceback
+			traceback.print_exc()
 			return None
+	else:
+		print(f"Failed to fetch ROR record for {ror_id}. Status code: {r.status_code}")
+		return None
