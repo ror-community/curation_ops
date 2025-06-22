@@ -461,6 +461,7 @@ def search_openalex(org_name):
     substring_permutations = generate_substring_permutations(org_name)
     print(f"DEBUG: search_openalex: Substring permutations for '{org_name}': {substring_permutations}")
     match_dict = defaultdict(set)
+    author_match_dict = defaultdict(set)
 
     for i, work in enumerate(results):
         authorships = work.get('authorships', [])
@@ -477,6 +478,10 @@ def search_openalex(org_name):
                 else:
                     continue
 
+            author_info = author.get('author', {})
+            author_name = author_info.get('display_name', '')
+            author_orcid = author_info.get('orcid', '')
+
             for raw_affiliation in raw_affiliations_list:
                 if not raw_affiliation:
                     continue
@@ -492,25 +497,41 @@ def search_openalex(org_name):
                         doi_or_id = work.get("doi") or work.get('id')
                         if doi_or_id:
                             match_dict[substring].add(doi_or_id)
+                        if author_name:
+                            author_match_dict[substring].add(author_name)
                         break
 
                 if fuzz.ratio(normalized_name, normalized_affiliation) >= 90:
                     doi_or_id = work.get("doi") or work.get('id')
                     if doi_or_id:
                         match_dict[org_name].add(doi_or_id)
+                    if author_name:
+                        author_match_dict[org_name].add(author_name)
                 elif max_ratio >= 90:
                     doi_or_id = work.get("doi") or work.get('id')
                     if doi_or_id:
                         match_dict[org_name].add(doi_or_id)
+                    if author_name:
+                        author_match_dict[org_name].add(author_name)
 
     for key in match_dict.keys():
         match_dict[key] = list(match_dict[key])[:10]
+    
+    for key in author_match_dict.keys():
+        author_match_dict[key] = list(author_match_dict[key])[:10]
 
     print(f"DEBUG: search_openalex: match_dict before all_affiliation_usage_to_string: {match_dict}")
+    print(f"DEBUG: search_openalex: author_match_dict: {author_match_dict}")
+    
     final_result_str = all_affiliation_usage_to_string(
         match_dict) if match_dict else None
+    author_result_str = all_affiliation_usage_to_string(
+        author_match_dict) if author_match_dict else None
+    
     print(f"DEBUG: search_openalex: Returning from search_openalex for '{org_name}': {final_result_str}")
-    return final_result_str
+    print(f"DEBUG: search_openalex: Author result for '{org_name}': {author_result_str}")
+    
+    return final_result_str, author_result_str
 
 
 def get_publication_affiliation_usage(record, all_names):
@@ -528,28 +549,44 @@ def get_publication_affiliation_usage(record, all_names):
     print(f"DEBUG: get_publication_affiliation_usage: Unique search names for OpenAlex: {unique_search_names}")
 
     pub_affiliation_usage_parts = []
+    author_affiliation_usage_parts = []
 
     for name_idx, name in enumerate(unique_search_names):
         print(f"DEBUG: get_publication_affiliation_usage: Iteration {name_idx + 1}/{len(unique_search_names)} - Searching OpenAlex for: '{name}'")
-        affiliation_usage = search_openalex(name)
-        print(f"DEBUG: get_publication_affiliation_usage: Received from search_openalex for '{name}': '{affiliation_usage}'")
+        search_result = search_openalex(name)
+        
+        if isinstance(search_result, tuple) and len(search_result) == 2:
+            affiliation_usage, author_usage = search_result
+        else:
+            affiliation_usage = search_result
+            author_usage = None
+            
+        print(f"DEBUG: get_publication_affiliation_usage: Received from search_openalex for '{name}': affiliation='{affiliation_usage}', authors='{author_usage}'")
+        
         if affiliation_usage:
             pub_affiliation_usage_parts.append(affiliation_usage)
             affiliation_aliases.append(name)
             print(f"DEBUG: get_publication_affiliation_usage: Added to pub_affiliation_usage_parts. Current parts: {pub_affiliation_usage_parts}")
-            if len(pub_affiliation_usage_parts) >= 2:
-                print(
-                    "DEBUG: get_publication_affiliation_usage: Reached 2 affiliation usage parts, breaking loop.")
-                break
+        
+        if author_usage:
+            author_affiliation_usage_parts.append(author_usage)
+            
+        if affiliation_usage and len(pub_affiliation_usage_parts) >= 2:
+            print(
+                "DEBUG: get_publication_affiliation_usage: Reached 2 affiliation usage parts, breaking loop.")
+            break
 
     final_pub_affiliation_usage = ' | '.join(
         pub_affiliation_usage_parts) if pub_affiliation_usage_parts else None
+    final_author_affiliation_usage = ' | '.join(
+        author_affiliation_usage_parts) if author_affiliation_usage_parts else None
     final_affiliation_aliases_str = '; '.join(
         sorted(list(set(affiliation_aliases)))) if affiliation_aliases else None
 
     print(f"DEBUG: get_publication_affiliation_usage: Returning final_pub_affiliation_usage: '{final_pub_affiliation_usage}'")
+    print(f"DEBUG: get_publication_affiliation_usage: Returning final_author_affiliation_usage: '{final_author_affiliation_usage}'")
     print(f"DEBUG: get_publication_affiliation_usage: Returning final_affiliation_aliases_str: '{final_affiliation_aliases_str}'")
-    return final_pub_affiliation_usage, final_affiliation_aliases_str
+    return final_pub_affiliation_usage, final_author_affiliation_usage, final_affiliation_aliases_str
 
 
 def triage(record):
@@ -593,11 +630,32 @@ def triage(record):
     org_metadata['Funder ID'] = search_funder_registry(all_names)
 
     print("DEBUG: triage: About to call get_publication_affiliation_usage.")
-    pub_usage, potential_als = get_publication_affiliation_usage(
-        record, all_names)
-    print(f"DEBUG: triage: Received from get_publication_affiliation_usage - pub_usage: '{pub_usage}', potential_als: '{potential_als}'")
-    org_metadata['Publication affiliation usage'] = pub_usage
-    org_metadata['Potential aliases'] = potential_als
+    affiliation_result = get_publication_affiliation_usage(record, all_names)
+    
+    if isinstance(affiliation_result, tuple) and len(affiliation_result) == 3:
+        pub_usage, author_usage, potential_als = affiliation_result
+        print(f"DEBUG: triage: Received from get_publication_affiliation_usage - pub_usage: '{pub_usage}', author_usage: '{author_usage}', potential_als: '{potential_als}'")
+        org_metadata['Publication affiliation usage'] = pub_usage
+        org_metadata['Authors by affiliation'] = author_usage
+        org_metadata['Potential aliases'] = potential_als
+        
+        if author_usage:
+            author_count = 0
+            for part in author_usage.split(' | '):
+                if ':' in part:
+                    authors_section = part.split(':', 1)[1].strip()
+                    if authors_section:
+                        author_count += len([a.strip() for a in authors_section.split(';') if a.strip()])
+            org_metadata['Author count by affiliation'] = author_count if author_count > 0 else None
+    else:
+        if isinstance(affiliation_result, tuple) and len(affiliation_result) == 2:
+            pub_usage, potential_als = affiliation_result
+        else:
+            pub_usage = affiliation_result
+            potential_als = None
+        print(f"DEBUG: triage: Received from get_publication_affiliation_usage (legacy format) - pub_usage: '{pub_usage}', potential_als: '{potential_als}'")
+        org_metadata['Publication affiliation usage'] = pub_usage
+        org_metadata['Potential aliases'] = potential_als
 
     org_metadata['ORCID affiliation usage'] = search_orcid(all_names)
     org_metadata['Possible ROR matches'] = search_ror(all_names)
