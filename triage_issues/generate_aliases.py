@@ -1,9 +1,25 @@
 import os
 import re
 import requests
-import openai
+import signal
+from contextlib import contextmanager
+from google import genai
 
-openai.api_key = os.getenv("OPENAI_API_KEY")
+
+class TimeoutError(Exception):
+	pass
+
+
+@contextmanager
+def time_limit(seconds):
+	def signal_handler(signum, frame):
+		raise TimeoutError(f"Process timed out after {seconds} seconds")
+	signal.signal(signal.SIGALRM, signal_handler)
+	signal.alarm(seconds)
+	try:
+		yield
+	finally:
+		signal.alarm(0)
 
 def generate_aliases(new_record_request):
 	generate_prompt ="""
@@ -106,12 +122,21 @@ def generate_aliases(new_record_request):
 	Now, provide the list of variant names for the following organization. Respond only with list of names, one name on each line, with no other text:
 	"""
 	try:
+		client = genai.Client(api_key=os.environ.get('GEMINI_API_KEY'))
 		generate_request = generate_prompt + new_record_request
-		generate_response = openai.ChatCompletion.create(
-			model="gpt-3.5-turbo",
-			messages=[{"role": "user", "content": generate_request}])
-		aliases = generate_response.choices[0]['message']['content']
-		aliases = [alias.strip() for alias in aliases.split('\n') if not alias.isupper()]
-		return aliases
-	except Exception:
+		with time_limit(120):
+			generate_response = client.models.generate_content(
+				model='gemini-2.5-pro',
+				contents=generate_request
+			)
+			aliases = generate_response.text
+			aliases = [alias.strip() for alias in aliases.split('\n') if not alias.isupper()]
+			return aliases
+	except TimeoutError as e:
+		print(f"GenAI API call timed out: {e}")
+		return None
+	except Exception as e:
+		print(f"Error generating aliases: {e}")
+		import traceback
+		traceback.print_exc()
 		return None
