@@ -8,7 +8,7 @@ from validate_encoding import validate_encoding
 from contextlib import contextmanager
 
 TOKEN = os.environ.get('GITHUB_TOKEN')
-OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY')
+GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY')
 BOT_NAME = "ror-curator-bot"
 
 ALL_MAJOR_SECTION_HEADERS = [
@@ -313,8 +313,8 @@ def process_single_issue(issue_object, repo_path_str, skip_commented=True):
         elif processed_details['type'] == 'update':
             with time_limit(300):
                 print(f'Triaging update record request - issue #{processed_details["issue_number"]}...')
-                if not OPENAI_API_KEY:
-                    print("Error: OPENAI_API_KEY is not set. Cannot encode update.")
+                if not GEMINI_API_KEY:
+                    print("Error: GEMINI_API_KEY is not set. Cannot encode update.")
                     return
 
                 update_encoding = encode_update(
@@ -398,12 +398,12 @@ def main():
         print("Error: Must specify either ISSUE_NUMBER or both START_ISSUE and END_ISSUE")
         return
 
-    global TOKEN, OPENAI_API_KEY
+    global TOKEN, GEMINI_API_KEY
     TOKEN = github_token
-    OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY')
+    GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY')
     
-    if not OPENAI_API_KEY:
-        print("Warning: OPENAI_API_KEY environment variable is not set. Update encoding will likely fail.")
+    if not GEMINI_API_KEY:
+        print("Warning: GEMINI_API_KEY environment variable is not set. Update encoding will likely fail.")
 
     print(f"Initializing GitHub client for repository: {repo_path_str}")
     print(f"Skip commented issues: {skip_commented}")
