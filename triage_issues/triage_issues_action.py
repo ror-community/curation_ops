@@ -257,7 +257,7 @@ def convert_dict_to_comment(d):
         "Wikidata Established", "Wikidata Admin territory name", "Wikidata Admin territory Geonames ID",
         "Wikidata City", "Wikidata City Geonames ID", "Wikidata Country", "Wikidata links",
         "Wikidata GRID ID", "Wikidata ROR ID", "Wikidata ISNI ID", "ISNI", "Funder ID",
-        "Publication affiliation usage", "Author count by affiliation", "Authors by affiliation",
+        "Publication affiliation usage", "Author count by affiliation",
         "Potential aliases", "ORCID affiliation usage", "Possible ROR matches", 
         "Previous requests", "Geonames match"
     ]
