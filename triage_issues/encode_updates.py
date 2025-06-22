@@ -1,12 +1,25 @@
 import os
 import re
 import requests
-from openai import OpenAI
+import signal
+from contextlib import contextmanager
+from google import genai
 
-client = OpenAI(
-	api_key=os.environ.get('GEMINI_API_KEY'),
-	base_url="https://generativelanguage.googleapis.com/v1beta/openai/"
-)
+
+class TimeoutError(Exception):
+	pass
+
+
+@contextmanager
+def time_limit(seconds):
+	def signal_handler(signum, frame):
+		raise TimeoutError(f"Process timed out after {seconds} seconds")
+	signal.signal(signal.SIGALRM, signal_handler)
+	signal.alarm(seconds)
+	try:
+		yield
+	finally:
+		signal.alarm(0)
 
 
 def encode_update(ror_id, description_of_change):
@@ -19,11 +32,18 @@ def encode_update(ror_id, description_of_change):
 			encode_prompt = file.read()
 		record = str(r.json())
 		try:
+			client = genai.Client(api_key=os.environ.get('GEMINI_API_KEY'))
 			encode_request = encode_prompt + record + description_of_change
-			encode_response = client.chat.completions.create(model="gemini-2.5-pro",
-			messages=[{"role": "user", "content": encode_request}])
-			update = encode_response.choices[0].message.content
-			return update
+			with time_limit(120):
+				encode_response = client.models.generate_content(
+					model='gemini-2.5-pro',
+					contents=encode_request
+				)
+				update = encode_response.text
+				return update
+		except TimeoutError as e:
+			print(f"GenAI API call timed out: {e}")
+			return None
 		except Exception as e:
 			print(f"Error encoding update for ROR ID {ror_id}: {e}")
 			import traceback
