@@ -8,7 +8,6 @@ from github import Github
 from thefuzz import fuzz
 from bs4 import BeautifulSoup
 from lingua import LanguageDetectorBuilder, Language
-from generate_aliases import generate_aliases
 from search_geonames import search_geonames
 
 USER = os.environ.get('GITHUB_USER')
@@ -519,17 +518,6 @@ def get_publication_affiliation_usage(record, all_names):
     affiliation_aliases = []
     body_content = record.get('body')
     potential_aliases_from_body = []
-    if body_content:
-        try:
-            print(f"DEBUG: get_publication_affiliation_usage: Generating aliases from body_content (length {len(body_content)}).")
-            generated = generate_aliases(body_content)
-            if generated:
-                potential_aliases_from_body.extend(g for g in generated if g)
-            print(f"DEBUG: get_publication_affiliation_usage: Aliases from body: {potential_aliases_from_body}")
-        except NameError:
-            print("Warning: generate_aliases function is not defined.")
-        except Exception as e:
-            print(f"Error in generate_aliases: {e}")
 
     extended_all_names = list(all_names)
     if potential_aliases_from_body:
