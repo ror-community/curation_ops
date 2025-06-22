@@ -31,6 +31,21 @@ def catch_requests_exceptions(func):
     return wrapper
 
 
+def format_isni_with_hyperlink(isni_id):
+    if not isni_id or len(isni_id) != 16 or not isni_id.isdigit():
+        return isni_id
+    
+    formatted_isni = f"{isni_id[:4]} {isni_id[4:8]} {isni_id[8:12]} {isni_id[12:16]}"
+    return f"[{formatted_isni}](https://isni.org/isni/{isni_id})"
+
+
+def format_funder_id_with_hyperlink(funder_id):
+    if not funder_id:
+        return funder_id
+    
+    return f"[{funder_id}](https://api.crossref.org/funders/{funder_id})"
+
+
 def normalize_text(text):
     text = re.sub('-', ' ', text)
     return ''.join(ch for ch in re.sub(r'[^\w\s-]', '', text.lower()) if ch not in set(string.punctuation))
@@ -316,9 +331,18 @@ def search_isni(all_names):
         if matches:
             unique_matches_for_current_name = sorted(list(set(matches)))
             if len(unique_matches_for_current_name) == 1:
-                return f"{unique_matches_for_current_name[0][1]} - {unique_matches_for_current_name[0][0]}"
+                isni_name = unique_matches_for_current_name[0][1]
+                isni_id = unique_matches_for_current_name[0][0]
+                formatted_isni = format_isni_with_hyperlink(isni_id)
+                return f"{isni_name} - {formatted_isni}"
             else:
-                return '; '.join([f"{match[1]} - {match[0]}" for match in unique_matches_for_current_name])
+                formatted_matches = []
+                for match in unique_matches_for_current_name:
+                    isni_name = match[1]
+                    isni_id = match[0]
+                    formatted_isni = format_isni_with_hyperlink(isni_id)
+                    formatted_matches.append(f"{isni_name} - {formatted_isni}")
+                return '; '.join(formatted_matches)
     return None
 
 
@@ -340,10 +364,14 @@ def search_funder_registry(all_names):
                 match_ratio = fuzz.token_set_ratio(
                     org_name, normalize_text(funder_name))
                 if match_ratio > 90:
-                    return funder['id']
+                    funder_id = funder['id']
+                    formatted_funder_id = format_funder_id_with_hyperlink(funder_id)
+                    return f"{funder_name} - {formatted_funder_id}"
                 alt_names = funder.get('alt-names', [])
                 if isinstance(alt_names, list) and org_name in alt_names:
-                    return funder['id']
+                    funder_id = funder['id']
+                    formatted_funder_id = format_funder_id_with_hyperlink(funder_id)
+                    return f"{funder_name} - {formatted_funder_id}"
     return None
 
 
