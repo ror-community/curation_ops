@@ -116,6 +116,7 @@ def process_issue_details(issue):
 
     name_pattern = r"Name of organization:[ \t]*([^\n]*)"
     aliases_pattern = r"Aliases:[ \t]*([^\n]*)"
+    labels_pattern = r"Labels:[ \t]*([^\n]*)"
     website_pattern = r"Website:[ \t]*([^\n]*)"
     city_pattern = r"City:[ \t]*([^\n]*)"
     country_pattern = r"Country:[ \t]*([^\n]*)"
@@ -134,15 +135,24 @@ def process_issue_details(issue):
                 name_pattern, active_section_content)
             aliases = get_matched_value(
                 aliases_pattern, active_section_content)
+            labels_from_body = get_matched_value(
+                labels_pattern, active_section_content)
             website = get_matched_value(
                 website_pattern, active_section_content)
             city = get_matched_value(city_pattern, active_section_content)
             country = get_matched_value(
                 country_pattern, active_section_content)
 
+            # Combine GitHub labels with labels from issue body
+            all_labels = org_labels.copy() if org_labels else []
+            if labels_from_body:
+                # Split labels from body by semicolon or comma and strip whitespace
+                body_labels = [label.strip() for label in re.split(r'[;,]', labels_from_body) if label.strip()]
+                all_labels.extend(body_labels)
+
             if organization_name:
                 processed_issue = {'issue_number': issue.number, 'body': issue_body,
-                                   'name': organization_name, 'aliases': aliases, 'labels': org_labels, 'url': website,
+                                   'name': organization_name, 'aliases': aliases, 'labels': all_labels, 'url': website,
                                    'city': city, 'country': country, 'type': 'new', 'issue_object': issue}
             else:
                 print(f"Issue #{issue.number} (Add new): 'Name of organization' not found in the relevant section.")
