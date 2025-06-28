@@ -105,10 +105,7 @@ def get_section_content(issue_body, current_section_header_literal):
 def process_issue_details(issue):
     processed_issue = None
     issue_body = issue.body if issue.body else ""
-
-    # Extract labels from GitHub issue
     labels = [label.name for label in issue.labels if label.name]
-    # Filter out common non-organization labels
     excluded_labels = ['bug', 'enhancement', 'question', 'help', 'duplicate', 'wontfix', 'invalid', 'good first issue']
     org_labels = [label for label in labels if not label.lower() in excluded_labels]
     print(f"DEBUG: Extracted labels from issue #{issue.number}: {labels}")
@@ -143,10 +140,8 @@ def process_issue_details(issue):
             country = get_matched_value(
                 country_pattern, active_section_content)
 
-            # Combine GitHub labels with labels from issue body
             all_labels = org_labels.copy() if org_labels else []
             if labels_from_body:
-                # Split labels from body by semicolon or comma and strip whitespace
                 body_labels = [label.strip() for label in re.split(r'[;,]', labels_from_body) if label.strip()]
                 all_labels.extend(body_labels)
 
@@ -361,7 +356,6 @@ def get_issues_to_process(repo, issue_number=None, start_issue=None, end_issue=N
     issues = []
     
     if issue_number:
-        # Single issue mode
         try:
             issue = repo.get_issue(number=int(issue_number))
             issues = [issue]
@@ -371,7 +365,6 @@ def get_issues_to_process(repo, issue_number=None, start_issue=None, end_issue=N
             return []
     
     elif start_issue and end_issue:
-        # Range mode
         start_num = int(start_issue)
         end_num = int(end_issue)
         print(f"Processing issue range #{start_num} to #{end_num}")
@@ -379,7 +372,6 @@ def get_issues_to_process(repo, issue_number=None, start_issue=None, end_issue=N
         for issue_num in range(start_num, end_num + 1):
             try:
                 issue = repo.get_issue(number=issue_num)
-                # Only process if it's open and matches our criteria
                 if issue.state == 'open' and ('Add a new' in issue.title or 'Modify the information' in issue.title):
                     issues.append(issue)
                     print(f"Added issue #{issue.number} to processing queue")
@@ -393,22 +385,17 @@ def get_issues_to_process(repo, issue_number=None, start_issue=None, end_issue=N
 
 
 def main():
-    # Environment variables for both single issue and range modes
     issue_number_str = os.environ.get('ISSUE_NUMBER')
     start_issue_str = os.environ.get('START_ISSUE')
     end_issue_str = os.environ.get('END_ISSUE')
     skip_commented_str = os.environ.get('SKIP_COMMENTED', 'true').lower()
     repo_path_str = os.environ.get('GITHUB_REPOSITORY')
     github_token = os.environ.get('GITHUB_TOKEN')
-
-    # Parse skip_commented
     skip_commented = skip_commented_str in ['true', '1', 'yes']
 
     if not repo_path_str or not github_token:
         print("Error: Missing required environment variables (GITHUB_REPOSITORY, GITHUB_TOKEN).")
         return
-
-    # Validate input parameters
     if issue_number_str and (start_issue_str or end_issue_str):
         print("Error: Cannot specify both single issue and issue range")
         return
