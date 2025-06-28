@@ -191,7 +191,25 @@ def procedural_clean_issue_body(issue_body):
         'Add record:'
     ]
     
-    for header in section_headers:
+    irrelevant_sections = ['New record request:', 'Merge/split/deprecate records:', 'Add record:']
+    
+    for header in irrelevant_sections:
+        pattern = f'\n{header}\n'
+        if pattern in cleaned_body:
+            section_start = cleaned_body.find(pattern)
+            if section_start != -1:
+                next_section_start = len(cleaned_body)
+                for other_header in section_headers:
+                    if other_header != header:
+                        other_pattern = f'\n{other_header}\n'
+                        pos = cleaned_body.find(other_pattern, section_start + len(pattern))
+                        if pos != -1 and pos < next_section_start:
+                            next_section_start = pos
+                
+                cleaned_body = cleaned_body[:section_start] + cleaned_body[next_section_start:]
+    
+    remaining_headers = ['Update record:']
+    for header in remaining_headers:
         pattern = f'\n{header}\n\n'
         if pattern in cleaned_body:
             next_section_start = len(cleaned_body)
