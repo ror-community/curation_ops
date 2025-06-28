@@ -22,6 +22,7 @@ BOT_COMMENT_SIGNATURE = "\n\n---\n*Issue body was automatically formatted by a R
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROMPT_FILE_PATH = os.path.join(SCRIPT_DIR, "gemini_prompt.txt")
 REQUIRED_TITLE_PHRASE = 'Add a new organization to ROR'
+UPDATE_TITLE_PHRASE = 'Modify the information in an existing ROR record:'
 
 
 def load_prompt_template(file_path):
@@ -60,11 +61,11 @@ def get_issues_to_process(repo, issue_number=None, start_issue=None, end_issue=N
     if issue_number:
         try:
             issue = repo.get_issue(number=int(issue_number))
-            if issue.state == 'open' and REQUIRED_TITLE_PHRASE in issue.title:
+            if issue.state == 'open' and (REQUIRED_TITLE_PHRASE in issue.title or UPDATE_TITLE_PHRASE in issue.title):
                 issues_to_fetch = [issue]
                 print(f"Targeting single open issue #{issue.number} ('{issue.title}') matching title criteria.")
             else:
-                print(f"Issue #{issue.number} ('{issue.title}') is either not open (state: {issue.state}) or does not contain '{REQUIRED_TITLE_PHRASE}' in its title. Skipping.")
+                print(f"Issue #{issue.number} ('{issue.title}') is either not open (state: {issue.state}) or does not contain required title phrases. Skipping.")
                 return []
         except GithubException as e:
             print(f"Error fetching issue #{issue_number}: {e}")
@@ -75,16 +76,16 @@ def get_issues_to_process(repo, issue_number=None, start_issue=None, end_issue=N
         if start_num > end_num:
             print(f"Error: Start issue #{start_num} is greater than end issue #{end_num}.")
             return []
-        print(f"Checking issue range #{start_num} to #{end_num} for open issues matching title criteria ('{REQUIRED_TITLE_PHRASE}')...")
+        print(f"Checking issue range #{start_num} to #{end_num} for open issues matching title criteria...")
         for issue_num in range(start_num, end_num + 1):
             try:
                 issue = repo.get_issue(number=issue_num)
                 if issue:
-                    if issue.state == 'open' and REQUIRED_TITLE_PHRASE in issue.title:
+                    if issue.state == 'open' and (REQUIRED_TITLE_PHRASE in issue.title or UPDATE_TITLE_PHRASE in issue.title):
                         issues_to_fetch.append(issue)
                         print(f"Added open issue #{issue.number} ('{issue.title}') matching criteria to processing queue.")
                     else:
-                        print(f"Skipping issue #{issue.number} ('{issue.title}'). Reason: Not open (state: {issue.state}) or title does not contain '{REQUIRED_TITLE_PHRASE}'.")
+                        print(f"Skipping issue #{issue.number} ('{issue.title}'). Reason: Not open (state: {issue.state}) or title does not contain required phrases.")
             except GithubException as e:
                 print(f"Error fetching issue #{issue_num}: {e}. Skipping this number.")
                 continue
@@ -95,12 +96,12 @@ def get_issues_to_process(repo, issue_number=None, start_issue=None, end_issue=N
         open_issues = repo.get_issues(state='open')
         count = 0
         for issue in open_issues:
-            if REQUIRED_TITLE_PHRASE in issue.title:
+            if REQUIRED_TITLE_PHRASE in issue.title or UPDATE_TITLE_PHRASE in issue.title:
                 issues_to_fetch.append(issue)
                 count +=1
         print(f"Found {count} open issues matching title criteria.")
         if not issues_to_fetch:
-             print(f"No open issues matching title criteria ('{REQUIRED_TITLE_PHRASE}') found in the repository.")
+             print(f"No open issues matching title criteria found in the repository.")
 
     return issues_to_fetch
 
@@ -127,6 +128,86 @@ def update_github_issue_body(issue_object, new_body_content, comment_to_add=None
 
     except GithubException as e:
         print(f"Failed to update body for issue #{issue_object.number}: {e}")
+
+
+def procedural_clean_issue_body(issue_body):
+    if not issue_body:
+        return issue_body
+    
+    lines = issue_body.split('\n')
+    cleaned_lines = []
+    
+    for line in lines:
+        stripped_line = line.strip()
+        
+        if not stripped_line:
+            cleaned_lines.append(line)
+            continue
+        
+        field_patterns = [
+            'Name of organization:',
+            'ROR ID:',
+            'Which part of the record needs to be changed?',
+            'Description of change:',
+            'Organizations affected by this change:',
+            'ROR ID(s) of organization(s) affected by this change:',
+            'How should the record(s) be changed?',
+            'Website:',
+            'Domains:',
+            'Link to publications:',
+            'Organization type:',
+            'Wikipedia page:',
+            'Wikidata ID:',
+            'ISNI ID:',
+            'GRID ID:',
+            'Crossref Funder ID:',
+            'Aliases:',
+            'Labels:',
+            'Acronym/abbreviation:',
+            'Related organizations:',
+            'City:',
+            'Country:',
+            'Geonames ID:',
+            'Year established:',
+            'How will a ROR ID for this organization be used?',
+            'Other information about this request:'
+        ]
+        
+        is_empty_field = False
+        for pattern in field_patterns:
+            if stripped_line == pattern or stripped_line == pattern + ' ':
+                is_empty_field = True
+                break
+        
+        if not is_empty_field:
+            cleaned_lines.append(line)
+    
+    cleaned_body = '\n'.join(cleaned_lines)
+    
+    section_headers = [
+        'New record request:',
+        'Update record:',
+        'Merge/split/deprecate records:',
+        'Add record:'
+    ]
+    
+    for header in section_headers:
+        pattern = f'\n{header}\n\n'
+        if pattern in cleaned_body:
+            next_section_start = len(cleaned_body)
+            for other_header in section_headers:
+                if other_header != header:
+                    other_pattern = f'\n{other_header}\n'
+                    pos = cleaned_body.find(other_pattern, cleaned_body.find(pattern) + len(pattern))
+                    if pos != -1 and pos < next_section_start:
+                        next_section_start = pos
+            
+            section_content = cleaned_body[cleaned_body.find(pattern) + len(pattern):next_section_start]
+            if not section_content.strip():
+                cleaned_body = cleaned_body.replace(pattern, '\n')
+    
+    cleaned_body = re.sub(r'\n{3,}', '\n\n', cleaned_body)
+    return cleaned_body.strip()
 
 
 def call_gemini_to_format_issue(issue_title, issue_body):
@@ -175,21 +256,29 @@ def process_single_issue(issue_object):
     original_body = issue_object.body if issue_object.body else ""
 
     if not original_body.strip():
-        print(f"Issue #{issue_object.number} has an empty body. Skipping Gemini processing.")
+        print(f"Issue #{issue_object.number} has an empty body. Skipping processing.")
         return
 
     if BOT_COMMENT_SIGNATURE in original_body:
         print(f"Issue #{issue_object.number} body already contains bot signature. Skipping re-formatting.")
         return
 
-    formatted_body = call_gemini_to_format_issue(
-        issue_object.title, original_body)
+    is_update_request = UPDATE_TITLE_PHRASE in issue_object.title
+    
+    if is_update_request:
+        print(f"Processing update request issue #{issue_object.number} with procedural cleaning...")
+        formatted_body = procedural_clean_issue_body(original_body)
+        processing_method = "procedural cleaning"
+    else:
+        print(f"Processing new record request issue #{issue_object.number} with Gemini API...")
+        formatted_body = call_gemini_to_format_issue(issue_object.title, original_body)
+        processing_method = "Gemini API"
 
     if formatted_body:
         if formatted_body.strip() == original_body.strip():
-            print(f"Gemini proposed no changes to the body of issue #{issue_object.number}.")
+            print(f"{processing_method.title()} proposed no changes to the body of issue #{issue_object.number}.")
         else:
-            print(f"Gemini proposed changes for issue #{issue_object.number}.")
+            print(f"{processing_method.title()} proposed changes for issue #{issue_object.number}.")
 
             diff_lines = difflib.unified_diff(
                 original_body.splitlines(keepends=True),
@@ -225,7 +314,7 @@ def process_single_issue(issue_object):
                     issue_object, formatted_body, comment_to_add=comment_with_diff
                 )
     else:
-        print(f"Failed to get formatted body from Gemini for issue #{issue_object.number}.")
+        print(f"Failed to get formatted body using {processing_method} for issue #{issue_object.number}.")
 
 
 def main():
