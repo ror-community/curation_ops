@@ -105,11 +105,6 @@ def get_section_content(issue_body, current_section_header_literal):
 def process_issue_details(issue):
     processed_issue = None
     issue_body = issue.body if issue.body else ""
-    labels = [label.name for label in issue.labels if label.name]
-    excluded_labels = ['bug', 'enhancement', 'question', 'help', 'duplicate', 'wontfix', 'invalid', 'good first issue']
-    org_labels = [label for label in labels if not label.lower() in excluded_labels]
-    print(f"DEBUG: Extracted labels from issue #{issue.number}: {labels}")
-    print(f"DEBUG: Filtered organization labels: {org_labels}")
 
     name_pattern = r"Name of organization:[ \t]*([^\n]*)"
     aliases_pattern = r"Aliases:[ \t]*([^\n]*)"
@@ -140,7 +135,7 @@ def process_issue_details(issue):
             country = get_matched_value(
                 country_pattern, active_section_content)
 
-            all_labels = org_labels.copy() if org_labels else []
+            all_labels = []
             if labels_from_body:
                 body_labels = [label.strip() for label in re.split(r'[;,]', labels_from_body) if label.strip()]
                 all_labels.extend(body_labels)
@@ -230,7 +225,7 @@ def process_issue_details(issue):
 
         if ror_id and description_of_change:
             processed_issue = {'issue_number': issue.number, 'ror_id': ror_id,
-                               'name': organization_name, 'labels': org_labels,
+                               'name': organization_name,
                                'change': description_of_change,
                                'type': 'update', 'issue_object': issue}
         else:
@@ -372,11 +367,15 @@ def get_issues_to_process(repo, issue_number=None, start_issue=None, end_issue=N
         for issue_num in range(start_num, end_num + 1):
             try:
                 issue = repo.get_issue(number=issue_num)
+                issue_labels = [label.name for label in issue.labels]
                 if issue.state == 'open' and ('Add a new' in issue.title or 'Modify the information' in issue.title):
-                    issues.append(issue)
-                    print(f"Added issue #{issue.number} to processing queue")
+                    if 'triage needed' in issue_labels:
+                        issues.append(issue)
+                        print(f"Added issue #{issue.number} to processing queue")
+                    else:
+                        print(f"Skipping issue #{issue.number} - does not have 'triage needed' label")
                 else:
-                    print(f"Skipping issue #{issue.number} - not open or doesn't match criteria")
+                    print(f"Skipping issue #{issue.number} - not open or doesn't match title criteria")
             except Exception as e:
                 print(f"Error fetching issue #{issue_num}: {e}")
                 continue
