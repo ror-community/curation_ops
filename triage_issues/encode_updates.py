@@ -47,7 +47,7 @@ def encode_update(ror_id, description_of_change):
 			encode_request = encode_prompt + record + description_of_change
 			with time_limit(120):
 				encode_response = client.models.generate_content(
-					model='gemini-2.5-flash',
+					model='gemini-2.5-pro',
 					contents=encode_request
 				)
 				update = encode_response.text
