@@ -120,6 +120,8 @@ def update_metadata(version_url, release_data):
         metadata['version'] = release_data['filename'].split('-', 1)[0]
         metadata['description'] = format_description(release_data)
         metadata['related_identifiers'] = related_ids
+        if "dates" in metadata:
+            del metadata["dates"]
         updated_metadata = {'metadata': metadata}
         try:
             r = requests.put(version_url, params={'access_token': ZENODO_TOKEN}, data=json.dumps(updated_metadata), headers=HEADERS)
@@ -229,6 +231,7 @@ def check_release_data(release_data):
         if not total_present:
             print("Total orgs count not found in release notes")
         return False
+
 
 def get_previous_version_doi(parent_record_id):
     print("Getting DOI for previous version")
