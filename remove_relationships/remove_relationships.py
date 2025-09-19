@@ -10,8 +10,8 @@ from datetime import datetime
 
 ERROR_LOG = "relationship_errors.log"
 logging.basicConfig(filename=ERROR_LOG,level=logging.ERROR, filemode='w')
-V1_API_URL = "http://api.ror.org/v1/organizations/"
-V2_API_URL = "http://api.ror.org/v2/organizations/"
+V1_API_URL = "https://api.ror.org/v1/organizations/"
+V2_API_URL = "https://api.ror.org/v2/organizations/"
 UPDATED_RECORDS_PATH = "updates/"
 INACTIVE_STATUSES = ('inactive', 'withdrawn')
 LAST_MOD_DATE =  datetime.now().strftime("%Y-%m-%d")
@@ -48,6 +48,8 @@ def get_record(id, filename, inactive_id, version):
         logging.error(f"Request for {download_url}: {e}")
 
     try:
+        rsp = requests.get(download_url)
+        rsp.raise_for_status()
         response = rsp.json()
         if (response['status'] =='active') and len(response['relationships']) > 0:
             inactive_relationships = [r for r in response['relationships'] if (r['id'] == inactive_id and r['type'].lower() != 'predecessor')]
