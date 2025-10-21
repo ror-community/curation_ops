@@ -248,7 +248,8 @@ def convert_dict_to_comment(d):
         "Wikidata City", "Wikidata City Geonames ID", "Wikidata Country", "Wikidata links",
         "Wikidata GRID ID", "Wikidata ROR ID", "Wikidata ISNI ID", "ISNI", "Funder ID",
         "Publication affiliation usage", "Author count by affiliation",
-        "Potential aliases", "ORCID affiliation usage", "Possible ROR matches", 
+        "Potential aliases", "ORCID affiliation usage", "Possible ROR matches", "Possible ROR matches by URL",
+        "Possible ROR matches by External ID",
         "Previous requests", "Geonames match"
     ]
     temp_dict = d.copy()

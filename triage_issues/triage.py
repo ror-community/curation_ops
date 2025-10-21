@@ -3,6 +3,7 @@ import re
 import string
 import itertools
 import requests
+from urllib.parse import urlparse
 from collections import defaultdict
 from github import Github
 from thefuzz import fuzz
@@ -48,6 +49,92 @@ def format_funder_id_with_hyperlink(funder_id):
 def normalize_text(text):
     text = re.sub('-', ' ', text)
     return ''.join(ch for ch in re.sub(r'[^\w\s-]', '', text.lower()) if ch not in set(string.punctuation))
+
+
+def normalize_country_value(country):
+    if not country or not isinstance(country, str):
+        return None
+    normalized = country.strip().lower()
+    normalized = re.sub(r'\s+', ' ', normalized)
+    return normalized if normalized else None
+
+
+def normalize_url_host(url):
+    if not url or not isinstance(url, str):
+        return None
+    candidate_url = url.strip()
+    if not candidate_url:
+        return None
+    if not re.match(r'^[a-z]+://', candidate_url, flags=re.IGNORECASE):
+        candidate_url = f"https://{candidate_url}"
+    try:
+        parsed = urlparse(candidate_url)
+    except ValueError:
+        return None
+    host = parsed.netloc or ''
+    if not host and parsed.path:
+        host = parsed.path.split('/')[0]
+    host = host.lower()
+    if host.startswith('www.'):
+        host = host[4:]
+    host = host.split(':')[0]
+    return host or None
+
+
+def organization_matches_country(organization, normalized_issue_country):
+    if not normalized_issue_country:
+        return True
+    locations = organization.get('locations', [])
+    for location in locations:
+        country_info = location.get('country') or {}
+        country_name = country_info.get('country_name')
+        country_code = country_info.get('country_code')
+        if country_name and normalize_country_value(country_name) == normalized_issue_country:
+            return True
+        if country_code and country_code.lower() == normalized_issue_country:
+            return True
+    return False
+
+
+ADVANCED_QUERY_RESERVED_CHARS = set(r'+-=!(){}[]^"~*?:\/&|<>')
+
+
+def escape_for_advanced_query(value):
+    if value is None:
+        return ""
+    escaped_chars = []
+    for char in value:
+        if char in ADVANCED_QUERY_RESERVED_CHARS:
+            escaped_chars.append(f"\\{char}")
+        else:
+            escaped_chars.append(char)
+    return ''.join(escaped_chars)
+
+
+def perform_ror_advanced_query(query_string, headers, page=1):
+    base_url = "https://api.ror.org/v2/organizations"
+    params = {'query.advanced': query_string, 'page': page}
+    response = requests.get(base_url, params=params, headers=headers, timeout=10)
+    response.raise_for_status()
+    api_response = response.json()
+    return api_response.get('items', []) or []
+
+
+def get_display_name_for_organization(organization):
+    if not isinstance(organization, dict):
+        return None
+    if organization.get('name'):
+        return organization['name']
+    names = organization.get('names', [])
+    if isinstance(names, list):
+        for name_entry in names:
+            types = name_entry.get('types', []) if isinstance(name_entry, dict) else []
+            if isinstance(types, list) and 'ror_display' in types:
+                return name_entry.get('value')
+        for name_entry in names:
+            if isinstance(name_entry, dict) and name_entry.get('value'):
+                return name_entry.get('value')
+    return None
 
 
 @catch_requests_exceptions
@@ -246,48 +333,77 @@ def get_wikidata_claims(org_name, wikidata_id, match_ratio):
 
 
 @catch_requests_exceptions
-def search_ror(all_names):
+def search_ror(all_names, record):
     headers = {
         'User-Agent': 'ROROrgTriageBot/1.0 (ror.org, mailto:support@ror.org)'}
-    for org_name in all_names:
-        if not org_name:
+    base_url = "https://api.ror.org/v2/organizations"
+    normalized_issue_country = normalize_country_value(
+        record.get('country')) if isinstance(record, dict) else None
+
+    unique_names = []
+    seen_name_keys = set()
+    for name in all_names:
+        normalized_name = normalize_text(name) if name else None
+        if not name or not normalized_name:
             continue
-        current_name_ror_matches = []
-        base_url = "https://api.ror.org/v2/organizations"
-        params = {'affiliation': org_name}
+        if normalized_name in seen_name_keys:
+            continue
+        unique_names.append((name, normalized_name))
+        seen_name_keys.add(normalized_name)
 
-        api_response = requests.get(
-            base_url, params=params, headers=headers, timeout=10).json()
-        results = api_response.get('items', [])
-        for result in results:
-            record = result.get('organization')
-            if not record:
-                continue
-            ror_id = record.get('id')
-            for name_entry in record.get('names', []):
-                name_value = name_entry.get('value')
-                name_types_list = name_entry.get('types', [])
-                name_type = name_types_list[0] if name_types_list else 'N/A'
+    all_matches = set()
+    match_outputs = []
 
-                if not name_value or not ror_id:
+    for original_name, normalized_name in unique_names:
+        request_variants = set()
+        request_variants.add(('query', original_name))
+        request_variants.add(('affiliation', original_name))
+        if original_name != normalized_name:
+            request_variants.add(('query', normalized_name))
+            request_variants.add(('affiliation', normalized_name))
+
+        for param_key, param_value in request_variants:
+            params = {param_key: param_value}
+            api_response = requests.get(
+                base_url, params=params, headers=headers, timeout=10).json()
+            results = api_response.get('items', [])
+            for result in results:
+                organization = result.get('organization') or result
+                if not isinstance(organization, dict):
+                    continue
+                ror_id = organization.get('id')
+                if not ror_id:
+                    continue
+                if not organization_matches_country(organization, normalized_issue_country):
                     continue
 
-                name_mr = fuzz.ratio(normalize_text(org_name),
-                                     normalize_text(name_value))
-                if name_mr >= 90:
-                    current_name_ror_matches.append(
-                        [ror_id, name_value, name_type])
+                for name_entry in organization.get('names', []):
+                    name_value = name_entry.get('value')
+                    if not name_value:
+                        continue
+                    name_match_ratio = fuzz.ratio(
+                        normalized_name, normalize_text(name_value))
+                    if name_match_ratio < 90:
+                        continue
 
-        if current_name_ror_matches:
-            deduplicated_matches = sorted(
-                list(set(map(tuple, current_name_ror_matches))))
+                    name_types_list = name_entry.get('types', [])
+                    name_type = name_types_list[0] if name_types_list else 'N/A'
+                    match_tuple = (ror_id, name_value, name_type)
+                    if match_tuple in all_matches:
+                        continue
+                    all_matches.add(match_tuple)
 
-            if len(deduplicated_matches) == 1:
-                match_tuple = deduplicated_matches[0]
-                return f"{match_tuple[2]}: {match_tuple[0]} - {match_tuple[1]}"
-            else:
-                return '; '.join([f"{m_tpl[2]}: {m_tpl[0]} - {m_tpl[1]}" for m_tpl in deduplicated_matches])
-    return None
+    if not all_matches:
+        return None
+
+    sorted_matches = sorted(all_matches, key=lambda m: (m[0], m[1], m[2]))
+    for match_tuple in sorted_matches:
+        match_outputs.append(
+            f"{match_tuple[2]}: {match_tuple[0]} - {match_tuple[1]}")
+
+    if len(match_outputs) == 1:
+        return match_outputs[0]
+    return '; '.join(match_outputs)
 
 
 @catch_requests_exceptions
@@ -343,6 +459,227 @@ def search_isni(all_names):
                     formatted_matches.append(f"{isni_name} - {formatted_isni}")
                 return '; '.join(formatted_matches)
     return None
+
+
+@catch_requests_exceptions
+def search_ror_by_url(record):
+    if not isinstance(record, dict):
+        return None
+
+    website_url = record.get('url')
+    if not website_url:
+        body = record.get('body')
+        if isinstance(body, str):
+            url_match = re.search(r'https?://[^\s)]+', body)
+            if url_match:
+                website_url = url_match.group(0)
+
+    normalized_host = normalize_url_host(website_url)
+    if not normalized_host:
+        return None
+
+    headers = {
+        'User-Agent': 'ROROrgTriageBot/1.0 (ror.org, mailto:support@ror.org)'}
+    normalized_issue_country = normalize_country_value(record.get('country'))
+
+    query_values = {normalized_host}
+    if not normalized_host.startswith('www.'):
+        query_values.add(f"www.{normalized_host}")
+
+    matches = defaultdict(set)
+
+    for query_value in query_values:
+        escaped_value = escape_for_advanced_query(query_value)
+        query_string = f"(links.value:*{escaped_value}* OR domains:*{escaped_value}*)"
+        try:
+            results = perform_ror_advanced_query(query_string, headers)
+        except requests.exceptions.RequestException as exc:
+            print(f"DEBUG: search_ror_by_url failed for query '{query_string}': {exc}")
+            continue
+
+        for result in results:
+            organization = result.get('organization') or result
+            if not isinstance(organization, dict):
+                continue
+            ror_id = organization.get('id')
+            display_name = get_display_name_for_organization(organization)
+            if not ror_id or not display_name:
+                continue
+            if not organization_matches_country(organization, normalized_issue_country):
+                continue
+
+            matched = False
+
+            for org_link in organization.get('links', []):
+                link_value = org_link.get('value') if isinstance(org_link, dict) else org_link
+                normalized_link_host = normalize_url_host(link_value)
+                if normalized_link_host == normalized_host:
+                    matched = True
+                    matches[(ror_id, display_name)].add(normalized_link_host)
+                    break
+
+            if not matched:
+                domains = organization.get('domains', [])
+                for domain in domains:
+                    normalized_domain_host = normalize_url_host(domain)
+                    if normalized_domain_host == normalized_host:
+                        matched = True
+                        matches[(ror_id, display_name)].add(normalized_domain_host)
+                        break
+
+    if not matches:
+        return None
+
+    sorted_matches = sorted(matches.items(), key=lambda item: (item[0][0], item[0][1]))
+    formatted = []
+    for (ror_id, name), host_matches in sorted_matches:
+        host_details = ''
+        normalized_hosts = sorted({host for host in host_matches if host})
+        if normalized_hosts:
+            host_details = f" (matched host: {', '.join(normalized_hosts)})"
+        formatted.append(f"{ror_id} - {name}{host_details}")
+    if len(formatted) == 1:
+        return formatted[0]
+    return '; '.join(formatted)
+
+
+def extract_external_ids(record):
+    external_ids = set()
+
+    raw_external_ids = record.get('external_ids') if isinstance(record, dict) else None
+    if isinstance(raw_external_ids, dict):
+        for key in ('all', 'preferred', 'values', 'value'):
+            values = raw_external_ids.get(key)
+            if isinstance(values, list):
+                for val in values:
+                    if isinstance(val, str):
+                        external_ids.add(val.strip())
+            elif isinstance(values, str):
+                external_ids.add(values.strip())
+    elif isinstance(raw_external_ids, list):
+        for entry in raw_external_ids:
+            if isinstance(entry, dict):
+                for key in ('all', 'preferred', 'values', 'value'):
+                    values = entry.get(key)
+                    if isinstance(values, list):
+                        for val in values:
+                            if isinstance(val, str):
+                                external_ids.add(val.strip())
+                    elif isinstance(values, str):
+                        external_ids.add(values.strip())
+            elif isinstance(entry, str):
+                external_ids.add(entry.strip())
+    elif isinstance(raw_external_ids, str):
+        external_ids.add(raw_external_ids.strip())
+
+    body_text = record.get('body') if isinstance(record, dict) else None
+    if isinstance(body_text, str):
+        grid_matches = re.findall(r'grid\.[0-9]{4,8}\.[0-9a-z]{1,2}', body_text, flags=re.IGNORECASE)
+        for match in grid_matches:
+            external_ids.add(match.strip().lower())
+
+        wikidata_matches = re.findall(r'\bQ\d+\b', body_text)
+        for match in wikidata_matches:
+            external_ids.add(match.strip())
+
+        wikidata_url_matches = re.findall(r'https?://(?:www\.)?wikidata\.org/wiki/(Q\d+)', body_text, flags=re.IGNORECASE)
+        for match in wikidata_url_matches:
+            external_ids.add(match.strip())
+
+        isni_block_matches = re.findall(r'\b\d{4}\s\d{4}\s\d{4}\s\d{4}\b', body_text)
+        for match in isni_block_matches:
+            external_ids.add(match.strip())
+
+        isni_compact_matches = re.findall(r'\b\d{16}\b', body_text)
+        for match in isni_compact_matches:
+            external_ids.add(' '.join([match[i:i+4] for i in range(0, len(match), 4)]))
+
+        fundref_matches = re.findall(r'\b50\d{8}\b', body_text)
+        for match in fundref_matches:
+            external_ids.add(match.strip())
+
+    cleaned_external_ids = {ext_id for ext_id in (value.strip() for value in external_ids) if ext_id}
+    return cleaned_external_ids or None
+
+
+def normalize_external_id_for_comparison(external_id):
+    if not external_id:
+        return ''
+    return re.sub(r'\s+', '', external_id).lower()
+
+
+def organization_has_external_id(organization, target_id_normalized):
+    external_ids_field = organization.get('external_ids', [])
+    if not isinstance(external_ids_field, list):
+        return False
+
+    for ext_entry in external_ids_field:
+        if not isinstance(ext_entry, dict):
+            continue
+        for key in ('all', 'preferred'):
+            values = ext_entry.get(key)
+            if isinstance(values, list):
+                for val in values:
+                    if isinstance(val, str) and normalize_external_id_for_comparison(val) == target_id_normalized:
+                        return True
+            elif isinstance(values, str) and normalize_external_id_for_comparison(values) == target_id_normalized:
+                return True
+    return False
+
+
+@catch_requests_exceptions
+def search_ror_by_external_ids(record):
+    if not isinstance(record, dict):
+        return None
+
+    extracted_ids = extract_external_ids(record)
+    if not extracted_ids:
+        return None
+
+    headers = {
+        'User-Agent': 'ROROrgTriageBot/1.0 (ror.org, mailto:support@ror.org)'}
+    normalized_issue_country = normalize_country_value(record.get('country'))
+
+    matches = {}
+
+    for external_id in extracted_ids:
+        escaped_external_id = escape_for_advanced_query(external_id)
+        query_string = f'(external_ids.all:"{escaped_external_id}" OR external_ids.preferred:"{escaped_external_id}")'
+        try:
+            results = perform_ror_advanced_query(query_string, headers)
+        except requests.exceptions.RequestException as exc:
+            print(f"DEBUG: search_ror_by_external_ids failed for '{external_id}': {exc}")
+            continue
+
+        normalized_target_id = normalize_external_id_for_comparison(external_id)
+        for result in results:
+            organization = result.get('organization') or result
+            if not isinstance(organization, dict):
+                continue
+            if not organization_matches_country(organization, normalized_issue_country):
+                continue
+            if not organization_has_external_id(organization, normalized_target_id):
+                continue
+
+            ror_id = organization.get('id')
+            display_name = get_display_name_for_organization(organization)
+            if not ror_id or not display_name:
+                continue
+            key = (ror_id, display_name)
+            matches.setdefault(key, set()).add(external_id)
+
+    if not matches:
+        return None
+
+    sorted_matches = sorted(matches.items(), key=lambda item: (item[0][0], item[0][1]))
+    formatted_results = []
+    for (ror_id, name), ids in sorted_matches:
+        sorted_ids = sorted(ids)
+        formatted_results.append(f"{ror_id} - {name} (matched external ID: {', '.join(sorted_ids)})")
+
+    if len(formatted_results) == 1:
+        return formatted_results[0]
+    return '; '.join(formatted_results)
 
 
 @catch_requests_exceptions
@@ -655,7 +992,9 @@ def triage(record):
         org_metadata['Potential aliases'] = potential_als
 
     org_metadata['ORCID affiliation usage'] = search_orcid(all_names)
-    org_metadata['Possible ROR matches'] = search_ror(all_names)
+    org_metadata['Possible ROR matches'] = search_ror(all_names, record)
+    org_metadata['Possible ROR matches by URL'] = search_ror_by_url(record)
+    org_metadata['Possible ROR matches by External ID'] = search_ror_by_external_ids(record)
 
     if record.get('city') and record.get('country'):
         location = f"{record['city']}, {record['country']}"
