@@ -59,6 +59,37 @@ def normalize_country_value(country):
     return normalized if normalized else None
 
 
+def extract_country_from_organization(organization):
+    if not isinstance(organization, dict):
+        return None
+    locations = organization.get('locations', [])
+    if not isinstance(locations, list):
+        return None
+
+    for location in locations:
+        if not isinstance(location, dict):
+            continue
+        country_info = location.get('country') or {}
+        country_name = country_info.get('country_name')
+        country_code = country_info.get('country_code')
+        if country_name and country_code:
+            return f"{country_name} ({country_code})"
+        if country_name:
+            return country_name
+        if country_code:
+            return country_code
+        geonames_details = location.get('geonames_details') or {}
+        subdivision_name = geonames_details.get('country_subdivision_name')
+        subdivision_code = geonames_details.get('country_subdivision_code')
+        if subdivision_name and subdivision_code:
+            return f"{subdivision_name} ({subdivision_code})"
+        if subdivision_name:
+            return subdivision_name
+        if subdivision_code:
+            return subdivision_code
+    return None
+
+
 def normalize_url_host(url):
     if not url or not isinstance(url, str):
         return None
@@ -490,6 +521,7 @@ def search_ror_by_url(record):
             display_name = get_display_name_for_organization(organization)
             if not ror_id or not display_name:
                 continue
+            org_country = extract_country_from_organization(organization)
             matched = False
 
             for org_link in organization.get('links', []):
@@ -497,7 +529,7 @@ def search_ror_by_url(record):
                 normalized_link_host = normalize_url_host(link_value)
                 if normalized_link_host == normalized_host:
                     matched = True
-                    matches[(ror_id, display_name)].add(normalized_link_host)
+                    matches[(ror_id, display_name)].add((normalized_link_host, org_country))
                     break
 
             if not matched:
@@ -506,7 +538,7 @@ def search_ror_by_url(record):
                     normalized_domain_host = normalize_url_host(domain)
                     if normalized_domain_host == normalized_host:
                         matched = True
-                        matches[(ror_id, display_name)].add(normalized_domain_host)
+                        matches[(ror_id, display_name)].add((normalized_domain_host, org_country))
                         break
 
     if not matches:
@@ -516,9 +548,17 @@ def search_ror_by_url(record):
     formatted = []
     for (ror_id, name), host_matches in sorted_matches:
         host_details = ''
-        normalized_hosts = sorted({host for host in host_matches if host})
-        if normalized_hosts:
-            host_details = f" (matched host: {', '.join(normalized_hosts)})"
+        detail_strings = []
+        for host_value, country_value in sorted(host_matches):
+            parts = []
+            if host_value:
+                parts.append(host_value)
+            if country_value:
+                parts.append(country_value)
+            if parts:
+                detail_strings.append(' | '.join(parts))
+        if detail_strings:
+            host_details = f" (matched: {', '.join(detail_strings)})"
         formatted.append(f"{ror_id} - {name}{host_details}")
     if len(formatted) == 1:
         return formatted[0]
