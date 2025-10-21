@@ -498,16 +498,32 @@ def search_ror_by_url(record):
     headers = {
         'User-Agent': 'ROROrgTriageBot/1.0 (ror.org, mailto:support@ror.org)'}
 
-    query_values = {normalized_host}
-    if not normalized_host.startswith('www.'):
-        query_values.add(f"www.{normalized_host}")
-
     matches = defaultdict(set)
 
-    for query_value in query_values:
-        escaped_value = escape_for_advanced_query(query_value)
-        query_string = f"(links.value:*{escaped_value}* OR domains:*{escaped_value}*)"
-        print(query_string)
+    host_variants = {normalized_host}
+    if normalized_host.startswith('www.'):
+        host_variants.add(normalized_host[4:])
+    else:
+        host_variants.add(f"www.{normalized_host}")
+
+    query_strings = set()
+    for host_variant in host_variants:
+        escaped_variant = escape_for_advanced_query(host_variant)
+        query_strings.add(f"links.value:*{escaped_variant}*")
+        query_strings.add(f"domains:*{escaped_variant}*")
+        query_strings.add(f"domains:\"{escaped_variant}\"")
+
+        https_full = f"https://{host_variant}"
+        escaped_https_full = escape_for_advanced_query(https_full)
+        query_strings.add(f"links.value:\"{escaped_https_full}\"")
+        query_strings.add(f"links.value:*{escaped_https_full}*")
+
+        http_full = f"http://{host_variant}"
+        escaped_http_full = escape_for_advanced_query(http_full)
+        query_strings.add(f"links.value:\"{escaped_http_full}\"")
+        query_strings.add(f"links.value:*{escaped_http_full}*")
+
+    for query_string in query_strings:
         try:
             results = perform_ror_advanced_query(query_string, headers)
         except requests.exceptions.RequestException as exc:
