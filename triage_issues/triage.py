@@ -507,6 +507,7 @@ def search_ror_by_url(record):
     for query_value in query_values:
         escaped_value = escape_for_advanced_query(query_value)
         query_string = f"(links.value:*{escaped_value}* OR domains:*{escaped_value}*)"
+        print(query_string)
         try:
             results = perform_ror_advanced_query(query_string, headers)
         except requests.exceptions.RequestException as exc:
