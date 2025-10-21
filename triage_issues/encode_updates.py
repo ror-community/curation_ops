@@ -1,11 +1,13 @@
 import os
 import re
-import requests
 import signal
+import requests
 from contextlib import contextmanager
-from google import genai
 
-GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY')
+import openai
+
+OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY')
+OPENAI_MODEL = os.environ.get('OPENAI_MODEL', 'gpt-5')
 
 
 class TimeoutError(Exception):
@@ -25,8 +27,8 @@ def time_limit(seconds):
 
 
 def encode_update(ror_id, description_of_change):
-	if not GEMINI_API_KEY:
-		print("Error: GEMINI_API_KEY is not set. Cannot encode update.")
+	if not OPENAI_API_KEY:
+		print("Error: OPENAI_API_KEY is not set. Cannot encode update.")
 		return None
 	
 	script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -38,25 +40,35 @@ def encode_update(ror_id, description_of_change):
 			encode_prompt = file.read()
 		record = str(r.json())
 		try:
-			client = genai.Client(api_key=GEMINI_API_KEY)
+			client = openai.OpenAI(api_key=OPENAI_API_KEY)
 		except Exception as e:
-			print(f"Error creating Gemini client: {e}")
+			print(f"Error creating OpenAI client: {e}")
 			return None
 		
 		try:
 			encode_request = encode_prompt + record + description_of_change
 			with time_limit(120):
-				encode_response = client.models.generate_content(
-					model='gemini-2.5-pro',
-					contents=encode_request
+				encode_response = client.responses.create(
+					model=OPENAI_MODEL,
+					input=encode_request
 				)
-				update = encode_response.text
-				return update
+				update_text = getattr(encode_response, "output_text", None)
+				if not update_text:
+					update_chunks = []
+					for output in getattr(encode_response, "output", []) or []:
+						for content in getattr(output, "content", []) or []:
+							if getattr(content, "type", None) == "output_text" and getattr(content, "text", None):
+								update_chunks.append(content.text)
+					update_text = "".join(update_chunks).strip() if update_chunks else None
+				if update_text:
+					return update_text
+				print("OpenAI API returned no text content.")
+				return None
 		except TimeoutError as e:
-			print(f"Gemini API call timed out: {e}")
+			print(f"OpenAI API call timed out: {e}")
 			return None
 		except Exception as e:
-			print(f"An error occurred with the Gemini API: {e}")
+			print(f"An error occurred with the OpenAI API: {e}")
 			return None
 	else:
 		print(f"Failed to fetch ROR record for {ror_id}. Status code: {r.status_code}")
