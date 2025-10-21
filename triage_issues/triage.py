@@ -82,18 +82,7 @@ def normalize_url_host(url):
 
 
 def organization_matches_country(organization, normalized_issue_country):
-    if not normalized_issue_country:
-        return True
-    locations = organization.get('locations', [])
-    for location in locations:
-        country_info = location.get('country') or {}
-        country_name = country_info.get('country_name')
-        country_code = country_info.get('country_code')
-        if country_name and normalize_country_value(country_name) == normalized_issue_country:
-            return True
-        if country_code and country_code.lower() == normalized_issue_country:
-            return True
-    return False
+    return True
 
 
 ADVANCED_QUERY_RESERVED_CHARS = set(r'+-=!(){}[]^"~*?:\/&|<>')
@@ -374,9 +363,6 @@ def search_ror(all_names, record):
                 ror_id = organization.get('id')
                 if not ror_id:
                     continue
-                if not organization_matches_country(organization, normalized_issue_country):
-                    continue
-
                 for name_entry in organization.get('names', []):
                     name_value = name_entry.get('value')
                     if not name_value:
@@ -480,7 +466,6 @@ def search_ror_by_url(record):
 
     headers = {
         'User-Agent': 'ROROrgTriageBot/1.0 (ror.org, mailto:support@ror.org)'}
-    normalized_issue_country = normalize_country_value(record.get('country'))
 
     query_values = {normalized_host}
     if not normalized_host.startswith('www.'):
@@ -505,9 +490,6 @@ def search_ror_by_url(record):
             display_name = get_display_name_for_organization(organization)
             if not ror_id or not display_name:
                 continue
-            if not organization_matches_country(organization, normalized_issue_country):
-                continue
-
             matched = False
 
             for org_link in organization.get('links', []):
@@ -655,8 +637,6 @@ def search_ror_by_external_ids(record):
         for result in results:
             organization = result.get('organization') or result
             if not isinstance(organization, dict):
-                continue
-            if not organization_matches_country(organization, normalized_issue_country):
                 continue
             if not organization_has_external_id(organization, normalized_target_id):
                 continue
