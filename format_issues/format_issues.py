@@ -249,7 +249,7 @@ def call_gemini_to_format_issue(issue_title, issue_body):
     try:
         with time_limit(120):
             response = client.models.generate_content(
-                model='gemini-2.5-flash-preview-05-20',
+                model='gemini-2.5-flash',
                 contents=prompt
             )
             formatted_body = response.text
