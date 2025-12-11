@@ -6,9 +6,12 @@ import difflib
 from contextlib import contextmanager
 from google import genai
 from github import Github, GithubException
+import openai
 
 GITHUB_TOKEN = os.environ.get('GITHUB_TOKEN')
 GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY')
+OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY')
+OPENAI_MODEL = os.environ.get('OPENAI_MODEL', 'gpt-5-mini-2025-08-07')
 REPO_PATH_STR = os.environ.get('GITHUB_REPOSITORY')
 TARGET_REPO_PATH = os.environ.get('REPO_PATH', REPO_PATH_STR)
 
@@ -265,7 +268,72 @@ def call_gemini_to_format_issue(issue_title, issue_body):
         print(f"Gemini API call timed out: {e}")
         return None
     except Exception as e:
+        error_str = str(e).lower()
+        error_code = getattr(e, 'code', None) or getattr(e, 'status_code', None)
+        is_fallback_error = (
+            error_code in (404, 503) or
+            '404' in error_str or
+            '503' in error_str or
+            'not found' in error_str or
+            'service unavailable' in error_str or
+            'overloaded' in error_str
+        )
+        if is_fallback_error:
+            print(f"Gemini API returned error (likely 404/503): {e}")
+            print("Attempting OpenAI fallback...")
+            return call_openai_to_format_issue(issue_title, issue_body)
         print(f"An error occurred with the Gemini API: {e}")
+        return None
+
+
+def call_openai_to_format_issue(issue_title, issue_body):
+    if not OPENAI_API_KEY:
+        print("Error: OPENAI_API_KEY is not set. Cannot format issue with OpenAI fallback.")
+        return None
+    if not GEMINI_PROMPT_TEMPLATE:
+        print("Error: Prompt template is not loaded. Cannot format issue.")
+        return None
+
+    try:
+        client = openai.OpenAI(api_key=OPENAI_API_KEY)
+    except Exception as e:
+        print(f"Error creating OpenAI client: {e}")
+        return None
+
+    prompt = GEMINI_PROMPT_TEMPLATE.format(
+        issue_title=issue_title, issue_body=issue_body)
+
+    print(f"Sending request to OpenAI API (fallback) for issue: '{issue_title}'...")
+    try:
+        with time_limit(120):
+            response = client.responses.create(
+                model=OPENAI_MODEL,
+                input=prompt
+            )
+            formatted_body = getattr(response, "output_text", None)
+            if not formatted_body:
+                output_chunks = []
+                for output in getattr(response, "output", []) or []:
+                    for content in getattr(output, "content", []) or []:
+                        if getattr(content, "type", None) == "output_text" and getattr(content, "text", None):
+                            output_chunks.append(content.text)
+                formatted_body = "".join(output_chunks).strip() if output_chunks else None
+            if formatted_body:
+                if formatted_body.startswith("```markdown\n"):
+                    formatted_body = formatted_body[len("```markdown\n"):]
+                if formatted_body.startswith("```\n"):
+                    formatted_body = formatted_body[len("```\n"):]
+                if formatted_body.endswith("\n```"):
+                    formatted_body = formatted_body[:-len("\n```")]
+                print("Successfully received response from OpenAI API (fallback).")
+                return formatted_body.strip()
+            print("OpenAI API returned no text content.")
+            return None
+    except TimeoutError as e:
+        print(f"OpenAI API call timed out: {e}")
+        return None
+    except Exception as e:
+        print(f"An error occurred with the OpenAI API: {e}")
         return None
 
 
