@@ -20,6 +20,7 @@ START_ISSUE_STR = os.environ.get('START_ISSUE')
 END_ISSUE_STR = os.environ.get('END_ISSUE')
 DRY_RUN_STR = os.environ.get('DRY_RUN', 'false').lower()
 DRY_RUN = DRY_RUN_STR in ['true', '1', 'yes']
+MODEL = os.environ.get('MODEL', 'gemini').lower()
 
 BOT_COMMENT_SIGNATURE = "\n\n---\n*Issue body was automatically formatted by a ROR curation bot.*"
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -231,7 +232,7 @@ def procedural_clean_issue_body(issue_body):
     return cleaned_body.strip()
 
 
-def call_gemini_to_format_issue(issue_title, issue_body):
+def call_gemini_to_format_issue(issue_title, issue_body, is_fallback=False):
     if not GEMINI_API_KEY:
         print("Error: GEMINI_API_KEY is not set. Cannot format issue.")
         return None
@@ -266,6 +267,9 @@ def call_gemini_to_format_issue(issue_title, issue_body):
             return formatted_body.strip()
     except TimeoutError as e:
         print(f"Gemini API call timed out: {e}")
+        if not is_fallback:
+            print("Attempting OpenAI fallback...")
+            return call_openai_to_format_issue(issue_title, issue_body, is_fallback=True)
         return None
     except Exception as e:
         error_str = str(e).lower()
@@ -278,15 +282,15 @@ def call_gemini_to_format_issue(issue_title, issue_body):
             'service unavailable' in error_str or
             'overloaded' in error_str
         )
-        if is_fallback_error:
+        if is_fallback_error and not is_fallback:
             print(f"Gemini API returned error (likely 404/503): {e}")
             print("Attempting OpenAI fallback...")
-            return call_openai_to_format_issue(issue_title, issue_body)
+            return call_openai_to_format_issue(issue_title, issue_body, is_fallback=True)
         print(f"An error occurred with the Gemini API: {e}")
         return None
 
 
-def call_openai_to_format_issue(issue_title, issue_body):
+def call_openai_to_format_issue(issue_title, issue_body, is_fallback=False):
     if not OPENAI_API_KEY:
         print("Error: OPENAI_API_KEY is not set. Cannot format issue with OpenAI fallback.")
         return None
@@ -331,8 +335,25 @@ def call_openai_to_format_issue(issue_title, issue_body):
             return None
     except TimeoutError as e:
         print(f"OpenAI API call timed out: {e}")
+        if not is_fallback:
+            print("Attempting Gemini fallback...")
+            return call_gemini_to_format_issue(issue_title, issue_body, is_fallback=True)
         return None
     except Exception as e:
+        error_str = str(e).lower()
+        error_code = getattr(e, 'code', None) or getattr(e, 'status_code', None)
+        is_fallback_error = (
+            error_code in (404, 503) or
+            '404' in error_str or
+            '503' in error_str or
+            'not found' in error_str or
+            'service unavailable' in error_str or
+            'overloaded' in error_str
+        )
+        if is_fallback_error and not is_fallback:
+            print(f"OpenAI API returned error (likely 404/503): {e}")
+            print("Attempting Gemini fallback...")
+            return call_gemini_to_format_issue(issue_title, issue_body, is_fallback=True)
         print(f"An error occurred with the OpenAI API: {e}")
         return None
 
@@ -356,9 +377,14 @@ def process_single_issue(issue_object):
         formatted_body = procedural_clean_issue_body(original_body)
         processing_method = "procedural cleaning"
     else:
-        print(f"Processing new record request issue #{issue_object.number} with Gemini API...")
-        formatted_body = call_gemini_to_format_issue(issue_object.title, original_body)
-        processing_method = "Gemini API"
+        if MODEL == 'openai':
+            print(f"Processing new record request issue #{issue_object.number} with OpenAI API...")
+            formatted_body = call_openai_to_format_issue(issue_object.title, original_body)
+            processing_method = "OpenAI API"
+        else:
+            print(f"Processing new record request issue #{issue_object.number} with Gemini API...")
+            formatted_body = call_gemini_to_format_issue(issue_object.title, original_body)
+            processing_method = "Gemini API"
 
     if formatted_body:
         if formatted_body.strip() == original_body.strip():
@@ -407,6 +433,7 @@ def main():
     print("Starting ROR Issue Formatting Action...")
     print(f"Target Repository: {TARGET_REPO_PATH}")
     print(f"Dry Run: {DRY_RUN}")
+    print(f"Model: {MODEL}")
 
     if not GEMINI_PROMPT_TEMPLATE:
         print("Critical Error: Gemini prompt template could not be loaded. Exiting.")
