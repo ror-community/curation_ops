@@ -83,7 +83,8 @@ def get_files(top):
     filepaths = []
     for dirpath, dirs, files in os.walk(top, topdown=True):
         for file in files:
-            filepaths.append(os.path.join(dirpath, file))
+            if file.endswith('.json'):
+                filepaths.append(os.path.join(dirpath, file))
     return filepaths
 
 def check_update_inactive_prod(related_id, name, version):
@@ -115,7 +116,7 @@ def check_update_inactive_release(related_id, name, version):
         filename, file_extension = os.path.splitext(file)
         print(file_extension)
         if file_extension == '.json':
-            with open(file, 'r+') as f:
+            with open(file, 'r+', encoding='utf8') as f:
                 file_data = json.load(f)
                 if file_data['status'] in INACTIVE_STATUSES and len(file_data['relationships']) > 0:
                     for r in file_data['relationships']:
