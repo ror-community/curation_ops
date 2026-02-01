@@ -12,7 +12,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 GITHUB_CONFIG = {
-    'TOKEN': os.environ.get('GITHUB_TOKEN_PERSONAL'),
+    'TOKEN': os.environ.get('GITHUB_TOKEN'),
     'GRAPHQL_URL': 'https://api.github.com/graphql'
 }
 
