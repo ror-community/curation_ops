@@ -1,127 +1,177 @@
 import os
-import requests
+import asyncio
+import logging
+from typing import Optional
+
+import aiohttp
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(levelname)s: %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 GITHUB_CONFIG = {
-    'TOKEN': os.environ.get('GITHUB_TOKEN_PERSONAL'),
+    'TOKEN': os.environ.get('GITHUB_TOKEN'),
     'GRAPHQL_URL': 'https://api.github.com/graphql'
 }
 
+RETRY_CONFIG = {
+    'max_retries': 3,
+    'base_delay': 1.0,
+    'max_delay': 30.0,
+    'retryable_status_codes': [429, 500, 502, 503, 504]
+}
 
-def run_graphql_query(query, variables=None):
+
+async def run_graphql_query_async(
+    session: aiohttp.ClientSession,
+    query: str,
+    variables: Optional[dict] = None
+) -> dict:
+    """Execute a GraphQL query with retry logic for transient failures."""
     headers = {
         'Authorization': f'Bearer {GITHUB_CONFIG["TOKEN"]}',
         'Content-Type': 'application/json',
     }
-    response = requests.post(GITHUB_CONFIG['GRAPHQL_URL'],
-                             json={'query': query, 'variables': variables},
-                             headers=headers)
+    payload = {'query': query, 'variables': variables}
 
-    if response.status_code == 200:
-        return response.json()
-    else:
-        print(f"Query failed with status code: {response.status_code}")
-        print(f"Response content: {response.text}")
-        raise Exception(f"Query failed with status code: {response.status_code}")
+    last_exception = None
+    for attempt in range(RETRY_CONFIG['max_retries']):
+        try:
+            async with session.post(
+                GITHUB_CONFIG['GRAPHQL_URL'],
+                json=payload,
+                headers=headers
+            ) as response:
+                if response.status == 200:
+                    result = await response.json()
+                    if 'errors' in result:
+                        error_msg = result['errors'][0].get('message', 'Unknown GraphQL error')
+                        raise Exception(f"GraphQL error: {error_msg}")
+                    return result
 
+                if response.status in RETRY_CONFIG['retryable_status_codes']:
+                    delay = min(
+                        RETRY_CONFIG['base_delay'] * (2 ** attempt),
+                        RETRY_CONFIG['max_delay']
+                    )
+                    if response.status == 429:
+                        retry_after = response.headers.get('Retry-After')
+                        if retry_after:
+                            delay = float(retry_after)
+                    logger.warning(
+                        f"Request failed with {response.status}, "
+                        f"retrying in {delay}s (attempt {attempt + 1}/{RETRY_CONFIG['max_retries']})"
+                    )
+                    await asyncio.sleep(delay)
+                    continue
 
-def get_project_info(repo, project_number):
-    query = """
-    query($owner: String!, $name: String!, $number: Int!) {
-      repository(owner: $owner, name: $name) {
-        projectV2(number: $number) {
-          id
-          title
-          fields(first: 20) {
-            nodes {
-              ... on ProjectV2SingleSelectField {
-                id
-                name
-                options {
-                  id
-                  name
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-    """
-    owner, name = repo.split('/')
-    variables = {"owner": owner, "name": name, "number": project_number}
-    result = run_graphql_query(query, variables)
-    project = result['data']['repository']['projectV2']
-    if not project:
-        raise Exception(f"Project with number '{project_number}' not found in repository '{repo}'")
-    status_field = next(
-        (field for field in project['fields']['nodes']
-         if field and field.get('name') == 'Status'),
-        None
-    )
-    if not status_field:
-        raise Exception("Status field not found in the project")
-    columns = {option['name']: option['id']
-               for option in status_field['options']}
-    return project['id'], columns
+                text = await response.text()
+                raise Exception(f"Query failed with status {response.status}: {text}")
+
+        except aiohttp.ClientError as e:
+            last_exception = e
+            delay = min(
+                RETRY_CONFIG['base_delay'] * (2 ** attempt),
+                RETRY_CONFIG['max_delay']
+            )
+            logger.warning(
+                f"Network error: {e}, retrying in {delay}s "
+                f"(attempt {attempt + 1}/{RETRY_CONFIG['max_retries']})"
+            )
+            await asyncio.sleep(delay)
+
+    raise last_exception or Exception("Max retries exceeded")
 
 
-def get_column_issue_numbers(repo, project_number, column_name):
-    project_id, columns = get_project_info(repo, project_number)
-    if column_name not in columns:
-        raise Exception(f"Column '{column_name}' not found in project with number '{project_number}' in repository '{repo}'")
-    column_id = columns[column_name]
-    query = """
-    query($project_id: ID!, $after: String) {
-      node(id: $project_id) {
-        ... on ProjectV2 {
-          items(first: 100, after: $after) {
-            pageInfo {
-              hasNextPage
-              endCursor
-            }
-            nodes {
-              fieldValues(first: 10) {
-                nodes {
-                  ... on ProjectV2ItemFieldSingleSelectValue {
-                    name
-                    field {
-                      ... on ProjectV2SingleSelectField {
-                        name
-                      }
+async def get_column_issues(
+    repo: str,
+    project_number: int,
+    column_name: str,
+    label_filter: Optional[str] = None
+) -> list[dict]:
+    """Fetch all issues from a project column with their full content."""
+    search_query = """
+    query($searchQuery: String!, $after: String) {
+      search(query: $searchQuery, type: ISSUE, first: 100, after: $after) {
+        pageInfo { hasNextPage endCursor }
+        nodes {
+          ... on Issue {
+            id
+            number
+            body
+            url
+            labels(first: 20) { nodes { name } }
+            projectItems(first: 10) {
+              nodes {
+                project { number }
+                fieldValues(first: 10) {
+                  nodes {
+                    ... on ProjectV2ItemFieldSingleSelectValue {
+                      name
+                      field { ... on ProjectV2SingleSelectField { name } }
                     }
                   }
                 }
               }
-              content {
-                ... on Issue {
-                  number
-                }
-              }
             }
           }
         }
       }
     }
     """
-    issue_numbers = []
+
+    owner, name = repo.split('/')
+    search_str = f'repo:{owner}/{name} is:issue is:open'
+    if label_filter:
+        search_str += f' label:"{label_filter}"'
+
+    issues = []
     has_next_page = True
     after_cursor = None
-    while has_next_page:
-        variables = {
-            "project_id": project_id,
-            "after": after_cursor
-        }
-        result = run_graphql_query(query, variables)
-        items = result['data']['node']['items']['nodes']
-        for item in items:
-            is_in_column = False
-            for field_value in item['fieldValues']['nodes']:
-                if field_value.get('field', {}).get('name') == 'Status' and field_value.get('name') == column_name:
-                    is_in_column = True
-                    break
-            if is_in_column and item['content'] and 'number' in item['content']:
-                issue_numbers.append(item['content']['number'])
-        page_info = result['data']['node']['items']['pageInfo']
-        has_next_page = page_info['hasNextPage']
-        after_cursor = page_info['endCursor']
-    return issue_numbers
+    pages = 0
+
+    async with aiohttp.ClientSession() as session:
+        while has_next_page:
+            pages += 1
+            variables = {
+                "searchQuery": search_str,
+                "after": after_cursor
+            }
+
+            result = await run_graphql_query_async(session, search_query, variables)
+            search_result = result['data']['search']
+
+            for node in search_result['nodes']:
+                if not node:
+                    continue
+
+                for project_item in node.get('projectItems', {}).get('nodes', []):
+                    if project_item.get('project', {}).get('number') != project_number:
+                        continue
+
+                    for field_value in project_item.get('fieldValues', {}).get('nodes', []):
+                        if (field_value.get('field', {}).get('name') == 'Status' and
+                                field_value.get('name') == column_name):
+                            labels = [
+                                label['name']
+                                for label in node.get('labels', {}).get('nodes', [])
+                            ]
+                            issues.append({
+                                'number': node['number'],
+                                'body': node.get('body', ''),
+                                'url': node.get('url', ''),
+                                'labels': labels
+                            })
+                            break
+
+            page_info = search_result['pageInfo']
+            has_next_page = page_info['hasNextPage']
+            after_cursor = page_info['endCursor']
+
+    logger.info(f"Found {len(issues)} issues in column '{column_name}'"
+                + (f" with label '{label_filter}'" if label_filter else "")
+                + f" (searched {pages} pages)")
+
+    return issues
