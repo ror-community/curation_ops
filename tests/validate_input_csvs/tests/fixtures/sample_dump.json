@@ -1,0 +1,12 @@
+[
+  {
+    "id": "https://ror.org/012345",
+    "names": [{"value": "Test University", "types": ["ror_display"]}],
+    "relationships": []
+  },
+  {
+    "id": "https://ror.org/067890",
+    "names": [{"value": "Another Org", "types": ["ror_display"]}],
+    "relationships": [{"id": "https://ror.org/012345", "type": "related"}]
+  }
+]

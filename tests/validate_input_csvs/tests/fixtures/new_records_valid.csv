@@ -1,0 +1,3 @@
+id,names.types.ror_display,names.types.acronym,names.types.alias,names.types.label,status,types,links.type.website,links.type.wikipedia,established,locations.geonames_id,city,country,external_ids.type.isni.all,external_ids.type.wikidata.all,external_ids.type.fundref.all
+,Test University*en,TU*en,Test Uni*en,Testing University*es,active,education,https://test.edu,https://en.wikipedia.org/wiki/Test_University,1900,5128581,Boston,United States,0000 0000 1234 5678,Q12345,123456
+,Another Institution*de,AI*de,,,active,company,https://another.org,,2000,2643743,London,United Kingdom,,,
