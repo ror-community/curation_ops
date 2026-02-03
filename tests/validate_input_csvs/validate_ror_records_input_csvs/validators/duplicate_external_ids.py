@@ -135,6 +135,7 @@ class DuplicateExternalIdsValidator(BaseValidator):
     ]
     requires_data_source = True
     requires_geonames = False
+    new_records_only = True
 
     def run(self, ctx: ValidatorContext) -> list[dict]:
         records = read_csv(ctx.input_file)

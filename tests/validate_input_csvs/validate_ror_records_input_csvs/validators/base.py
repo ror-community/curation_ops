@@ -22,6 +22,7 @@ class BaseValidator(ABC):
     output_fields: list[str] = []
     requires_data_source: bool = False
     requires_geonames: bool = False
+    new_records_only: bool = False
 
     @abstractmethod
     def run(self, ctx: ValidatorContext) -> list[dict]:
