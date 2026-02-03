@@ -4,7 +4,7 @@ import sys
 from pathlib import Path
 from typing import Optional
 
-from validate_ror_records_input_csvs.core.io import read_csv, write_csv
+from validate_ror_records_input_csvs.core.io import read_csv, write_csv, detect_file_type
 from validate_ror_records_input_csvs.core.loader import DataLoader, DataSource
 from validate_ror_records_input_csvs.validators.base import BaseValidator, ValidatorContext
 
@@ -26,7 +26,13 @@ def run_validators(
     """Returns 0 on success (always, per design)."""
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    # Determine which validators to run
+    records = read_csv(input_file)
+    file_type = detect_file_type(records)
+    is_update_file = file_type == "updates"
+
+    if is_update_file:
+        print(f"Detected update file (records have ROR IDs)")
+
     if "all" in tests:
         selected = list(VALIDATORS.values())
     else:
@@ -36,6 +42,12 @@ def run_validators(
                 print(f"Warning: Unknown validator '{name}', skipping", file=sys.stderr)
                 continue
             selected.append(VALIDATORS[name])
+
+    if is_update_file:
+        skipped = [v.name for v in selected if v.new_records_only]
+        selected = [v for v in selected if not v.new_records_only]
+        if skipped:
+            print(f"Skipping validators not applicable to updates: {', '.join(skipped)}")
 
     if not selected:
         print("No validators to run", file=sys.stderr)
