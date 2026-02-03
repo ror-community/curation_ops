@@ -1,0 +1,2 @@
+id,names.types.ror_display,names.types.acronym,names.types.alias,names.types.label,status,types,links.type.website,links.type.wikipedia,established,locations.geonames_id,city,country,external_ids.type.isni.all,external_ids.type.wikidata.all,external_ids.type.fundref.all
+,Invalid Name,lowercase,No Tag,Also Missing*,pending,university,example.org,not-wikipedia,99,abc,,France,0000-1234-5678,q12345,0

@@ -1,0 +1,54 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "validate-ror-records-input-csvs"
+version = "0.1.0"
+description = "Unified CSV validation utility for ROR curation"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [
+    {name = "ROR Team"}
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Typing :: Typed",
+]
+dependencies = [
+    "furl>=2.1.3",
+    "requests>=2.28.0",
+    "thefuzz>=0.20.0",
+    "python-Levenshtein>=0.21",
+    "numpy>=1.24.0",
+]
+
+[project.urls]
+Repository = "https://github.com/ror-community/validate-ror-records-input-csvs"
+Issues = "https://github.com/ror-community/validate-ror-records-input-csvs/issues"
+
+[project.scripts]
+validate-ror-records-input-csvs = "validate_ror_records_input_csvs.cli:main"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+]
+
+[tool.setuptools.packages.find]
+include = ["validate_ror_records_input_csvs*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_functions = ["test_*"]
+addopts = "-v"
