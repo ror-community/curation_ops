@@ -67,3 +67,30 @@ class RORAPIClient:
         except requests.exceptions.RequestException as e:
             logging.warning(f"ROR API query search failed for '{name}': {e}")
             return []
+
+    def search_affiliation(self, name: str) -> list[dict]:
+        """Search using ?affiliation= parameter. Returns list of organization dicts."""
+        normalized = normalize_text(name)
+        params = {"affiliation": normalized}
+
+        try:
+            self.rate_limiter.wait()
+            response = requests.get(self.BASE_URL, params=params, timeout=30)
+            response.raise_for_status()
+            data = response.json()
+
+            if data.get("number_of_results", 0) == 0:
+                return []
+
+            # Affiliation results wrap organizations
+            results = []
+            for item in data.get("items", []):
+                if "organization" in item:
+                    results.append(item["organization"])
+                else:
+                    results.append(item)
+
+            return results
+        except requests.exceptions.RequestException as e:
+            logging.warning(f"ROR API affiliation search failed for '{name}': {e}")
+            return []

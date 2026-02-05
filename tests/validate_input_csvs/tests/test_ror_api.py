@@ -105,3 +105,54 @@ class TestRORAPIClientSearchQuery:
         results = client.search_query("Test")
 
         assert results == []
+
+
+class TestRORAPIClientSearchAffiliation:
+    @patch("validate_ror_records_input_csvs.core.ror_api.requests.get")
+    def test_search_affiliation_unwraps_organization(self, mock_get):
+        mock_response = Mock()
+        mock_response.json.return_value = {
+            "number_of_results": 1,
+            "items": [
+                {
+                    "organization": {
+                        "id": "https://ror.org/456",
+                        "names": [{"value": "Affiliated Org", "types": ["ror_display"]}],
+                        "locations": []
+                    },
+                    "score": 0.95
+                }
+            ]
+        }
+        mock_response.raise_for_status = Mock()
+        mock_get.return_value = mock_response
+
+        client = RORAPIClient()
+        results = client.search_affiliation("Affiliated Org")
+
+        assert len(results) == 1
+        assert results[0]["id"] == "https://ror.org/456"
+
+    @patch("validate_ror_records_input_csvs.core.ror_api.requests.get")
+    def test_search_affiliation_calls_api_with_affiliation_param(self, mock_get):
+        mock_response = Mock()
+        mock_response.json.return_value = {"number_of_results": 0, "items": []}
+        mock_response.raise_for_status = Mock()
+        mock_get.return_value = mock_response
+
+        client = RORAPIClient()
+        client.search_affiliation("Test University")
+
+        mock_get.assert_called_once()
+        call_args = mock_get.call_args
+        assert "affiliation" in call_args[1]["params"]
+
+    @patch("validate_ror_records_input_csvs.core.ror_api.requests.get")
+    def test_search_affiliation_handles_api_error(self, mock_get):
+        import requests
+        mock_get.side_effect = requests.exceptions.RequestException("Timeout")
+
+        client = RORAPIClient()
+        results = client.search_affiliation("Test")
+
+        assert results == []
