@@ -5,6 +5,7 @@ from validate_ror_records_input_csvs.validators.duplicate_external_ids import Du
 from validate_ror_records_input_csvs.validators.duplicate_urls import DuplicateUrlsValidator
 from validate_ror_records_input_csvs.validators.address_validation import AddressValidationValidator
 from validate_ror_records_input_csvs.validators.in_release_duplicates import InReleaseDuplicatesValidator
+from validate_ror_records_input_csvs.validators.production_duplicates import ProductionDuplicatesValidator
 
 
 def register_all_validators():
@@ -16,6 +17,7 @@ def register_all_validators():
     register_validator(DuplicateUrlsValidator())
     register_validator(AddressValidationValidator())
     register_validator(InReleaseDuplicatesValidator())
+    register_validator(ProductionDuplicatesValidator())
 
 
 __all__ = [
@@ -24,5 +26,6 @@ __all__ = [
     "DuplicateUrlsValidator",
     "AddressValidationValidator",
     "InReleaseDuplicatesValidator",
+    "ProductionDuplicatesValidator",
     "register_all_validators",
 ]

@@ -291,3 +291,13 @@ class TestValidatorRun:
 
         # Should be empty because fuzzy match is below 85%
         assert len(results) == 0
+
+
+class TestValidatorRegistration:
+    def test_validator_is_registered(self):
+        from validate_ror_records_input_csvs.validators import register_all_validators
+        from validate_ror_records_input_csvs.runner import VALIDATORS
+
+        register_all_validators()
+
+        assert "production-duplicates" in VALIDATORS
