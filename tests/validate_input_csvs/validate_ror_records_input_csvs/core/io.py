@@ -1,5 +1,3 @@
-"""File I/O utilities for CSV and JSON handling."""
-
 import csv
 from pathlib import Path
 from typing import Any
@@ -33,7 +31,6 @@ def write_csv(
 
 
 def detect_file_type(records: list[dict[str, Any]]) -> str:
-    """Returns 'new' if no records have an id, 'updates' otherwise."""
     for record in records:
         id_value = record.get("id", "")
         if id_value and id_value.strip():

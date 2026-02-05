@@ -1,5 +1,3 @@
-"""GeoNames API client with failure tracking."""
-
 import logging
 from typing import Optional
 
@@ -7,8 +5,6 @@ import requests
 
 
 class GeoNamesClient:
-    """Client for GeoNames API lookups with failure tracking."""
-
     BASE_URL = "http://api.geonames.org/getJSON"
 
     def __init__(self, username: str):
@@ -21,11 +17,6 @@ class GeoNamesClient:
         geonames_id: str,
         record_identifier: str = ""
     ) -> Optional[str]:
-        """Lookup country code for a GeoNames ID.
-
-        Returns cached result if available.
-        On failure, logs to lookup_failures and returns None.
-        """
         if not geonames_id or not geonames_id.strip():
             self.lookup_failures.append({
                 "geonames_id": geonames_id,
@@ -36,7 +27,6 @@ class GeoNamesClient:
 
         geonames_id = geonames_id.strip()
 
-        # Check cache
         if geonames_id in self._cache:
             return self._cache[geonames_id]
 

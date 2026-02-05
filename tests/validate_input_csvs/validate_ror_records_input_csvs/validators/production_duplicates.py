@@ -1,5 +1,3 @@
-"""Validator to check for duplicate records against ROR production API."""
-
 import logging
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Optional
@@ -18,7 +16,6 @@ MAX_WORKERS = 5
 
 
 def get_country_code_from_result(result: dict) -> Optional[str]:
-    """Extract country code from ROR API result."""
     locations = result.get("locations", [])
     if not locations:
         return None
@@ -28,7 +25,6 @@ def get_country_code_from_result(result: dict) -> Optional[str]:
 
 
 def get_all_names_from_result(result: dict) -> list[str]:
-    """Extract all names (ror_display, alias, label) from ROR API result."""
     names = []
     name_types = ["ror_display", "alias", "label"]
 
@@ -43,7 +39,6 @@ def get_all_names_from_result(result: dict) -> list[str]:
 
 
 def parse_csv_names(row: dict) -> list[str]:
-    """Extract names from CSV row (display, aliases, labels)."""
     names = []
 
     display_name = row.get("names.types.ror_display", "")
@@ -68,19 +63,10 @@ def parse_csv_names(row: dict) -> list[str]:
 
 
 def clean_name(name: str) -> str:
-    """Remove language marker from name (e.g., 'Name*en' -> 'Name')."""
     return name.split("*")[0].strip()
 
 
 class ProductionDuplicatesValidator(BaseValidator):
-    """
-    Validator to check for potential duplicates against ROR production API.
-
-    Searches the live ROR API using organization names from the input CSV,
-    then applies fuzzy matching (85% threshold) to find potential duplicates.
-    Results are filtered to only include matches with the same country code.
-    """
-
     name = "production-duplicates"
     output_filename = "production_duplicates.csv"
     output_fields = [
@@ -120,7 +106,6 @@ class ProductionDuplicatesValidator(BaseValidator):
                 except Exception as e:
                     logging.error(f"Error processing record: {e}")
 
-        # Deduplicate by (input_name, matched_ror_id)
         seen = set()
         deduplicated = []
         for finding in all_findings:
@@ -137,7 +122,6 @@ class ProductionDuplicatesValidator(BaseValidator):
         geonames_client: GeoNamesClient,
         ror_client: RORAPIClient
     ) -> list[dict]:
-        """Process a single CSV row. Returns list of findings."""
         issue_url = row.get("html_url", "")
         display_name = row.get("names.types.ror_display", "")
         geonames_id = row.get("locations.geonames_id", "").strip()
@@ -145,10 +129,8 @@ class ProductionDuplicatesValidator(BaseValidator):
         if not geonames_id:
             return []
 
-        # Get country code for this record
         country_code = geonames_client.get_country_code(geonames_id, display_name)
         if not country_code:
-            # Lookup failed - skip this record
             return []
 
         names = parse_csv_names(row)

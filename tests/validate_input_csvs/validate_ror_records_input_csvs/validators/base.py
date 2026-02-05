@@ -1,5 +1,3 @@
-"""Base validator class and context."""
-
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from pathlib import Path
@@ -29,7 +27,6 @@ class BaseValidator(ABC):
         pass
 
     def can_run(self, ctx: ValidatorContext) -> tuple[bool, str]:
-        """Returns (can_run, reason). Reason is empty if can_run is True."""
         if self.requires_geonames and ctx.geonames_user is None:
             return False, f"{self.name} requires --geonames-user"
         return True, ""

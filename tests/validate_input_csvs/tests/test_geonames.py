@@ -1,4 +1,3 @@
-# tests/test_geonames.py
 import pytest
 from unittest.mock import Mock, patch
 
@@ -38,7 +37,6 @@ class TestGeoNamesClient:
         client.get_country_code("12345", "Org A")
         client.get_country_code("12345", "Org B")
 
-        # Should only call API once due to caching
         assert mock_get.call_count == 1
 
     @patch("validate_ror_records_input_csvs.core.geonames.requests.get")

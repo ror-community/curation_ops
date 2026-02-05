@@ -1,4 +1,3 @@
-# tests/test_ror_api.py
 import time
 from unittest.mock import Mock, patch
 
@@ -13,8 +12,6 @@ class TestRateLimiter:
 
         for _ in range(5):
             limiter.wait()
-
-        # Should not raise or block significantly
 
     def test_tracks_call_count(self):
         limiter = RateLimiter(max_calls=5, period=60)
@@ -42,7 +39,6 @@ class TestRateLimiter:
         time.sleep(0.15)
         limiter.wait()
 
-        # Old calls should be pruned
         assert len(limiter._calls) == 1
 
 
@@ -191,7 +187,6 @@ class TestRORAPIClientSearchAll:
         def mock_api_call(url, params, timeout):
             response = Mock()
             response.raise_for_status = Mock()
-            # Both searches return the same org
             if "query" in params:
                 response.json.return_value = {
                     "number_of_results": 1,

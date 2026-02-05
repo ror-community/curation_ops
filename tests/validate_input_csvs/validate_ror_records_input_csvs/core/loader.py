@@ -1,5 +1,3 @@
-"""Load ROR data from various sources."""
-
 import json
 import os
 import re
@@ -14,8 +12,6 @@ from validate_ror_records_input_csvs.core.exceptions import DataLoadError
 
 
 class DataSource:
-    """In-memory ROR data source for lookups."""
-
     def __init__(self, records: list[dict]):
         self._records_by_id: dict[str, dict] = {}
         self._records: list[dict] = records
@@ -52,7 +48,6 @@ class DataSource:
 
     @classmethod
     def _load_from_zip(cls, file_path: Path) -> "DataSource":
-        """Prefers schema_v2 JSON files if available."""
         with zipfile.ZipFile(file_path, "r") as zf:
             json_files = [n for n in zf.namelist() if n.endswith(".json")]
             v2_files = [n for n in json_files if "schema_v2" in n]
@@ -82,7 +77,6 @@ class DataSource:
         return self._records
 
     def find_related_records(self, ror_id: str) -> list[dict]:
-        """Find all records that have a relationship to the given ID."""
         related = []
         for record in self._records_by_id.values():
             for rel in record.get("relationships", []):
@@ -96,8 +90,6 @@ class DataSource:
 
 
 class DataLoader:
-    """Load ROR data from file or GitHub repo contents."""
-
     GITHUB_CONTENTS_URL = "https://api.github.com/repos/ror-community/ror-data/contents"
     VERSION_PATTERN = re.compile(r"v(\d+)\.(\d+)-(\d{4}-\d{2}-\d{2})-ror-data\.zip")
 
@@ -111,7 +103,6 @@ class DataLoader:
             return DataSource.from_file(self.source)
 
     def _parse_version(self, filename: str) -> tuple[int, int, str]:
-        """Parse version from filename. Returns (major, minor, date) for sorting."""
         match = self.VERSION_PATTERN.match(filename)
         if match:
             return (int(match.group(1)), int(match.group(2)), match.group(3))
@@ -123,7 +114,6 @@ class DataLoader:
             response.raise_for_status()
             contents = response.json()
 
-            # Filter for ROR data zip files and sort by version
             zip_files = [
                 item for item in contents
                 if item["name"].endswith(".zip") and self.VERSION_PATTERN.match(item["name"])
@@ -132,7 +122,6 @@ class DataLoader:
             if not zip_files:
                 raise DataLoadError("No ROR data zip files found in repository")
 
-            # Sort by version (major, minor, date) and get the latest
             zip_files.sort(key=lambda x: self._parse_version(x["name"]), reverse=True)
             latest = zip_files[0]
 

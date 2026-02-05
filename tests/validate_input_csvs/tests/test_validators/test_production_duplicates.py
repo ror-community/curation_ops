@@ -1,4 +1,3 @@
-# tests/test_validators/test_production_duplicates.py
 import pytest
 from pathlib import Path
 from unittest.mock import Mock, patch
@@ -174,13 +173,11 @@ class TestValidatorRun:
             "https://github.com/ror-community/ror-updates/issues/123,Test University*en,,,5128581\n"
         )
 
-        # Mock GeoNames
         mock_geonames = Mock()
         mock_geonames.get_country_code.return_value = "US"
         mock_geonames.lookup_failures = []
         mock_geonames_class.return_value = mock_geonames
 
-        # Mock ROR API
         mock_ror = Mock()
         mock_ror.search_all.return_value = [
             {
@@ -209,13 +206,11 @@ class TestValidatorRun:
             "https://github.com/ror-community/ror-updates/issues/123,Test University*en,,,5128581\n"
         )
 
-        # Mock GeoNames - input record is in US
         mock_geonames = Mock()
         mock_geonames.get_country_code.return_value = "US"
         mock_geonames.lookup_failures = []
         mock_geonames_class.return_value = mock_geonames
 
-        # Mock ROR API - result is in UK (different country)
         mock_ror = Mock()
         mock_ror.search_all.return_value = [
             {
@@ -229,7 +224,6 @@ class TestValidatorRun:
         ctx = make_context(csv_path, tmp_path, geonames_user="test_user")
         results = validator.run(ctx)
 
-        # Should be empty because countries don't match
         assert len(results) == 0
 
     @patch("validate_ror_records_input_csvs.validators.production_duplicates.GeoNamesClient")
@@ -243,22 +237,18 @@ class TestValidatorRun:
             "https://github.com/ror-community/ror-updates/issues/123,Test University*en,,,99999\n"
         )
 
-        # Mock GeoNames - lookup fails
         mock_geonames = Mock()
         mock_geonames.get_country_code.return_value = None
         mock_geonames.lookup_failures = [{"geonames_id": "99999", "record_identifier": "Test University*en"}]
         mock_geonames_class.return_value = mock_geonames
 
-        # Mock ROR API
         mock_ror = Mock()
         mock_ror_client_class.return_value = mock_ror
 
         ctx = make_context(csv_path, tmp_path, geonames_user="test_user")
         results = validator.run(ctx)
 
-        # Should be empty because geonames lookup failed
         assert len(results) == 0
-        # ROR API should not be called
         mock_ror.search_all.assert_not_called()
 
     @patch("validate_ror_records_input_csvs.validators.production_duplicates.GeoNamesClient")
@@ -290,7 +280,6 @@ class TestValidatorRun:
         ctx = make_context(csv_path, tmp_path, geonames_user="test_user")
         results = validator.run(ctx)
 
-        # Should be empty because fuzzy match is below 85%
         assert len(results) == 0
 
 

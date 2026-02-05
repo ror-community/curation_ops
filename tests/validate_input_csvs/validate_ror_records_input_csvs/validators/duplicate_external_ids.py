@@ -1,5 +1,3 @@
-"""Validator to detect duplicate external IDs between CSV and data source."""
-
 import re
 from multiprocessing import Pool, cpu_count
 
@@ -12,7 +10,6 @@ def normalize_whitespace(text: str) -> str:
 
 
 def process_input_csv(records: list[dict]) -> list[dict]:
-    """Converts CSV records to standardized format with external_ids structure."""
     processed_records = []
 
     for row in records:
@@ -67,7 +64,6 @@ def get_ror_display_name(record: dict) -> str:
 
 
 def _find_matches_for_csv_record(args: tuple) -> list[dict]:
-    """Worker function for multiprocessing. Args: (csv_record, data_dump_records)."""
     csv_record, data_dump_records = args
     matches = []
 
@@ -119,11 +115,6 @@ def find_matches(csv_records: list[dict], data_dump_records: list[dict]) -> list
 
 
 class DuplicateExternalIdsValidator(BaseValidator):
-    """
-    Checks if any external IDs (ISNI, Wikidata, FundRef, GRID) in the input CSV
-    already exist in the ROR data source.
-    """
-
     name = "duplicate-external-ids"
     output_filename = "duplicate_external_ids.csv"
     output_fields = [

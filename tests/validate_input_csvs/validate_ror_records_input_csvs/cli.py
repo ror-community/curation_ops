@@ -1,5 +1,3 @@
-"""Command-line interface for validate-ror-records-input-csvs."""
-
 import argparse
 import sys
 from pathlib import Path
