@@ -94,3 +94,20 @@ class RORAPIClient:
         except requests.exceptions.RequestException as e:
             logging.warning(f"ROR API affiliation search failed for '{name}': {e}")
             return []
+
+    def search_all(self, name: str) -> list[dict]:
+        """Combines query and affiliation results, deduplicated by ROR ID."""
+        query_results = self.search_query(name)
+        affiliation_results = self.search_affiliation(name)
+
+        # Deduplicate by ID
+        seen_ids = set()
+        combined = []
+
+        for result in query_results + affiliation_results:
+            ror_id = result.get("id")
+            if ror_id and ror_id not in seen_ids:
+                seen_ids.add(ror_id)
+                combined.append(result)
+
+        return combined

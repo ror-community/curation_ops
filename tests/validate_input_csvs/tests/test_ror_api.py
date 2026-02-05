@@ -156,3 +156,58 @@ class TestRORAPIClientSearchAffiliation:
         results = client.search_affiliation("Test")
 
         assert results == []
+
+
+class TestRORAPIClientSearchAll:
+    @patch("validate_ror_records_input_csvs.core.ror_api.requests.get")
+    def test_search_all_combines_results(self, mock_get):
+        def mock_api_call(url, params, timeout):
+            response = Mock()
+            response.raise_for_status = Mock()
+            if "query" in params:
+                response.json.return_value = {
+                    "number_of_results": 1,
+                    "items": [{"id": "https://ror.org/111", "names": [], "locations": []}]
+                }
+            else:  # affiliation
+                response.json.return_value = {
+                    "number_of_results": 1,
+                    "items": [{"organization": {"id": "https://ror.org/222", "names": [], "locations": []}}]
+                }
+            return response
+
+        mock_get.side_effect = mock_api_call
+
+        client = RORAPIClient()
+        results = client.search_all("Test")
+
+        assert len(results) == 2
+        ids = {r["id"] for r in results}
+        assert "https://ror.org/111" in ids
+        assert "https://ror.org/222" in ids
+
+    @patch("validate_ror_records_input_csvs.core.ror_api.requests.get")
+    def test_search_all_deduplicates_by_id(self, mock_get):
+        def mock_api_call(url, params, timeout):
+            response = Mock()
+            response.raise_for_status = Mock()
+            # Both searches return the same org
+            if "query" in params:
+                response.json.return_value = {
+                    "number_of_results": 1,
+                    "items": [{"id": "https://ror.org/same", "names": [], "locations": []}]
+                }
+            else:
+                response.json.return_value = {
+                    "number_of_results": 1,
+                    "items": [{"organization": {"id": "https://ror.org/same", "names": [], "locations": []}}]
+                }
+            return response
+
+        mock_get.side_effect = mock_api_call
+
+        client = RORAPIClient()
+        results = client.search_all("Test")
+
+        assert len(results) == 1
+        assert results[0]["id"] == "https://ror.org/same"
