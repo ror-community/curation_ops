@@ -84,8 +84,8 @@ class ProductionDuplicatesValidator(BaseValidator):
     name = "production-duplicates"
     output_filename = "production_duplicates.csv"
     output_fields = [
-        "name",
-        "display_name",
+        "issue_url",
+        "input_name",
         "matched_ror_id",
         "matched_name",
         "match_ratio",
@@ -120,11 +120,11 @@ class ProductionDuplicatesValidator(BaseValidator):
                 except Exception as e:
                     logging.error(f"Error processing record: {e}")
 
-        # Deduplicate by (name, matched_ror_id)
+        # Deduplicate by (input_name, matched_ror_id)
         seen = set()
         deduplicated = []
         for finding in all_findings:
-            key = (finding["name"], finding["matched_ror_id"])
+            key = (finding["input_name"], finding["matched_ror_id"])
             if key not in seen:
                 seen.add(key)
                 deduplicated.append(finding)
@@ -138,6 +138,7 @@ class ProductionDuplicatesValidator(BaseValidator):
         ror_client: RORAPIClient
     ) -> list[dict]:
         """Process a single CSV row. Returns list of findings."""
+        issue_url = row.get("html_url", "")
         display_name = row.get("names.types.ror_display", "")
         geonames_id = row.get("locations.geonames_id", "").strip()
 
@@ -177,8 +178,8 @@ class ProductionDuplicatesValidator(BaseValidator):
 
                     if match_ratio >= FUZZY_THRESHOLD:
                         findings.append({
-                            "name": name,
-                            "display_name": display_name,
+                            "issue_url": issue_url,
+                            "input_name": name,
                             "matched_ror_id": result["id"],
                             "matched_name": result_name,
                             "match_ratio": match_ratio,

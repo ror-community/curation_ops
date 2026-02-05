@@ -38,8 +38,8 @@ class TestValidatorProperties:
         assert validator.output_filename == "production_duplicates.csv"
 
     def test_output_fields(self, validator):
-        assert "name" in validator.output_fields
-        assert "display_name" in validator.output_fields
+        assert "issue_url" in validator.output_fields
+        assert "input_name" in validator.output_fields
         assert "matched_ror_id" in validator.output_fields
         assert "matched_name" in validator.output_fields
         assert "match_ratio" in validator.output_fields
@@ -170,8 +170,8 @@ class TestValidatorRun:
     ):
         csv_path = tmp_path / "input.csv"
         csv_path.write_text(
-            "names.types.ror_display,names.types.alias,names.types.label,locations.geonames_id\n"
-            "Test University*en,,,5128581\n"
+            "html_url,names.types.ror_display,names.types.alias,names.types.label,locations.geonames_id\n"
+            "https://github.com/ror-community/ror-updates/issues/123,Test University*en,,,5128581\n"
         )
 
         # Mock GeoNames
@@ -196,6 +196,7 @@ class TestValidatorRun:
 
         assert len(results) >= 1
         assert results[0]["matched_ror_id"] == "https://ror.org/existing123"
+        assert results[0]["issue_url"] == "https://github.com/ror-community/ror-updates/issues/123"
 
     @patch("validate_ror_records_input_csvs.validators.production_duplicates.GeoNamesClient")
     @patch("validate_ror_records_input_csvs.validators.production_duplicates.RORAPIClient")
@@ -204,8 +205,8 @@ class TestValidatorRun:
     ):
         csv_path = tmp_path / "input.csv"
         csv_path.write_text(
-            "names.types.ror_display,names.types.alias,names.types.label,locations.geonames_id\n"
-            "Test University*en,,,5128581\n"
+            "html_url,names.types.ror_display,names.types.alias,names.types.label,locations.geonames_id\n"
+            "https://github.com/ror-community/ror-updates/issues/123,Test University*en,,,5128581\n"
         )
 
         # Mock GeoNames - input record is in US
@@ -238,8 +239,8 @@ class TestValidatorRun:
     ):
         csv_path = tmp_path / "input.csv"
         csv_path.write_text(
-            "names.types.ror_display,names.types.alias,names.types.label,locations.geonames_id\n"
-            "Test University*en,,,99999\n"
+            "html_url,names.types.ror_display,names.types.alias,names.types.label,locations.geonames_id\n"
+            "https://github.com/ror-community/ror-updates/issues/123,Test University*en,,,99999\n"
         )
 
         # Mock GeoNames - lookup fails
@@ -267,8 +268,8 @@ class TestValidatorRun:
     ):
         csv_path = tmp_path / "input.csv"
         csv_path.write_text(
-            "names.types.ror_display,names.types.alias,names.types.label,locations.geonames_id\n"
-            "Completely Different Name*en,,,5128581\n"
+            "html_url,names.types.ror_display,names.types.alias,names.types.label,locations.geonames_id\n"
+            "https://github.com/ror-community/ror-updates/issues/123,Completely Different Name*en,,,5128581\n"
         )
 
         mock_geonames = Mock()
