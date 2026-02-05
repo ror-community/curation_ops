@@ -1,11 +1,78 @@
 # tests/test_validators/test_production_duplicates.py
 import pytest
+from pathlib import Path
 
+from validate_ror_records_input_csvs.validators.base import ValidatorContext
 from validate_ror_records_input_csvs.validators.production_duplicates import (
+    ProductionDuplicatesValidator,
     get_country_code_from_result,
     get_all_names_from_result,
     parse_csv_names,
 )
+
+
+@pytest.fixture
+def validator():
+    return ProductionDuplicatesValidator()
+
+
+def make_context(
+    input_file: Path,
+    tmp_path: Path,
+    geonames_user: str = None,
+) -> ValidatorContext:
+    return ValidatorContext(
+        input_file=input_file,
+        output_dir=tmp_path,
+        data_source=None,
+        geonames_user=geonames_user,
+    )
+
+
+class TestValidatorProperties:
+    def test_name(self, validator):
+        assert validator.name == "production-duplicates"
+
+    def test_output_filename(self, validator):
+        assert validator.output_filename == "production_duplicates.csv"
+
+    def test_output_fields(self, validator):
+        assert "name" in validator.output_fields
+        assert "display_name" in validator.output_fields
+        assert "matched_ror_id" in validator.output_fields
+        assert "matched_name" in validator.output_fields
+        assert "match_ratio" in validator.output_fields
+
+    def test_requires_data_source(self, validator):
+        assert validator.requires_data_source is False
+
+    def test_requires_geonames(self, validator):
+        assert validator.requires_geonames is True
+
+    def test_new_records_only(self, validator):
+        assert validator.new_records_only is True
+
+
+class TestCanRun:
+    def test_can_run_with_geonames_user(self, validator, tmp_path):
+        csv_path = tmp_path / "input.csv"
+        csv_path.write_text("names.types.ror_display,locations.geonames_id\n")
+
+        ctx = make_context(csv_path, tmp_path, geonames_user="test_user")
+        can_run, reason = validator.can_run(ctx)
+
+        assert can_run is True
+        assert reason == ""
+
+    def test_cannot_run_without_geonames_user(self, validator, tmp_path):
+        csv_path = tmp_path / "input.csv"
+        csv_path.write_text("names.types.ror_display,locations.geonames_id\n")
+
+        ctx = make_context(csv_path, tmp_path, geonames_user=None)
+        can_run, reason = validator.can_run(ctx)
+
+        assert can_run is False
+        assert "geonames" in reason.lower()
 
 
 class TestGetCountryCodeFromResult:

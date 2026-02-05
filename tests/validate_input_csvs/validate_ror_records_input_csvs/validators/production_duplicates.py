@@ -2,6 +2,35 @@
 
 from typing import Optional
 
+from validate_ror_records_input_csvs.validators.base import BaseValidator, ValidatorContext
+
+
+class ProductionDuplicatesValidator(BaseValidator):
+    """
+    Validator to check for potential duplicates against ROR production API.
+
+    Searches the live ROR API using organization names from the input CSV,
+    then applies fuzzy matching (85% threshold) to find potential duplicates.
+    Results are filtered to only include matches with the same country code.
+    """
+
+    name = "production-duplicates"
+    output_filename = "production_duplicates.csv"
+    output_fields = [
+        "name",
+        "display_name",
+        "matched_ror_id",
+        "matched_name",
+        "match_ratio",
+    ]
+    requires_data_source = False
+    requires_geonames = True
+    new_records_only = True
+
+    def run(self, ctx: ValidatorContext) -> list[dict]:
+        # Placeholder - implemented in next task
+        return []
+
 
 def get_country_code_from_result(result: dict) -> Optional[str]:
     """Extract country code from ROR API result."""
