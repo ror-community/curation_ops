@@ -1,6 +1,7 @@
 # tests/test_validators/test_production_duplicates.py
 import pytest
 from pathlib import Path
+from unittest.mock import Mock, patch
 
 from validate_ror_records_input_csvs.validators.base import ValidatorContext
 from validate_ror_records_input_csvs.validators.production_duplicates import (
@@ -159,3 +160,134 @@ class TestParseCsvNames:
         row = {}
         names = parse_csv_names(row)
         assert names == []
+
+
+class TestValidatorRun:
+    @patch("validate_ror_records_input_csvs.validators.production_duplicates.GeoNamesClient")
+    @patch("validate_ror_records_input_csvs.validators.production_duplicates.RORAPIClient")
+    def test_finds_duplicate_with_matching_country(
+        self, mock_ror_client_class, mock_geonames_class, validator, tmp_path
+    ):
+        csv_path = tmp_path / "input.csv"
+        csv_path.write_text(
+            "names.types.ror_display,names.types.alias,names.types.label,locations.geonames_id\n"
+            "Test University*en,,,5128581\n"
+        )
+
+        # Mock GeoNames
+        mock_geonames = Mock()
+        mock_geonames.get_country_code.return_value = "US"
+        mock_geonames.lookup_failures = []
+        mock_geonames_class.return_value = mock_geonames
+
+        # Mock ROR API
+        mock_ror = Mock()
+        mock_ror.search_all.return_value = [
+            {
+                "id": "https://ror.org/existing123",
+                "names": [{"value": "Test University", "types": ["ror_display"]}],
+                "locations": [{"geonames_details": {"country_code": "US"}}]
+            }
+        ]
+        mock_ror_client_class.return_value = mock_ror
+
+        ctx = make_context(csv_path, tmp_path, geonames_user="test_user")
+        results = validator.run(ctx)
+
+        assert len(results) >= 1
+        assert results[0]["matched_ror_id"] == "https://ror.org/existing123"
+
+    @patch("validate_ror_records_input_csvs.validators.production_duplicates.GeoNamesClient")
+    @patch("validate_ror_records_input_csvs.validators.production_duplicates.RORAPIClient")
+    def test_filters_by_country_code(
+        self, mock_ror_client_class, mock_geonames_class, validator, tmp_path
+    ):
+        csv_path = tmp_path / "input.csv"
+        csv_path.write_text(
+            "names.types.ror_display,names.types.alias,names.types.label,locations.geonames_id\n"
+            "Test University*en,,,5128581\n"
+        )
+
+        # Mock GeoNames - input record is in US
+        mock_geonames = Mock()
+        mock_geonames.get_country_code.return_value = "US"
+        mock_geonames.lookup_failures = []
+        mock_geonames_class.return_value = mock_geonames
+
+        # Mock ROR API - result is in UK (different country)
+        mock_ror = Mock()
+        mock_ror.search_all.return_value = [
+            {
+                "id": "https://ror.org/uk123",
+                "names": [{"value": "Test University", "types": ["ror_display"]}],
+                "locations": [{"geonames_details": {"country_code": "GB"}}]
+            }
+        ]
+        mock_ror_client_class.return_value = mock_ror
+
+        ctx = make_context(csv_path, tmp_path, geonames_user="test_user")
+        results = validator.run(ctx)
+
+        # Should be empty because countries don't match
+        assert len(results) == 0
+
+    @patch("validate_ror_records_input_csvs.validators.production_duplicates.GeoNamesClient")
+    @patch("validate_ror_records_input_csvs.validators.production_duplicates.RORAPIClient")
+    def test_skips_record_when_geonames_fails(
+        self, mock_ror_client_class, mock_geonames_class, validator, tmp_path
+    ):
+        csv_path = tmp_path / "input.csv"
+        csv_path.write_text(
+            "names.types.ror_display,names.types.alias,names.types.label,locations.geonames_id\n"
+            "Test University*en,,,99999\n"
+        )
+
+        # Mock GeoNames - lookup fails
+        mock_geonames = Mock()
+        mock_geonames.get_country_code.return_value = None
+        mock_geonames.lookup_failures = [{"geonames_id": "99999", "record_identifier": "Test University*en"}]
+        mock_geonames_class.return_value = mock_geonames
+
+        # Mock ROR API
+        mock_ror = Mock()
+        mock_ror_client_class.return_value = mock_ror
+
+        ctx = make_context(csv_path, tmp_path, geonames_user="test_user")
+        results = validator.run(ctx)
+
+        # Should be empty because geonames lookup failed
+        assert len(results) == 0
+        # ROR API should not be called
+        mock_ror.search_all.assert_not_called()
+
+    @patch("validate_ror_records_input_csvs.validators.production_duplicates.GeoNamesClient")
+    @patch("validate_ror_records_input_csvs.validators.production_duplicates.RORAPIClient")
+    def test_applies_fuzzy_threshold(
+        self, mock_ror_client_class, mock_geonames_class, validator, tmp_path
+    ):
+        csv_path = tmp_path / "input.csv"
+        csv_path.write_text(
+            "names.types.ror_display,names.types.alias,names.types.label,locations.geonames_id\n"
+            "Completely Different Name*en,,,5128581\n"
+        )
+
+        mock_geonames = Mock()
+        mock_geonames.get_country_code.return_value = "US"
+        mock_geonames.lookup_failures = []
+        mock_geonames_class.return_value = mock_geonames
+
+        mock_ror = Mock()
+        mock_ror.search_all.return_value = [
+            {
+                "id": "https://ror.org/123",
+                "names": [{"value": "Unrelated Organization", "types": ["ror_display"]}],
+                "locations": [{"geonames_details": {"country_code": "US"}}]
+            }
+        ]
+        mock_ror_client_class.return_value = mock_ror
+
+        ctx = make_context(csv_path, tmp_path, geonames_user="test_user")
+        results = validator.run(ctx)
+
+        # Should be empty because fuzzy match is below 85%
+        assert len(results) == 0
