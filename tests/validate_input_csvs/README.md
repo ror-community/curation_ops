@@ -60,6 +60,7 @@ validate-ror-records-input-csvs -i new_records.csv -o reports/ --test validate-f
 | `duplicate-external-ids` | Checks for external ID conflicts (ISNI, Wikidata, FundRef, GRID) with existing ROR data | ROR data dump (auto-downloaded) |
 | `duplicate-urls` | Checks for URL conflicts with existing ROR data (normalized comparison) | ROR data dump (auto-downloaded) |
 | `address-validation` | Validates city/country against GeoNames API | `--geonames-user` (required) |
+| `production-duplicates` | Checks for potential duplicates in ROR production via API search | `--geonames-user` (required) |
 
 ## Output
 
@@ -72,6 +73,7 @@ Each validator produces a CSV report in the output directory:
 | `duplicate-external-ids` | `duplicate_external_ids.csv` |
 | `duplicate-urls` | `duplicate_urls.csv` |
 | `address-validation` | `address_discrepancies.csv` |
+| `production-duplicates` | `production_duplicates.csv` |
 
 ## Field Validation Rules
 

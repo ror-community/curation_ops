@@ -1,5 +1,3 @@
-"""Validator to detect duplicate URLs between CSV and data source."""
-
 from validate_ror_records_input_csvs.core.io import read_csv
 from validate_ror_records_input_csvs.core.normalize import normalize_url
 from validate_ror_records_input_csvs.validators.base import BaseValidator, ValidatorContext
@@ -20,7 +18,6 @@ def get_website_url(record: dict) -> str | None:
 
 
 def preprocess_data_source(records: list[dict]) -> dict[str, dict]:
-    """Build URL lookup dict. Also includes www. prefixed versions for matching."""
     url_dict = {}
 
     for record in records:
@@ -78,11 +75,6 @@ def find_url_matches(csv_records: list[dict], url_dict: dict[str, dict]) -> list
 
 
 class DuplicateUrlsValidator(BaseValidator):
-    """
-    Checks if any website URLs in the input CSV already exist in the ROR data source.
-    URL normalization strips scheme, www. prefix, path/query/fragment, and lowercases domain.
-    """
-
     name = "duplicate-urls"
     output_filename = "duplicate_urls.csv"
     output_fields = [

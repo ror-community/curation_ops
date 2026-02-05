@@ -1,6 +1,3 @@
-"""Custom exceptions for validate-ror-records-input-csvs."""
-
-
 class CsvTestsError(Exception):
     pass
 

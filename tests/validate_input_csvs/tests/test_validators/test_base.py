@@ -1,4 +1,3 @@
-# tests/test_validators/test_base.py
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional

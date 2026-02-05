@@ -1,15 +1,8 @@
-# tests/test_normalize.py
 import pytest
 from validate_ror_records_input_csvs.core.normalize import normalize_url, normalize_text, normalize_whitespace
 
 
 class TestNormalizeUrl:
-    """Tests for URL normalization.
-
-    Note: The normalized output includes '//' prefix (scheme-relative URL format)
-    to match the original implementation's behavior for parity.
-    """
-
     def test_strips_scheme_https(self):
         assert normalize_url("https://example.org") == "//example.org"
 

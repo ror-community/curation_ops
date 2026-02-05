@@ -1,5 +1,3 @@
-"""Text and URL normalization utilities."""
-
 import re
 from typing import Optional
 
@@ -7,12 +5,6 @@ from furl import furl
 
 
 def normalize_url(url: str) -> Optional[str]:
-    """
-    Normalize URL to '//domain' format for comparison.
-
-    Strips scheme, www prefix, path, query, and fragment. Lowercases.
-    Returns None if invalid.
-    """
     if not url or not url.strip():
         return None
 
@@ -37,7 +29,6 @@ def normalize_url(url: str) -> Optional[str]:
 
 
 def normalize_text(text: str) -> str:
-    """Lowercase and remove non-alphanumeric characters (except spaces)."""
     if not text:
         return ""
 
@@ -48,7 +39,6 @@ def normalize_text(text: str) -> str:
 
 
 def normalize_whitespace(text: str) -> str:
-    """Collapse whitespace to single spaces and strip."""
     if not text:
         return ""
 

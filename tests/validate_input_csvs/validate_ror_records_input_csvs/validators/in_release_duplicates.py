@@ -1,5 +1,3 @@
-"""Validator to detect duplicate records within a CSV file."""
-
 from thefuzz import fuzz
 
 from validate_ror_records_input_csvs.core.io import read_csv
@@ -11,7 +9,6 @@ FUZZY_THRESHOLD = 85
 
 
 def parse_csv_names(row: dict) -> list[str]:
-    """Collects display name, aliases, and labels."""
     names = []
     display_name = row.get("names.types.ror_display", "")
     if display_name:
@@ -35,12 +32,10 @@ def parse_csv_names(row: dict) -> list[str]:
 
 
 def clean_name(name: str) -> str:
-    """Removes language marker (e.g., 'Name*en' -> 'Name')."""
     return name.split("*")[0].strip()
 
 
 def check_url_matches(urls1: list[str], urls2: list[str]) -> tuple[bool, str | None, str | None]:
-    """Returns (matched, url1, url2) - matched is True if any pair matches."""
     for url1 in urls1:
         if not url1:
             continue
@@ -62,7 +57,6 @@ def check_url_matches(urls1: list[str], urls2: list[str]) -> tuple[bool, str | N
 
 
 def check_name_matches(names1: list[str], names2: list[str]) -> list[tuple[str, str, int]]:
-    """Returns list of (name1, name2, similarity_score) for matches >= threshold."""
     matches = []
 
     for name1 in names1:
@@ -143,20 +137,6 @@ def find_duplicates(records: list[dict]) -> list[dict]:
 
 
 class InReleaseDuplicatesValidator(BaseValidator):
-    """
-    Validator to detect potential duplicates within a CSV file.
-
-    This validator checks for duplicates WITHIN the CSV file (not against
-    a data source). It helps catch cases where the same organization might
-    be submitted twice under different names or slightly different URLs.
-
-    Matching rules:
-    - URL match: Normalized URLs are compared (strips scheme, www, path, query)
-    - Name match: Uses fuzzy matching with 85% threshold
-    - Names are normalized (lowercase, remove punctuation) before comparison
-    - Language markers (*en, *de, etc.) are stripped from names
-    """
-
     name = "in-release-duplicates"
     output_filename = "in_release_duplicates.csv"
     output_fields = [

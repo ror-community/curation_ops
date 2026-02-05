@@ -1,5 +1,3 @@
-"""Regex patterns and valid value sets for field validation."""
-
 import re
 
 ACRONYMS_PATTERN = re.compile(r'^[A-Z0-9 ]+$')

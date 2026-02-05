@@ -152,13 +152,13 @@ class TestWhitespaceNormalization:
         csv_path = tmp_path / "input.csv"
         csv_path.write_text(
             "id,names.types.ror_display,external_ids.type.isni.all\n"
-            ",Test Org*en,0000  0001 2345 6789\n"  # Double space
+            ",Test Org*en,0000  0001 2345 6789\n"
         )
 
         data_source = DataSource([{
             "id": "https://ror.org/existing",
             "names": [{"value": "Existing Org", "types": ["ror_display"]}],
-            "external_ids": [{"type": "isni", "all": ["0000 0001 2345 6789"]}],  # Single space
+            "external_ids": [{"type": "isni", "all": ["0000 0001 2345 6789"]}],
         }])
 
         ctx = make_context(csv_path, tmp_path, data_source)
@@ -170,7 +170,7 @@ class TestWhitespaceNormalization:
         csv_path = tmp_path / "input.csv"
         csv_path.write_text(
             "id,names.types.ror_display,external_ids.type.wikidata.all\n"
-            ",Test Org*en, Q12345 \n"  # Leading/trailing spaces
+            ",Test Org*en, Q12345 \n"
         )
 
         data_source = DataSource([{

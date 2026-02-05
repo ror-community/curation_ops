@@ -1,4 +1,3 @@
-# tests/test_cli.py
 import sys
 from pathlib import Path
 from unittest.mock import patch, MagicMock

@@ -1,5 +1,3 @@
-"""Test orchestration logic."""
-
 import sys
 from pathlib import Path
 from typing import Optional
@@ -23,7 +21,6 @@ def run_validators(
     geonames_user: Optional[str],
     tests: list[str],
 ) -> int:
-    """Returns 0 on success (always, per design)."""
     output_dir.mkdir(parents=True, exist_ok=True)
 
     records = read_csv(input_file)

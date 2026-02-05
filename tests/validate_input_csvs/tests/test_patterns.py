@@ -1,4 +1,3 @@
-# tests/test_patterns.py
 import re
 from validate_ror_records_input_csvs.core.patterns import (
     ACRONYMS_PATTERN,

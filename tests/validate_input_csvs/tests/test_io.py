@@ -1,4 +1,3 @@
-# tests/test_io.py
 import csv
 from pathlib import Path
 import pytest
@@ -57,5 +56,4 @@ class TestDetectFileType:
             {"id": "", "name": "Test1"},
             {"id": "https://ror.org/012345", "name": "Test2"},
         ]
-        # If any record has an ID, treat as updates
         assert detect_file_type(records) == "updates"

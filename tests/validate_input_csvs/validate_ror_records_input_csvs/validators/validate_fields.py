@@ -1,5 +1,3 @@
-"""Validate field values in new and update CSV records."""
-
 from validate_ror_records_input_csvs.core.io import read_csv, detect_file_type
 from validate_ror_records_input_csvs.core.patterns import (
     ACRONYMS_PATTERN,
@@ -23,7 +21,6 @@ def validate_status(field_value: str) -> list[str]:
 
 
 def validate_types(field_value: str) -> list[str]:
-    # Extract type from value that may include additional info in parentheses
     type_value = field_value.split('(')[0].strip().lower()
     if type_value and type_value in VALID_TYPES:
         return []
@@ -31,7 +28,6 @@ def validate_types(field_value: str) -> list[str]:
 
 
 def validate_acronyms(field_value: str) -> list[str]:
-    # Extract the acronym part before language tag (before *)
     acronym_part = field_value.split('*')[0]
     if field_value == "delete":
         return []
@@ -144,7 +140,6 @@ def validate_field_value(field_name: str, field_value: str) -> list[str]:
 
 
 def parse_update_field(update_str: str) -> dict[str, list[str]]:
-    """Parse update field string. Format: 'add==value1;delete==value2;replace_value'."""
     updates = {}
     parts = update_str.split(';')
     for part in parts:
@@ -161,7 +156,6 @@ def parse_update_field(update_str: str) -> dict[str, list[str]]:
 
 
 def validate_updates(row: dict) -> tuple[list[str], list[tuple[str, str]]]:
-    """Returns (errors, field_value_pairs) for update CSV rows."""
     valid_fields = [
         'status',
         'types',

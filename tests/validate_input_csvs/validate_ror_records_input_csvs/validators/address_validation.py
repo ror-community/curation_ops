@@ -1,5 +1,3 @@
-"""Validate address data against GeoNames API."""
-
 import logging
 import requests
 
@@ -8,7 +6,6 @@ from validate_ror_records_input_csvs.validators.base import BaseValidator, Valid
 
 
 def query_geonames_api(geonames_id: str, username: str) -> tuple[str, str]:
-    """Returns (city_name, country_name). Returns ("", "") on error."""
     api_url = "http://api.geonames.org/getJSON"
     params = {
         "geonameId": geonames_id,
