@@ -2,12 +2,19 @@ import os
 import re
 import csv
 import sys
+import json
+import time
+import asyncio
+import logging
 import argparse
 import requests
-from github import Github
-from github_project_issues import get_column_issue_numbers
+from github_project_issues import get_column_issues
 
-GITHUB_TOKEN = os.environ.get('GITHUB_TOKEN')
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(levelname)s: %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 
 def get_ror_display_name(record):
@@ -15,7 +22,6 @@ def get_ror_display_name(record):
 
 
 def get_ror_name(ror_id, max_retries=3, retry_delay=5):
-    print(ror_id)
     url = f'https://api.ror.org/v2/organizations/{ror_id}'
     for attempt in range(max_retries):
         try:
@@ -28,10 +34,10 @@ def get_ror_name(ror_id, max_retries=3, retry_delay=5):
             if attempt < max_retries - 1:
                 time.sleep(retry_delay)
             else:
-                print(f"Error: Failed to retrieve ROR name for {ror_id} after {max_retries} attempts.")
+                logger.error(f"Failed to retrieve ROR name for {ror_id} after {max_retries} attempts.")
                 return ""
         except json.decoder.JSONDecodeError as e:
-            print(f"Error: Failed to parse JSON response for {ror_id}. Response: {response.text}")
+            logger.error(f"Failed to parse JSON response for {ror_id}. Response: {response.text}")
             return ""
 
 
@@ -64,22 +70,19 @@ def dict_from_csv(f):
     return release_ids, ids_k_names_v, names_k_ids_v
 
 
-def extract_relationships(issue_numbers, repo, input_file, output_file):
-    g = Github(GITHUB_TOKEN)
-    github_repo = g.get_repo(repo)
+def extract_relationships(issues, input_file, output_file):
     release_ids, ids_k_names_v, names_k_ids_v = dict_from_csv(input_file)
     header = ['Issue # from Github', 'Issue URL', 'Issue title from Github', 'Name of org in Record ID', 'Record ID',
               'Related ID', 'Name of org in Related ID', 'Relationship of Related ID to Record ID', 'Current location of Related ID']
     with open(output_file, 'w') as f_out:
         writer = csv.writer(f_out)
         writer.writerow(header)
-        for issue_number in issue_numbers:
-            issue = github_repo.get_issue(issue_number)
-            issue_number = str(issue_number)
-            issue_title = issue.title
+        for issue in issues:
+            issue_number = str(issue['number'])
+            issue_title = issue['title']
+            issue_text = issue['body']
+            issue_url = issue['url']
             org_name, org_ror_id = '', ''
-            issue_text = issue.body
-            issue_html_url = issue.html_url
             rel_pattern = re.compile(
                 r'[https]{0,5}\:\/\/ror\.org\/[a-z0-9]{9}\s+\([a-zA-Z\-]{0,}\)')
             relationships = rel_pattern.findall(issue_text)
@@ -106,24 +109,24 @@ def extract_relationships(issue_numbers, repo, input_file, output_file):
                         related_name = get_ror_name(related_ror_id)
                     locations = ['Release', 'Release'] if related_ror_id in release_ids else [
                         'Production', 'Release']
-                    entry = [issue_number, issue_html_url, issue_title, org_name, org_ror_id,
+                    entry = [issue_number, issue_url, issue_title, org_name, org_ror_id,
                              related_ror_id, related_name, relationship_type, locations[0]]
                     rel_type_mappings = {'Parent': 'Child', 'Child': 'Parent',
                                          'Successor': 'Predecessor', 'Predecessor': 'Successor', 'Related': 'Related', 'Delete': 'Delete'}
                     if relationship_type == 'Successor-np':
-                        entry = [issue_number, issue_html_url, issue_title, org_name,
+                        entry = [issue_number, issue_url, issue_title, org_name,
                                  org_ror_id, related_ror_id, related_name, 'Successor', locations[0]]
                         writer.writerow(entry)
                     elif relationship_type == 'Predecessor-ns':
-                        entry = [issue_number, issue_html_url, issue_title, org_name,
+                        entry = [issue_number, issue_url, issue_title, org_name,
                                  org_ror_id, related_ror_id, related_name, 'Predecessor', locations[0]]
                         writer.writerow(entry)
                     else:
                         try:
-                            inverted_entry = [issue_number, issue_html_url, issue_title, related_name, related_ror_id,
+                            inverted_entry = [issue_number, issue_url, issue_title, related_name, related_ror_id,
                                               org_ror_id, org_name, rel_type_mappings[relationship_type], locations[1]]
                         except KeyError:
-                            inverted_entry = [issue_number, issue_html_url, issue_title,
+                            inverted_entry = [issue_number, issue_url, issue_title,
                                               related_name, related_ror_id, org_ror_id, org_name, 'Error', 'Error']
                         writer.writerow(entry)
                         writer.writerow(inverted_entry)
@@ -145,13 +148,13 @@ def parse_arguments():
     return parser.parse_args()
 
 
-def main():
+async def main():
     args = parse_arguments()
-    issues = get_column_issue_numbers(
+    issues = await get_column_issues(
         args.repo, args.project_number, args.column_name)
-    extract_relationships(issues, args.repo, args.input_file, args.output_file)
-    print(f"Relationships extracted and saved to {args.output_file}")
+    extract_relationships(issues, args.input_file, args.output_file)
+    logger.info(f"Relationships extracted and saved to {args.output_file}")
 
 
 if __name__ == '__main__':
-    main()
+    asyncio.run(main())
