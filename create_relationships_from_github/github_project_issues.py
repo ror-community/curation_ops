@@ -29,7 +29,6 @@ async def run_graphql_query_async(
     query: str,
     variables: Optional[dict] = None
 ) -> dict:
-    """Execute a GraphQL query with retry logic for transient failures."""
     headers = {
         'Authorization': f'Bearer {GITHUB_CONFIG["TOKEN"]}',
         'Content-Type': 'application/json',
@@ -90,7 +89,6 @@ async def get_column_issues(
     project_number: int,
     column_name: str
 ) -> list[dict]:
-    """Fetch all issues from a project column with their full content."""
     search_query = """
     query($searchQuery: String!, $after: String) {
       search(query: $searchQuery, type: ISSUE, first: 100, after: $after) {
