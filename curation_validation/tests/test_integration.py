@@ -414,8 +414,8 @@ class TestMissingInput:
         assert ret == 1
 
 
-class TestCsvJsonConfigurationError:
-    def test_csv_only_raises_for_csv_json_validator(self, tmp_path):
+class TestCsvJsonValidatorSkipping:
+    def test_csv_only_raises_for_explicit_csv_json_validator(self, tmp_path):
         csv_file = make_csv(tmp_path)
         output_dir = tmp_path / "out"
 
@@ -429,7 +429,7 @@ class TestCsvJsonConfigurationError:
                 tests=["new-record-integrity"],
             )
 
-    def test_json_only_raises_for_csv_json_validator(self, tmp_path):
+    def test_json_only_raises_for_explicit_csv_json_validator(self, tmp_path):
         json_dir = make_json_dir(tmp_path)
         output_dir = tmp_path / "out"
 
@@ -443,7 +443,7 @@ class TestCsvJsonConfigurationError:
                 tests=["new-record-integrity"],
             )
 
-    def test_update_record_integrity_also_raises(self, tmp_path):
+    def test_update_record_integrity_also_raises_when_explicit(self, tmp_path):
         csv_file = make_csv(tmp_path)
         output_dir = tmp_path / "out"
 
@@ -456,6 +456,20 @@ class TestCsvJsonConfigurationError:
                 geonames_user=None,
                 tests=["update-record-integrity"],
             )
+
+    def test_csv_json_validators_skipped_when_running_all(self, tmp_path):
+        csv_file = make_csv(tmp_path)
+        output_dir = tmp_path / "out"
+
+        exit_code = run_validators(
+            csv_file=csv_file,
+            json_dir=None,
+            output_dir=output_dir,
+            data_dump_path=None,
+            geonames_user=None,
+            tests=["all"],
+        )
+        assert exit_code == 0
 
 
 class TestOutputFileNaming:

@@ -55,14 +55,25 @@ def run_validators(
     if not selected:
         return 0
 
+    run_all = "all" in tests
+
+    runnable = []
     for validator in selected:
         if "csv_json" in validator.supported_formats:
             if "csv_json" not in available_formats:
+                if run_all:
+                    print(f"Skipping {validator.name}: requires both --csv and --json-dir")
+                    continue
                 raise ConfigurationError(
                     f"{validator.name} requires both --csv and --json-dir"
                 )
+        runnable.append(validator)
 
-    needs_data = any(v.requires_data_source for v in selected)
+    if not runnable:
+        print("No validators to run with the available inputs")
+        return 0
+
+    needs_data = any(v.requires_data_source for v in runnable)
     data_source: Optional[DataSource] = None
 
     if needs_data:
@@ -83,9 +94,12 @@ def run_validators(
         geonames_user=geonames_user,
     )
 
-    for validator in selected:
+    for validator in runnable:
         can_run, reason = validator.can_run(ctx)
         if not can_run:
+            if run_all:
+                print(f"Skipping {validator.name}: {reason}", file=sys.stderr)
+                continue
             print(f"Error: {reason}", file=sys.stderr)
             sys.exit(1)
 
