@@ -60,7 +60,7 @@ class TestValidatorProperties:
         assert validator.output_filename == "leading_trailing.csv"
 
     def test_output_fields(self, validator):
-        assert validator.output_fields == ["record_id", "field", "value", "issue"]
+        assert validator.output_fields == ["issue_url", "record_id", "field", "value", "issue"]
 
 
 class TestPunctuationSet:

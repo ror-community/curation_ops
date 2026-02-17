@@ -30,12 +30,14 @@ def parse_csv_record(row: dict, index: int) -> dict:
                 names.append(label)
     url = row.get("links.type.website", "")
     urls = [url] if url else []
+    issue_url = row.get("html_url", "")
     return {
         "index": index,
         "display_name": display_name,
         "names": names,
         "url": url,
         "urls": urls,
+        "issue_url": issue_url,
     }
 
 
@@ -63,12 +65,14 @@ def parse_json_record(record: dict, index: int) -> dict:
             if url:
                 urls.append(url)
             break
+    issue_url = record.get("id", "")
     return {
         "index": index,
         "display_name": display_name,
         "names": names,
         "url": url,
         "urls": urls,
+        "issue_url": issue_url,
     }
 
 
@@ -131,6 +135,8 @@ def find_duplicates(parsed_records: list[dict]) -> list[dict]:
             )
             if url_matched:
                 findings.append({
+                    "record1_issue_url": record1.get("issue_url", ""),
+                    "record2_issue_url": record2.get("issue_url", ""),
                     "record1_display_name": record1["display_name"],
                     "record1_url": url1 or "",
                     "record2_display_name": record2["display_name"],
@@ -147,6 +153,8 @@ def find_duplicates(parsed_records: list[dict]) -> list[dict]:
                 seen_name_pairs.add(name_pair_key)
                 match_type = "name_exact" if similarity == 100 else "name_fuzzy"
                 findings.append({
+                    "record1_issue_url": record1.get("issue_url", ""),
+                    "record2_issue_url": record2.get("issue_url", ""),
                     "record1_display_name": record1["display_name"],
                     "record1_url": record1["url"],
                     "record2_display_name": record2["display_name"],
@@ -163,6 +171,8 @@ class InReleaseDuplicatesValidator(BaseValidator):
     supported_formats = {"csv", "json"}
     output_filename = "in_release_duplicates.csv"
     output_fields = [
+        "record1_issue_url",
+        "record2_issue_url",
         "record1_display_name",
         "record1_url",
         "record2_display_name",

@@ -43,6 +43,7 @@ class DuplicateUrlsValidator(BaseValidator):
     supported_formats = {"csv", "json"}
     output_filename = "duplicate_urls.csv"
     output_fields = [
+        "issue_url",
         "ror_display_name",
         "ror_id",
         "data_dump_id",
@@ -65,6 +66,7 @@ class DuplicateUrlsValidator(BaseValidator):
         records = read_json_dir(ctx.json_dir)
         for record in records:
             record_id = record.get("id", "")
+            issue_url = record_id
             display_name = get_ror_display_name(record)
             website_url = get_website_url(record)
             if not website_url:
@@ -75,6 +77,7 @@ class DuplicateUrlsValidator(BaseValidator):
             match = url_dict.get(normalized)
             if match:
                 results.append({
+                    "issue_url": issue_url,
                     "ror_display_name": display_name,
                     "ror_id": record_id,
                     "data_dump_id": match["ror_id"],
@@ -90,6 +93,7 @@ class DuplicateUrlsValidator(BaseValidator):
         rows = read_csv(ctx.csv_file)
         for row in rows:
             record_id = row.get("id", "").strip()
+            issue_url = row.get("html_url", "")
             display_name = row.get("names.types.ror_display", "").strip()
             website_url = row.get("links.type.website", "").strip()
             if not website_url:
@@ -100,6 +104,7 @@ class DuplicateUrlsValidator(BaseValidator):
             match = url_dict.get(normalized)
             if match:
                 results.append({
+                    "issue_url": issue_url,
                     "ror_display_name": display_name,
                     "ror_id": record_id,
                     "data_dump_id": match["ror_id"],

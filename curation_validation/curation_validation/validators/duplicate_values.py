@@ -49,6 +49,10 @@ def _should_ignore_csv_duplicate(value, field1, field2):
     if not value or value == "null":
         return True
 
+    # Ignore ror_display + label pairs (ror_display must also have label type)
+    if {field1, field2} == {"names.types.ror_display", "names.types.label"}:
+        return True
+
     if "external_ids" in field1 and "external_ids" in field2:
         match1 = re.search(r"external_ids\.type\.(\w+)\.", field1)
         match2 = re.search(r"external_ids\.type\.(\w+)\.", field2)
@@ -64,7 +68,7 @@ class DuplicateValuesValidator(BaseValidator):
     name = "duplicate_values"
     supported_formats = {"csv", "json"}
     output_filename = "duplicate_values.csv"
-    output_fields = ["record_id", "value", "field1", "field2"]
+    output_fields = ["issue_url", "record_id", "value", "field1", "field2"]
 
     def run(self, ctx: ValidatorContext) -> list[dict]:
         if ctx.json_dir is not None:
@@ -78,6 +82,7 @@ class DuplicateValuesValidator(BaseValidator):
         records = read_json_dir(ctx.json_dir)
         for record in records:
             record_id = record.get("id", "")
+            issue_url = record_id
             flattened = flatten_json(record)
 
             value_to_fields = defaultdict(list)
@@ -92,6 +97,7 @@ class DuplicateValuesValidator(BaseValidator):
                     for j in range(i + 1, len(fields)):
                         if not should_ignore_duplicate(value, fields[i], fields[j]):
                             results.append({
+                                "issue_url": issue_url,
                                 "record_id": record_id,
                                 "value": value,
                                 "field1": fields[i],
@@ -109,6 +115,7 @@ class DuplicateValuesValidator(BaseValidator):
             id_values = extracted.get("id", [])
             if id_values:
                 record_id = id_values[0]
+            issue_url = row.get("html_url", "")
 
             value_to_fields = defaultdict(list)
             for field, values in extracted.items():
@@ -125,6 +132,7 @@ class DuplicateValuesValidator(BaseValidator):
                     for j in range(i + 1, len(fields)):
                         if not _should_ignore_csv_duplicate(value, fields[i], fields[j]):
                             results.append({
+                                "issue_url": issue_url,
                                 "record_id": record_id,
                                 "value": value,
                                 "field1": fields[i],

@@ -33,7 +33,7 @@ class AddressValidationValidator(BaseValidator):
     supported_formats = {"csv", "json"}
     output_filename = "address_discrepancies.csv"
     output_fields = [
-        "ror_display_name", "ror_id", "geonames_id",
+        "issue_url", "ror_display_name", "ror_id", "geonames_id",
         "csv_city", "csv_country",
         "geonames_city", "geonames_country", "issue",
     ]
@@ -63,11 +63,13 @@ class AddressValidationValidator(BaseValidator):
             input_country = geonames_details.get("country_name", "")
             ror_display_name = _get_ror_display_name(record)
             ror_id = record.get("id", "")
+            issue_url = ror_id
 
             api_city, api_country = query_geonames_api(geonames_id_str, ctx.geonames_user)
 
             if not api_city and not api_country:
                 discrepancies.append({
+                    "issue_url": issue_url,
                     "ror_display_name": ror_display_name,
                     "ror_id": ror_id,
                     "geonames_id": geonames_id_str,
@@ -88,6 +90,7 @@ class AddressValidationValidator(BaseValidator):
                 if not country_matches:
                     issues.append("country mismatch")
                 discrepancies.append({
+                    "issue_url": issue_url,
                     "ror_display_name": ror_display_name,
                     "ror_id": ror_id,
                     "geonames_id": geonames_id_str,
@@ -110,11 +113,13 @@ class AddressValidationValidator(BaseValidator):
             input_country = row.get("country", "").strip()
             ror_display_name = row.get("names.types.ror_display", "")
             ror_id = row.get("id", "")
+            issue_url = row.get("html_url", "")
 
             api_city, api_country = query_geonames_api(geonames_id, ctx.geonames_user)
 
             if not api_city and not api_country:
                 discrepancies.append({
+                    "issue_url": issue_url,
                     "ror_display_name": ror_display_name,
                     "ror_id": ror_id,
                     "geonames_id": geonames_id,
@@ -135,6 +140,7 @@ class AddressValidationValidator(BaseValidator):
                 if not country_matches:
                     issues.append("country mismatch")
                 discrepancies.append({
+                    "issue_url": issue_url,
                     "ror_display_name": ror_display_name,
                     "ror_id": ror_id,
                     "geonames_id": geonames_id,

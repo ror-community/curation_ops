@@ -13,6 +13,7 @@ def process_input_csv(records: list[dict]) -> list[dict]:
     for row in records:
         record = {
             "id": row.get("id", ""),
+            "issue_url": row.get("html_url", ""),
             "names": [
                 {
                     "types": ["ror_display"],
@@ -81,6 +82,7 @@ def find_matches(
         if not input_external_ids:
             continue
         input_ror_display_name = get_ror_display_name(input_record)
+        issue_url = input_record.get("issue_url", input_record.get("id", ""))
         for data_dump_record in normalized_data_dump:
             data_dump_external_ids = extract_external_ids(data_dump_record)
             common_ids = input_external_ids.intersection(data_dump_external_ids)
@@ -89,6 +91,7 @@ def find_matches(
                 for external_id in common_ids:
                     matches.append(
                         {
+                            "issue_url": issue_url,
                             "id": input_record.get("id", ""),
                             "ror_display_name": input_ror_display_name,
                             "data_dump_id": data_dump_record.get("id", ""),
@@ -104,6 +107,7 @@ class DuplicateExternalIdsValidator(BaseValidator):
     supported_formats = {"csv", "json"}
     output_filename = "duplicate_external_ids.csv"
     output_fields = [
+        "issue_url",
         "id",
         "ror_display_name",
         "data_dump_id",

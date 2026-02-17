@@ -81,6 +81,7 @@ class TestDuplicateUrlsValidatorMetadata:
     def test_output_fields(self):
         v = DuplicateUrlsValidator()
         expected = [
+            "issue_url",
             "ror_display_name",
             "ror_id",
             "data_dump_id",

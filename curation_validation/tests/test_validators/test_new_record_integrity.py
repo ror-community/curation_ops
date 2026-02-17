@@ -83,7 +83,7 @@ class TestNewRecordIntegrityValidatorMetadata:
 
     def test_output_fields(self):
         v = NewRecordIntegrityValidator()
-        assert v.output_fields == ["id", "type", "field", "value"]
+        assert v.output_fields == ["issue_url", "id", "type", "field", "value"]
 
     def test_does_not_require_data_source(self):
         v = NewRecordIntegrityValidator()

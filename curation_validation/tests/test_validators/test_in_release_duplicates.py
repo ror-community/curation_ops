@@ -104,6 +104,8 @@ class TestInReleaseDuplicatesValidatorMetadata:
     def test_output_fields(self):
         v = InReleaseDuplicatesValidator()
         expected = [
+            "record1_issue_url",
+            "record2_issue_url",
             "record1_display_name",
             "record1_url",
             "record2_display_name",

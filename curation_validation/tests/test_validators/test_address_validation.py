@@ -95,7 +95,7 @@ class TestAddressValidationMetadata:
     def test_output_fields(self):
         v = AddressValidationValidator()
         expected = [
-            "ror_display_name", "ror_id", "geonames_id",
+            "issue_url", "ror_display_name", "ror_id", "geonames_id",
             "csv_city", "csv_country",
             "geonames_city", "geonames_country", "issue",
         ]

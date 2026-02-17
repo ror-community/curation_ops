@@ -27,9 +27,10 @@ ROR_DATA_FIELDS = [
 ]
 
 
-def _check_value(value, field, simplified_json, ror_id, findings):
+def _check_value(value, field, simplified_json, ror_id, issue_url, findings):
     if value not in simplified_json[field] and value in simplified_json['all']:
         findings.append({
+            'issue_url': issue_url,
             'id': ror_id,
             'type': 'transposition',
             'field': field,
@@ -37,6 +38,7 @@ def _check_value(value, field, simplified_json, ror_id, findings):
         })
     if value not in simplified_json['all']:
         findings.append({
+            'issue_url': issue_url,
             'id': ror_id,
             'type': 'missing',
             'field': field,
@@ -47,6 +49,7 @@ def _check_value(value, field, simplified_json, ror_id, findings):
 def check_record_integrity(row, simplified_json):
     findings = []
     ror_id = row['id']
+    issue_url = row.get('html_url', '')
 
     for field in ROR_DATA_FIELDS:
         if not row.get(field):
@@ -69,12 +72,12 @@ def check_record_integrity(row, simplified_json):
                 for value in values:
                     if field == 'locations.geonames_id':
                         value = int(value)
-                    _check_value(value, field, simplified_json, ror_id, findings)
+                    _check_value(value, field, simplified_json, ror_id, issue_url, findings)
             else:
                 field_value = field_value.split('*')[0].strip()
-                _check_value(field_value, field, simplified_json, ror_id, findings)
+                _check_value(field_value, field, simplified_json, ror_id, issue_url, findings)
         else:
-            _check_value(field_value, field, simplified_json, ror_id, findings)
+            _check_value(field_value, field, simplified_json, ror_id, issue_url, findings)
 
     return findings
 
@@ -83,7 +86,7 @@ class NewRecordIntegrityValidator(BaseValidator):
     name = "new-record-integrity"
     supported_formats = {"csv_json"}
     output_filename = "new_record_integrity.csv"
-    output_fields = ["id", "type", "field", "value"]
+    output_fields = ["issue_url", "id", "type", "field", "value"]
     requires_data_source = False
     requires_geonames = False
 

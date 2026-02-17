@@ -8,7 +8,7 @@ class UnprintableCharsValidator(BaseValidator):
     name = "unprintable-chars"
     supported_formats = {"csv", "json"}
     output_filename = "unprintable_chars.csv"
-    output_fields = ["record_id", "field", "value", "unprintable_chars"]
+    output_fields = ["issue_url", "record_id", "field", "value", "unprintable_chars"]
 
     def run(self, ctx: ValidatorContext) -> list[dict]:
         if ctx.json_dir is not None:
@@ -22,6 +22,7 @@ class UnprintableCharsValidator(BaseValidator):
         records = read_json_dir(ctx.json_dir)
         for record in records:
             record_id = record.get("id", "")
+            issue_url = record_id
             flattened = flatten_json(record)
             for field, value in flattened.items():
                 if not isinstance(value, str) or not value:
@@ -31,6 +32,7 @@ class UnprintableCharsValidator(BaseValidator):
                     unique_chars = sorted(set(bad_chars))
                     chars_repr = ", ".join(repr(ch) for ch in unique_chars)
                     results.append({
+                        "issue_url": issue_url,
                         "record_id": record_id,
                         "field": field,
                         "value": value,
@@ -43,6 +45,7 @@ class UnprintableCharsValidator(BaseValidator):
         rows = read_csv(ctx.csv_file)
         for row in rows:
             record_id = row.get("id", "")
+            issue_url = row.get("html_url", "")
             extracted = extract_fields(row, "csv")
             for field, values in extracted.items():
                 for value in values:
@@ -53,6 +56,7 @@ class UnprintableCharsValidator(BaseValidator):
                         unique_chars = sorted(set(bad_chars))
                         chars_repr = ", ".join(repr(ch) for ch in unique_chars)
                         results.append({
+                            "issue_url": issue_url,
                             "record_id": record_id,
                             "field": field,
                             "value": value,

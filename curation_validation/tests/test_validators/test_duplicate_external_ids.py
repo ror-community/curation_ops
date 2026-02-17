@@ -84,6 +84,7 @@ class TestDuplicateExternalIdsValidatorMetadata:
     def test_output_fields(self):
         v = DuplicateExternalIdsValidator()
         expected = [
+            "issue_url",
             "id",
             "ror_display_name",
             "data_dump_id",

@@ -122,7 +122,7 @@ class TestValidatorProperties:
 
     def test_output_fields(self, validator):
         assert validator.output_fields == [
-            "record_id", "value", "field1", "field2"
+            "issue_url", "record_id", "value", "field1", "field2"
         ]
 
 
@@ -451,6 +451,28 @@ class TestCsvIgnoredDuplicates:
         ctx = _make_csv_ctx(tmp_path, [row])
         results = validator.run(ctx)
         assert len(results) == 0
+
+    def test_ror_display_label_same_value_ignored(self, validator, tmp_path):
+        """ror_display must also have label type, so same value is expected."""
+        row = _base_csv_row(**{
+            "names.types.ror_display": "University Name",
+            "names.types.label": "University Name",
+        })
+        ctx = _make_csv_ctx(tmp_path, [row])
+        results = validator.run(ctx)
+        dup_results = [r for r in results if r["value"] == "University Name"]
+        assert len(dup_results) == 0
+
+    def test_ror_display_alias_same_value_detected(self, validator, tmp_path):
+        """ror_display + alias with same value should still be flagged."""
+        row = _base_csv_row(**{
+            "names.types.ror_display": "Duplicate Org",
+            "names.types.alias": "Duplicate Org",
+        })
+        ctx = _make_csv_ctx(tmp_path, [row])
+        results = validator.run(ctx)
+        dup_results = [r for r in results if r["value"] == "Duplicate Org"]
+        assert len(dup_results) >= 1
 
 
 class TestEdgeCases:
