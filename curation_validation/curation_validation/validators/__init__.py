@@ -1,6 +1,7 @@
 from curation_validation.validators.validate_fields import ValidateFieldsValidator
 from curation_validation.validators.duplicate_external_ids import DuplicateExternalIdsValidator
 from curation_validation.validators.duplicate_urls import DuplicateUrlsValidator
+from curation_validation.validators.duplicate_domains import DuplicateDomainsValidator
 from curation_validation.validators.address_validation import AddressValidationValidator
 from curation_validation.validators.in_release_duplicates import InReleaseDuplicatesValidator
 from curation_validation.validators.production_duplicates import ProductionDuplicatesValidator
@@ -19,6 +20,7 @@ def register_all_validators():
     register_validator(ValidateFieldsValidator())
     register_validator(DuplicateExternalIdsValidator())
     register_validator(DuplicateUrlsValidator())
+    register_validator(DuplicateDomainsValidator())
     register_validator(AddressValidationValidator())
     register_validator(InReleaseDuplicatesValidator())
     register_validator(ProductionDuplicatesValidator())
@@ -34,6 +36,7 @@ __all__ = [
     "ValidateFieldsValidator",
     "DuplicateExternalIdsValidator",
     "DuplicateUrlsValidator",
+    "DuplicateDomainsValidator",
     "AddressValidationValidator",
     "InReleaseDuplicatesValidator",
     "ProductionDuplicatesValidator",
