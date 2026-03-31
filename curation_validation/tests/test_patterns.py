@@ -7,6 +7,7 @@ from curation_validation.core.patterns import (
     WIKIDATA_PATTERN,
     FUNDREF_PATTERN,
     GEONAMES_PATTERN,
+    DOMAIN_PATTERN,
     VALID_STATUSES,
     VALID_TYPES,
 )
@@ -54,6 +55,32 @@ class TestPatterns:
 
     def test_geonames_matches(self):
         assert GEONAMES_PATTERN.match("5367440")
+
+
+class TestDomainPattern:
+    def test_domain_matches_simple(self):
+        assert DOMAIN_PATTERN.match("example.com")
+
+    def test_domain_matches_subdomain(self):
+        assert DOMAIN_PATTERN.match("sub.example.co.uk")
+
+    def test_domain_matches_hyphen(self):
+        assert DOMAIN_PATTERN.match("my-site.org")
+
+    def test_domain_rejects_uppercase(self):
+        assert not DOMAIN_PATTERN.match("EXAMPLE.COM")
+
+    def test_domain_rejects_protocol(self):
+        assert not DOMAIN_PATTERN.match("http://example.com")
+
+    def test_domain_rejects_bare_word(self):
+        assert not DOMAIN_PATTERN.match("example")
+
+    def test_domain_rejects_dot_only(self):
+        assert not DOMAIN_PATTERN.match(".com")
+
+    def test_domain_rejects_spaces(self):
+        assert not DOMAIN_PATTERN.match("not a domain")
 
 
 class TestValidSets:

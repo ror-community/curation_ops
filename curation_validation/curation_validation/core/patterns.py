@@ -9,6 +9,8 @@ WIKIDATA_PATTERN = re.compile(r'^(?:Q[1-9]\d*(?:\*preferred)?|delete)$')
 FUNDREF_PATTERN = re.compile(r'^(?:[1-9]\d*(?:\*preferred)?|delete)$')
 GEONAMES_PATTERN = re.compile(r'^(?:[1-9]\d*(?:\*preferred)?|delete)$')
 
+DOMAIN_PATTERN = re.compile(r'^((?=[a-z0-9-]{1,63}\.)[a-z0-9]+(-[a-z0-9]+)*\.)+[a-z]{2,63}$')
+
 VALID_STATUSES = {"active", "inactive", "withdrawn"}
 VALID_TYPES = {
     "education", "healthcare", "company", "funder", "archive",

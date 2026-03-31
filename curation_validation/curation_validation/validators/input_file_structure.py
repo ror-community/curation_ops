@@ -4,6 +4,7 @@ import re
 from pathlib import Path
 
 import chardet
+from iso639 import Language, LanguageNotFoundError
 
 from curation_validation.validators.base import BaseValidator, ValidatorContext
 
@@ -58,7 +59,7 @@ IMPLICIT_REPLACE_FIELDS = [
 UPDATE_DELIMITER = "=="
 LANG_DELIMITER = "*"
 
-ROR_ID_PATTERN = re.compile(r'^https://ror\.org/[a-z0-9]{9}$')
+ROR_ID_PATTERN = re.compile(r'^https://ror\.org/0[a-z0-9]{6}[0-9]{2}$')
 
 
 def _truncate_value(value: str, max_length: int = 100) -> str:
@@ -81,7 +82,7 @@ def _validate_ror_id(ror_id: str) -> str | None:
         elif not ror_id.startswith('https://ror.org/'):
             return f"ROR ID '{_truncate_value(ror_id)}' must start with 'https://ror.org/'"
         else:
-            return f"ROR ID '{_truncate_value(ror_id)}' must be 'https://ror.org/' followed by exactly 9 lowercase alphanumeric characters"
+            return f"ROR ID '{_truncate_value(ror_id)}' must be 'https://ror.org/' followed by '0', 6 lowercase alphanumeric characters, and 2 digits"
     return None
 
 
@@ -103,6 +104,11 @@ def _validate_name_format(name_value: str) -> str | None:
         lang_code = name_value[asterisk_pos + 1:]
         if lang_code and (len(lang_code) != 2 or not lang_code.isalpha()):
             return f"Name '{_truncate_value(name_value)}' has invalid language code after asterisk. Must be exactly two letters (e.g., 'Microsoft*en')"
+        if lang_code and len(lang_code) == 2 and lang_code.isalpha():
+            try:
+                Language.from_part1(lang_code.lower())
+            except LanguageNotFoundError:
+                return f"Name '{_truncate_value(name_value)}' has unrecognized ISO 639 language code '{lang_code}'"
 
     return None
 
@@ -402,6 +408,16 @@ class InputFileStructureValidator(BaseValidator):
                         "message": f"Update delimiter '{UPDATE_DELIMITER}' found in field '{field}' but could not parse a valid action. Check syntax.",
                     })
                     continue
+
+                if len(update_actions_found) > 2:
+                    results.append({
+                        "issue_url": html_url,
+                        "row_number": row_num,
+                        "error_type": "update_action_conflict",
+                        "field": field,
+                        "value": _truncate_value(value),
+                        "message": f"{len(update_actions_found)} update actions found in field '{field}' but only 2 are allowed.",
+                    })
 
                 if UPDATE_ACTIONS['REPLACE'] in update_actions_found and \
                    (UPDATE_ACTIONS['ADD'] in update_actions_found or UPDATE_ACTIONS['DELETE'] in update_actions_found):

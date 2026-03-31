@@ -18,6 +18,9 @@ from curation_validation.validators.validate_fields import (
     validate_wikidata,
     validate_fundref,
     validate_geonames,
+    validate_domain,
+    validate_language_code,
+    validate_external_id_consistency,
     validate_city,
     validate_country,
     validate_field_value,
@@ -240,6 +243,52 @@ class TestValidateNames:
         assert len(errors) == 1
 
 
+class TestValidateLanguageCode:
+    def test_valid_code_en(self):
+        assert validate_language_code("en") is None
+
+    def test_valid_code_fr(self):
+        assert validate_language_code("fr") is None
+
+    def test_valid_code_zh(self):
+        assert validate_language_code("zh") is None
+
+    def test_invalid_code_zz(self):
+        error = validate_language_code("zz")
+        assert error is not None
+        assert "not a valid ISO 639" in error
+
+    def test_invalid_code_xx(self):
+        error = validate_language_code("xx")
+        assert error is not None
+
+    def test_empty_returns_none(self):
+        assert validate_language_code("") is None
+
+
+class TestValidateNamesIso:
+    def test_valid_iso_code(self):
+        assert validate_names("University of Test*en") == []
+
+    def test_valid_iso_code_fr(self):
+        assert validate_names("Université de Test*fr") == []
+
+    def test_invalid_iso_code(self):
+        errors = validate_names("University of Test*zz")
+        assert len(errors) == 1
+        assert "not a valid ISO 639" in errors[0]
+
+
+class TestValidateAcronymsIso:
+    def test_valid_acronym_with_valid_iso(self):
+        assert validate_acronyms("MIT*en") == []
+
+    def test_acronym_with_invalid_iso(self):
+        errors = validate_acronyms("MIT*zz")
+        assert len(errors) == 1
+        assert "not a valid ISO 639" in errors[0]
+
+
 class TestValidateLinks:
     def test_valid_http_url(self):
         assert validate_links("http://example.com") == []
@@ -385,6 +434,84 @@ class TestValidateCountry:
         errors = validate_country("")
         assert len(errors) == 1
         assert "no country" in errors[0]
+
+
+class TestExternalIdConsistency:
+    def test_preferred_in_all_valid(self):
+        row = {"external_ids.type.wikidata.all": "Q123;Q456", "external_ids.type.wikidata.preferred": "Q123"}
+        assert validate_external_id_consistency(row) == []
+
+    def test_preferred_not_in_all(self):
+        row = {"external_ids.type.wikidata.all": "Q123;Q456", "external_ids.type.wikidata.preferred": "Q999"}
+        errors = validate_external_id_consistency(row)
+        assert len(errors) == 1
+        assert "not in" in errors[0]
+
+    def test_preferred_with_star_suffix(self):
+        row = {"external_ids.type.wikidata.all": "Q123;Q456", "external_ids.type.wikidata.preferred": "Q123*preferred"}
+        assert validate_external_id_consistency(row) == []
+
+    def test_no_preferred_no_error(self):
+        row = {"external_ids.type.wikidata.all": "Q123", "external_ids.type.wikidata.preferred": ""}
+        assert validate_external_id_consistency(row) == []
+
+    def test_no_all_no_error(self):
+        row = {"external_ids.type.wikidata.all": "", "external_ids.type.wikidata.preferred": "Q123"}
+        assert validate_external_id_consistency(row) == []
+
+    def test_fundref_preferred_not_in_all(self):
+        row = {"external_ids.type.fundref.all": "100000001;100000002", "external_ids.type.fundref.preferred": "999999999"}
+        errors = validate_external_id_consistency(row)
+        assert len(errors) == 1
+        assert "fundref" in errors[0]
+
+    def test_isni_preferred_in_all(self):
+        row = {"external_ids.type.isni.all": "0000 0001 2345 6789", "external_ids.type.isni.preferred": "0000 0001 2345 6789"}
+        assert validate_external_id_consistency(row) == []
+
+    def test_multiple_types_independent(self):
+        row = {
+            "external_ids.type.wikidata.all": "Q123", "external_ids.type.wikidata.preferred": "Q999",
+            "external_ids.type.fundref.all": "100000001", "external_ids.type.fundref.preferred": "100000001",
+        }
+        errors = validate_external_id_consistency(row)
+        assert len(errors) == 1
+        assert "wikidata" in errors[0]
+
+
+class TestValidateDomain:
+    def test_valid_domain(self):
+        assert validate_domain("example.com") == []
+
+    def test_valid_subdomain(self):
+        assert validate_domain("sub.example.co.uk") == []
+
+    def test_valid_hyphenated_domain(self):
+        assert validate_domain("my-site.org") == []
+
+    def test_delete_value(self):
+        assert validate_domain("delete") == []
+
+    def test_invalid_uppercase(self):
+        errors = validate_domain("EXAMPLE.COM")
+        assert len(errors) == 1
+        assert "Invalid domain" in errors[0]
+
+    def test_invalid_with_protocol(self):
+        errors = validate_domain("http://example.com")
+        assert len(errors) == 1
+
+    def test_invalid_bare_word(self):
+        errors = validate_domain("example")
+        assert len(errors) == 1
+
+    def test_invalid_spaces(self):
+        errors = validate_domain("not a domain")
+        assert len(errors) == 1
+
+    def test_empty_domain(self):
+        errors = validate_domain("")
+        assert len(errors) == 1
 
 
 class TestValidateFieldValue:
@@ -886,6 +1013,29 @@ class TestJsonValidation:
         results = validator.run(ctx)
         ext_errors = [r for r in results if "external_ids" in r["field"]]
         assert ext_errors == []
+
+
+class TestJsonRequiredFields:
+    def test_empty_types_error(self, validator, tmp_path):
+        record = _minimal_json_record(types=[])
+        ctx = _make_json_ctx(tmp_path, [record])
+        results = validator.run(ctx)
+        type_errors = [r for r in results if r["field"] == "types" and "Required field" in r["message"]]
+        assert len(type_errors) == 1
+
+    def test_empty_locations_error(self, validator, tmp_path):
+        record = _minimal_json_record(locations=[])
+        ctx = _make_json_ctx(tmp_path, [record])
+        results = validator.run(ctx)
+        loc_errors = [r for r in results if r["field"] == "locations" and "Required field" in r["message"]]
+        assert len(loc_errors) == 1
+
+    def test_populated_types_no_error(self, validator, tmp_path):
+        record = _minimal_json_record()
+        ctx = _make_json_ctx(tmp_path, [record])
+        results = validator.run(ctx)
+        type_errors = [r for r in results if r["field"] == "types" and "Required field" in r["message"]]
+        assert type_errors == []
 
 
 class TestJsonNameValidation:

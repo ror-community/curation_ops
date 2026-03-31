@@ -1,11 +1,23 @@
 from curation_validation.validators.base import BaseValidator, ValidatorContext
 from curation_validation.core.io import read_csv, read_json_dir, detect_file_type
 from curation_validation.core.extract import extract_fields
+from iso639 import Language, LanguageNotFoundError
+
 from curation_validation.core.patterns import (
     ACRONYMS_PATTERN, NAMES_PATTERN, URL_PATTERN, WIKIPEDIA_URL_PATTERN,
     ISNI_PATTERN, WIKIDATA_PATTERN, FUNDREF_PATTERN, GEONAMES_PATTERN,
-    VALID_STATUSES, VALID_TYPES,
+    DOMAIN_PATTERN, VALID_STATUSES, VALID_TYPES,
 )
+
+
+def validate_language_code(lang_str: str) -> str | None:
+    if not lang_str:
+        return None
+    try:
+        Language.from_part1(lang_str.lower())
+        return None
+    except LanguageNotFoundError:
+        return f"'{lang_str}' is not a valid ISO 639 language code"
 
 
 def validate_status(field_value: str) -> list[str]:
@@ -26,6 +38,11 @@ def validate_acronyms(field_value: str) -> list[str]:
     if field_value == "delete":
         return []
     if acronym_part and ACRONYMS_PATTERN.match(acronym_part):
+        if '*' in field_value:
+            lang_part = field_value.split('*', 1)[1]
+            lang_error = validate_language_code(lang_part)
+            if lang_error:
+                return [f"Warning in '{field_value}': {lang_error}"]
         return []
     return [f"Warning in '{field_value}': Potential invalid value(s) - {field_value}. Expected format: uppercase letters, numbers, and spaces"]
 
@@ -34,6 +51,10 @@ def validate_names(field_value: str) -> list[str]:
     if field_value == "delete":
         return []
     if field_value and NAMES_PATTERN.match(field_value):
+        lang_part = field_value.rsplit('*', 1)[1]
+        lang_error = validate_language_code(lang_part)
+        if lang_error:
+            return [f"Warning in '{field_value}': {lang_error}"]
         return []
     return [f"Warning in '{field_value}': Expected format: Include language tagging - 'name*language'"]
 
@@ -87,6 +108,14 @@ def validate_geonames(field_value: str) -> list[str]:
     return [f"Error in 'Geonames ID': Invalid or Null Geonames ID(s) - {field_value}"]
 
 
+def validate_domain(field_value: str) -> list[str]:
+    if field_value == "delete":
+        return []
+    if field_value and DOMAIN_PATTERN.match(field_value):
+        return []
+    return [f"Error in 'domains': Invalid domain - {field_value}. Domains must be lowercase, e.g. 'example.com'"]
+
+
 def validate_city(field_value: str) -> list[str]:
     if field_value:
         return []
@@ -100,6 +129,7 @@ def validate_country(field_value: str) -> list[str]:
 
 
 FIELD_VALIDATORS = {
+    'domains': [validate_domain],
     'types': [validate_types],
     'status': [validate_status],
     'names.types.acronym': [validate_acronyms, validate_names],
@@ -189,6 +219,28 @@ def validate_updates(row: dict) -> tuple[list[str], list[tuple[str, str]]]:
     return errors, field_value_pairs
 
 
+EXTERNAL_ID_TYPES = ["fundref", "isni", "wikidata"]
+
+
+def validate_external_id_consistency(row: dict) -> list[str]:
+    errors = []
+    for id_type in EXTERNAL_ID_TYPES:
+        all_field = f"external_ids.type.{id_type}.all"
+        pref_field = f"external_ids.type.{id_type}.preferred"
+        all_value = row.get(all_field, "").strip()
+        pref_value = row.get(pref_field, "").strip()
+        if not all_value or not pref_value:
+            continue
+        pref_clean = pref_value.replace("*preferred", "").strip()
+        all_values = [v.replace("*preferred", "").strip() for v in all_value.split(';') if v.strip()]
+        if pref_clean and pref_clean not in all_values:
+            errors.append(
+                f"Error in '{pref_field}': Preferred value '{pref_clean}' "
+                f"is not in '{all_field}' values: {', '.join(all_values)}"
+            )
+    return errors
+
+
 class ValidateFieldsValidator(BaseValidator):
     name = "validate_fields"
     supported_formats = {"csv", "json"}
@@ -245,6 +297,16 @@ class ValidateFieldsValidator(BaseValidator):
                             "field": field_name,
                             "message": msg,
                         })
+
+            for msg in validate_external_id_consistency(row):
+                results.append({
+                    "issue_url": html_url,
+                    "ror_id": ror_id,
+                    "error_warning": msg,
+                    "record_id": ror_id,
+                    "field": "",
+                    "message": msg,
+                })
         return results
 
     def _validate_csv_updates(self, rows: list[dict]) -> list[dict]:
@@ -302,5 +364,29 @@ class ValidateFieldsValidator(BaseValidator):
                             "field": field_name,
                             "message": msg,
                         })
+
+            types = record.get("types", [])
+            if not types:
+                msg = "Error in 'types': Required field has no values"
+                results.append({
+                    "issue_url": "",
+                    "ror_id": ror_id,
+                    "error_warning": msg,
+                    "record_id": ror_id,
+                    "field": "types",
+                    "message": msg,
+                })
+
+            locations = record.get("locations", [])
+            if not locations:
+                msg = "Error in 'locations': Required field has no values"
+                results.append({
+                    "issue_url": "",
+                    "ror_id": ror_id,
+                    "error_warning": msg,
+                    "record_id": ror_id,
+                    "field": "locations",
+                    "message": msg,
+                })
 
         return results
