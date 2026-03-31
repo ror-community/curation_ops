@@ -9,6 +9,7 @@ from curation_validation.validators.base import ValidatorContext
 from curation_validation.validators.address_validation import (
     AddressValidationValidator,
     query_geonames_api,
+    GEONAMES_INVALID_ID,
 )
 
 
@@ -160,6 +161,17 @@ class TestQueryGeonamesApi:
         assert country == ""
 
     @patch("curation_validation.validators.address_validation.requests.get")
+    def test_returns_invalid_id_sentinel_on_geonames_error(self, mock_get):
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = {"status": {"message": "no result found", "value": 15}}
+        mock_resp.raise_for_status = MagicMock()
+        mock_get.return_value = mock_resp
+
+        city, country = query_geonames_api("9999999999", "testuser")
+        assert city == GEONAMES_INVALID_ID
+        assert country == GEONAMES_INVALID_ID
+
+    @patch("curation_validation.validators.address_validation.requests.get")
     def test_passes_correct_params(self, mock_get):
         mock_resp = MagicMock()
         mock_resp.json.return_value = {"name": "X", "countryName": "Y"}
@@ -228,6 +240,16 @@ class TestAddressValidationJSON:
         results = v.run(ctx)
         assert len(results) == 1
         assert "api error" in results[0]["issue"].lower()
+
+    @patch("curation_validation.validators.address_validation.query_geonames_api")
+    def test_invalid_geonames_id(self, mock_api, tmp_path):
+        mock_api.return_value = (GEONAMES_INVALID_ID, GEONAMES_INVALID_ID)
+        record = _json_record(geonames_id=9999999999, city="Springfield", country="United States")
+        ctx = _make_json_ctx(tmp_path, [record])
+        v = AddressValidationValidator()
+        results = v.run(ctx)
+        assert len(results) == 1
+        assert "Invalid Geonames ID" in results[0]["issue"]
 
     @patch("curation_validation.validators.address_validation.query_geonames_api")
     def test_no_locations(self, mock_api, tmp_path):
@@ -373,6 +395,16 @@ class TestAddressValidationCSV:
         results = v.run(ctx)
         assert len(results) == 1
         assert "api error" in results[0]["issue"].lower()
+
+    @patch("curation_validation.validators.address_validation.query_geonames_api")
+    def test_invalid_geonames_id_csv(self, mock_api, tmp_path):
+        mock_api.return_value = (GEONAMES_INVALID_ID, GEONAMES_INVALID_ID)
+        row = _csv_row(geonames_id="9999999999")
+        ctx = _make_csv_ctx(tmp_path, [row])
+        v = AddressValidationValidator()
+        results = v.run(ctx)
+        assert len(results) == 1
+        assert "Invalid Geonames ID" in results[0]["issue"]
 
     @patch("curation_validation.validators.address_validation.query_geonames_api")
     def test_empty_geonames_id_csv(self, mock_api, tmp_path):

@@ -29,6 +29,7 @@ dependencies = [
     "requests>=2.28.0",
     "thefuzz>=0.20.0",
     "python-Levenshtein>=0.21",
+    "python-iso639>=0.6.0",
     "numpy>=1.24.0",
 ]
 

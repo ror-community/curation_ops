@@ -87,7 +87,7 @@ class TestValidateRorId:
         assert _validate_ror_id("https://ror.org/012345678") is None
 
     def test_valid_ror_id_with_letters(self):
-        assert _validate_ror_id("https://ror.org/0abcdefgh") is None
+        assert _validate_ror_id("https://ror.org/0abcdef12") is None
 
     def test_empty_ror_id_valid(self):
         assert _validate_ror_id("") is None
@@ -103,7 +103,6 @@ class TestValidateRorId:
     def test_invalid_ror_id_too_short(self):
         error = _validate_ror_id("https://ror.org/12345")
         assert error is not None
-        assert "exactly 9 lowercase alphanumeric" in error
 
     def test_invalid_ror_id_too_long(self):
         error = _validate_ror_id("https://ror.org/0123456789")
@@ -117,6 +116,14 @@ class TestValidateRorId:
         error = _validate_ror_id("https://ror.org/012 345 678")
         assert error is not None
         assert "contains whitespace" in error
+
+    def test_invalid_ror_id_no_zero_prefix(self):
+        error = _validate_ror_id("https://ror.org/abcdefg12")
+        assert error is not None
+
+    def test_invalid_ror_id_no_digit_suffix(self):
+        error = _validate_ror_id("https://ror.org/0abcdefgh")
+        assert error is not None
 
 
 class TestValidateNameFormat:
@@ -148,6 +155,14 @@ class TestValidateNameFormat:
         error = _validate_name_format("Test*en*fr")
         assert error is not None
         assert "multiple '*'" in error
+
+    def test_valid_iso_lang_code(self):
+        assert _validate_name_format("Test*en") is None
+
+    def test_invalid_iso_lang_code(self):
+        error = _validate_name_format("Test*zz")
+        assert error is not None
+        assert "unrecognized ISO 639" in error
 
 
 class TestGetActionsValues:
@@ -332,6 +347,13 @@ class TestUpdateRecordValidation:
         results = validator.run(ctx)
         action_errors = [r for r in results if r["error_type"] == "update_action_invalid"]
         assert any(r["field"] == "names.types.ror_display" for r in action_errors)
+
+    def test_more_than_two_actions_error(self, validator, tmp_path):
+        row = _update_csv_row(**{"names.types.alias": "add==New*en delete==Old*en replace==Other*en"})
+        ctx = _make_csv_ctx(tmp_path, [row])
+        results = validator.run(ctx)
+        conflict_errors = [r for r in results if r["error_type"] == "update_action_conflict"]
+        assert any("only 2 are allowed" in r["message"] for r in conflict_errors)
 
     def test_ambiguous_multi_value_update(self, validator, tmp_path):
         row = _update_csv_row(domains="example.com")

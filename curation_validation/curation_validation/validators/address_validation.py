@@ -6,6 +6,9 @@ from curation_validation.validators.base import BaseValidator, ValidatorContext
 from curation_validation.core.io import read_csv, read_json_dir
 
 
+GEONAMES_INVALID_ID = "__INVALID_GEONAMES_ID__"
+
+
 def query_geonames_api(geonames_id: str, username: str) -> tuple[str, str]:
     api_url = "http://api.geonames.org/getJSON"
     params = {"geonameId": geonames_id, "username": username}
@@ -13,6 +16,9 @@ def query_geonames_api(geonames_id: str, username: str) -> tuple[str, str]:
         response = requests.get(api_url, params=params, timeout=10)
         response.raise_for_status()
         data = response.json()
+        if "status" in data:
+            logging.warning(f"GeoNames API returned error for ID {geonames_id}: {data['status'].get('message', '')}")
+            return GEONAMES_INVALID_ID, GEONAMES_INVALID_ID
         name = data.get("name", "")
         country = data.get("countryName", "")
         return name, country
@@ -67,6 +73,20 @@ class AddressValidationValidator(BaseValidator):
 
             api_city, api_country = query_geonames_api(geonames_id_str, ctx.geonames_user)
 
+            if api_city == GEONAMES_INVALID_ID:
+                discrepancies.append({
+                    "issue_url": issue_url,
+                    "ror_display_name": ror_display_name,
+                    "ror_id": ror_id,
+                    "geonames_id": geonames_id_str,
+                    "csv_city": input_city,
+                    "csv_country": input_country,
+                    "geonames_city": "",
+                    "geonames_country": "",
+                    "issue": f"Invalid Geonames ID - {geonames_id_str} does not exist in GeoNames",
+                })
+                continue
+
             if not api_city and not api_country:
                 discrepancies.append({
                     "issue_url": issue_url,
@@ -116,6 +136,20 @@ class AddressValidationValidator(BaseValidator):
             issue_url = row.get("html_url", "")
 
             api_city, api_country = query_geonames_api(geonames_id, ctx.geonames_user)
+
+            if api_city == GEONAMES_INVALID_ID:
+                discrepancies.append({
+                    "issue_url": issue_url,
+                    "ror_display_name": ror_display_name,
+                    "ror_id": ror_id,
+                    "geonames_id": geonames_id,
+                    "csv_city": input_city,
+                    "csv_country": input_country,
+                    "geonames_city": "",
+                    "geonames_country": "",
+                    "issue": f"Invalid Geonames ID - {geonames_id} does not exist in GeoNames",
+                })
+                continue
 
             if not api_city and not api_country:
                 discrepancies.append({
