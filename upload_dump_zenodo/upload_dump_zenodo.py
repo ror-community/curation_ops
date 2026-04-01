@@ -127,12 +127,16 @@ def update_metadata(version_url, release_data):
             r = requests.put(version_url, params={'access_token': ZENODO_TOKEN}, data=json.dumps(updated_metadata), headers=HEADERS)
             r.raise_for_status()
             if r.status_code == 200:
-                "Metadata updated successfully"
+                print("Metadata updated successfully")
         except requests.exceptions.HTTPError as e:
+            print(f"HTTP Error: {e}")
+            print(f"Response body: {e.response.text}")
             raise SystemExit(e)
         except requests.exceptions.RequestException as e:
             raise SystemExit(e)
     except requests.exceptions.HTTPError as e:
+        print(f"HTTP Error: {e}")
+        print(f"Response body: {e.response.text}")
         raise SystemExit(e)
     except requests.exceptions.RequestException as e:
         raise SystemExit(e)
