@@ -23,6 +23,7 @@ DRY_RUN = DRY_RUN_STR in ['true', '1', 'yes']
 MODEL = os.environ.get('MODEL', 'gemini').lower()
 
 BOT_COMMENT_SIGNATURE = "\n\n---\n*Issue body was automatically formatted by a ROR curation bot.*"
+ROR_ID_PATTERN = re.compile(r'https://ror\.org/0[a-z0-9]{6}[0-9]{2}')
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROMPT_FILE_PATH = os.path.join(SCRIPT_DIR, "format_prompt.txt")
 REQUIRED_TITLE_PHRASE = 'Add a new organization to ROR'
@@ -358,6 +359,28 @@ def call_openai_to_format_issue(issue_title, issue_body, is_fallback=False):
         return None
 
 
+def remove_hallucinated_ror_ids(original_body, formatted_body):
+    original_ids = set(ROR_ID_PATTERN.findall(original_body))
+    formatted_ids = set(ROR_ID_PATTERN.findall(formatted_body))
+    hallucinated_ids = formatted_ids - original_ids
+
+    if not hallucinated_ids:
+        return formatted_body
+
+    for h_id in hallucinated_ids:
+        print(f"WARNING: Removing hallucinated ROR ID: {h_id}")
+        entry_pattern = re.compile(re.escape(h_id) + r'\s*\([^)]*\)')
+        formatted_body = entry_pattern.sub('', formatted_body)
+        formatted_body = formatted_body.replace(h_id, '')
+
+    formatted_body = re.sub(r'[ \t]{2,}', ' ', formatted_body)
+    formatted_body = re.sub(r'\n{3,}', '\n\n', formatted_body)
+    formatted_body = '\n'.join(line.rstrip() for line in formatted_body.split('\n'))
+
+    print(f"Removed {len(hallucinated_ids)} hallucinated ROR ID(s) from formatted body.")
+    return formatted_body.strip()
+
+
 def process_single_issue(issue_object):
     print(f"\n--- Processing Issue #{issue_object.number}: {issue_object.title} ---")
     original_body = issue_object.body if issue_object.body else ""
@@ -385,6 +408,9 @@ def process_single_issue(issue_object):
             print(f"Processing new record request issue #{issue_object.number} with Gemini API...")
             formatted_body = call_gemini_to_format_issue(issue_object.title, original_body)
             processing_method = "Gemini API"
+
+        if formatted_body:
+            formatted_body = remove_hallucinated_ror_ids(original_body, formatted_body)
 
     if formatted_body:
         if formatted_body.strip() == original_body.strip():
