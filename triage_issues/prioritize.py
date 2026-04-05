@@ -19,6 +19,7 @@ PRIORITY_LABELS = {
 TYPE_LABELS = {
     "new": {"color": "0e8a16", "description": "New record request"},
     "update": {"color": "1d76db", "description": "Update to existing record"},
+    "merge records": {"color": "5319e7", "description": "Merge records request"},
 }
 
 RELATIONSHIP_MARKERS = ["Related organizations:", "Related organization:"]
@@ -170,9 +171,22 @@ def apply_priority_and_type_labels(issue, priority, issue_type):
         print(f"Failed to apply labels to issue #{issue.number}: {e}")
 
 
-def prioritize_issue(issue, issue_type, name, ror_id, issue_body, api_key):
+def prioritize_issue(issue, issue_type=None, name=None, ror_id=None, issue_body=None, api_key=None):
     if issue_has_priority_label(issue):
         print(f"Issue #{issue.number} already has a priority label, skipping")
+        return None
+
+    if issue_body is None:
+        issue_body = issue.body or ""
+
+    title = issue.title or ""
+
+    if "Merge two" in title:
+        print(f"Issue #{issue.number}: merge request is auto-P1")
+        apply_priority_and_type_labels(issue, "P1", "merge records")
+        return "P1"
+
+    if not issue_type:
         return None
 
     org_type = parse_organization_type(issue_body)

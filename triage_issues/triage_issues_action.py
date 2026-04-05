@@ -297,64 +297,64 @@ def process_single_issue(issue_object, repo_path_str, skip_commented=True, opena
         return
 
     processed_details = process_issue_details(issue_object)
-    if not processed_details:
+
+    if processed_details:
+        try:
+            if processed_details['type'] == 'new':
+                with time_limit(300):
+                    print(f'Triaging new record request - issue #{processed_details["issue_number"]}...')
+                    triage_input_data = {
+                        k: v for k, v in processed_details.items() if k != 'issue_object'}
+
+                    if 'body' not in triage_input_data and 'body' in processed_details:
+                        triage_input_data['body'] = processed_details['body']
+
+                    triaged_record = triage(triage_input_data)
+                    if triaged_record:
+                        triaged_comment = convert_dict_to_comment(triaged_record)
+                        if triaged_comment:
+                            add_comment_to_issue_object(
+                                issue_object, triaged_comment)
+                        else:
+                            print(f"No comment generated from triage data for new record on issue #{issue_object.number}")
+                    else:
+                        print(f"Triage returned no data for new record issue #{issue_object.number}")
+
+            elif processed_details['type'] == 'update':
+                with time_limit(300):
+                    print(f'Triaging update record request - issue #{processed_details["issue_number"]}...')
+                    if not OPENAI_API_KEY:
+                        print("Error: OPENAI_API_KEY is not set. Cannot encode update.")
+                        return
+
+                    update_encoding = encode_update(
+                        processed_details['ror_id'], processed_details['change'])
+                    if update_encoding:
+                        validated_update = validate_encoding(update_encoding)
+                        if validated_update:
+                            add_comment_to_issue_object(
+                                issue_object, validated_update)
+                        else:
+                            print(f"Invalid encoding generated for issue #{issue_object.number}. Original: {update_encoding}")
+                    else:
+                        print(f"No encoding generated for update on issue #{issue_object.number}")
+
+        except TimeoutError:
+            print(f'Timed out while processing issue #{processed_details["issue_number"]}')
+        except Exception as e:
+            print(f'An unexpected error occurred while processing issue #{processed_details["issue_number"]}: {e}')
+            import traceback
+            traceback.print_exc()
+    else:
         print(f"Could not process details for issue #{issue_object.number} into a structured format, skipping automated comment.")
-        return
 
-    try:
-        if processed_details['type'] == 'new':
-            with time_limit(300):
-                print(f'Triaging new record request - issue #{processed_details["issue_number"]}...')
-                triage_input_data = {
-                    k: v for k, v in processed_details.items() if k != 'issue_object'}
-
-                if 'body' not in triage_input_data and 'body' in processed_details:
-                    triage_input_data['body'] = processed_details['body']
-
-                triaged_record = triage(triage_input_data)
-                if triaged_record:
-                    triaged_comment = convert_dict_to_comment(triaged_record)
-                    if triaged_comment:
-                        add_comment_to_issue_object(
-                            issue_object, triaged_comment)
-                    else:
-                        print(f"No comment generated from triage data for new record on issue #{issue_object.number}")
-                else:
-                    print(f"Triage returned no data for new record issue #{issue_object.number}")
-
-        elif processed_details['type'] == 'update':
-            with time_limit(300):
-                print(f'Triaging update record request - issue #{processed_details["issue_number"]}...')
-                if not OPENAI_API_KEY:
-                    print("Error: OPENAI_API_KEY is not set. Cannot encode update.")
-                    return
-
-                update_encoding = encode_update(
-                    processed_details['ror_id'], processed_details['change'])
-                if update_encoding:
-                    validated_update = validate_encoding(update_encoding)
-                    if validated_update:
-                        add_comment_to_issue_object(
-                            issue_object, validated_update)
-                    else:
-                        print(f"Invalid encoding generated for issue #{issue_object.number}. Original: {update_encoding}")
-                else:
-                    print(f"No encoding generated for update on issue #{issue_object.number}")
-
-    except TimeoutError:
-        print(f'Timed out while processing issue #{processed_details["issue_number"]}')
-    except Exception as e:
-        print(f'An unexpected error occurred while processing issue #{processed_details["issue_number"]}: {e}')
-        import traceback
-        traceback.print_exc()
-
-    if openalex_api_key and processed_details:
+    if openalex_api_key:
         try:
             priority = prioritize_issue(
                 issue=issue_object,
-                issue_type=processed_details['type'],
-                name=processed_details.get('name'),
-                ror_id=processed_details.get('ror_id'),
+                issue_type=processed_details['type'] if processed_details else None,
+                name=processed_details.get('name') if processed_details else None,
+                ror_id=processed_details.get('ror_id') if processed_details else None,
                 issue_body=issue_object.body or "",
                 api_key=openalex_api_key,
             )
