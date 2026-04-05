@@ -6,9 +6,11 @@ from triage import triage
 from encode_updates import encode_update
 from validate_encoding import validate_encoding
 from contextlib import contextmanager
+from prioritize import prioritize_issue, ensure_labels_exist
 
 TOKEN = os.environ.get('GITHUB_TOKEN')
 OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY')
+OPENALEX_API_KEY = os.environ.get('OPENALEX_API_KEY')
 BOT_NAME = "ror-curator-bot"
 
 ALL_MAJOR_SECTION_HEADERS = [
@@ -289,7 +291,7 @@ def add_comment_to_issue_object(issue_object, comment_text):
         print(f"Failed to add comment to issue #{issue_object.number}: {e}")
 
 
-def process_single_issue(issue_object, repo_path_str, skip_commented=True):
+def process_single_issue(issue_object, repo_path_str, skip_commented=True, openalex_api_key=None):
     if skip_commented and issue_has_bot_comment(issue_object):
         print(f"Skipping issue #{issue_object.number} as it already has a bot comment from {BOT_NAME}")
         return
@@ -345,6 +347,23 @@ def process_single_issue(issue_object, repo_path_str, skip_commented=True):
         print(f'An unexpected error occurred while processing issue #{processed_details["issue_number"]}: {e}')
         import traceback
         traceback.print_exc()
+
+    if openalex_api_key and processed_details:
+        try:
+            priority = prioritize_issue(
+                issue=issue_object,
+                issue_type=processed_details['type'],
+                name=processed_details.get('name'),
+                ror_id=processed_details.get('ror_id'),
+                issue_body=issue_object.body or "",
+                api_key=openalex_api_key,
+            )
+            if priority:
+                print(f"Assigned priority {priority} to issue #{issue_object.number}")
+            else:
+                print(f"Prioritization skipped for issue #{issue_object.number}")
+        except Exception as e:
+            print(f"Warning: Prioritization failed for issue #{issue_object.number}: {e}")
 
 
 def get_issues_to_process(repo, issue_number=None, start_issue=None, end_issue=None):
@@ -404,12 +423,15 @@ def main():
         print("Error: Must specify either ISSUE_NUMBER or both START_ISSUE and END_ISSUE")
         return
 
-    global TOKEN, OPENAI_API_KEY
+    global TOKEN, OPENAI_API_KEY, OPENALEX_API_KEY
     TOKEN = github_token
     OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY')
-    
+    OPENALEX_API_KEY = os.environ.get('OPENALEX_API_KEY')
+
     if not OPENAI_API_KEY:
         print("Warning: OPENAI_API_KEY environment variable is not set. Update encoding will likely fail.")
+    if not OPENALEX_API_KEY:
+        print("Warning: OPENALEX_API_KEY environment variable is not set. Prioritization will be skipped.")
 
     print(f"Initializing GitHub client for repository: {repo_path_str}")
     print(f"Skip commented issues: {skip_commented}")
@@ -418,6 +440,14 @@ def main():
 
     try:
         repo = g.get_repo(repo_path_str)
+
+        if OPENALEX_API_KEY:
+            try:
+                ensure_labels_exist(repo)
+                print("Priority and type labels verified/created")
+            except Exception as e:
+                print(f"Warning: Could not ensure labels exist: {e}")
+
         issues = get_issues_to_process(
             repo, 
             issue_number=issue_number_str,
@@ -433,7 +463,8 @@ def main():
         
         for issue in issues:
             print(f"\n--- Processing issue #{issue.number}: {issue.title} ---")
-            process_single_issue(issue, repo_path_str, skip_commented)
+            process_single_issue(issue, repo_path_str, skip_commented,
+                                openalex_api_key=OPENALEX_API_KEY)
             
         print(f"\nCompleted processing {len(issues)} issue(s)")
         
