@@ -17,8 +17,8 @@ PRIORITY_LABELS = {
 }
 
 TYPE_LABELS = {
-    "new": {"color": "0e8a16", "description": "New record request"},
-    "update": {"color": "1d76db", "description": "Update to existing record"},
+    "new record": {"color": "0e8a16", "description": "New record request"},
+    "update record": {"color": "1d76db", "description": "Update to existing record"},
     "merge records": {"color": "5319e7", "description": "Merge records request"},
 }
 
@@ -127,13 +127,13 @@ def classify_priority(affiliation_count):
 
 def get_total_affiliation_count(client, issue_type, name, ror_id, relationship_ror_ids, api_key):
     total = 0
-    if issue_type == "new" and name:
+    if issue_type == "new record" and name:
         total += get_affiliation_count_by_name(client, name, api_key)
-    elif issue_type == "new":
+    elif issue_type == "new record":
         print("Warning: No organization name available for affiliation lookup")
-    elif issue_type == "update" and ror_id:
+    elif issue_type == "update record" and ror_id:
         total += get_affiliation_count_by_ror(client, ror_id, api_key)
-    elif issue_type == "update":
+    elif issue_type == "update record":
         print("Warning: No ROR ID available for affiliation lookup")
     for rel_ror_id in relationship_ror_ids:
         total += get_affiliation_count_by_ror(client, rel_ror_id, api_key)
@@ -203,7 +203,7 @@ def prioritize_issue(issue, issue_type=None, name=None, ror_id=None, issue_body=
         )
 
     priority = classify_priority(total_count)
-    if issue_type == "update" and priority == "P3":
+    if issue_type == "update record" and priority == "P3":
         priority = "P2"
 
     print(f"Issue #{issue.number}: affiliation count={total_count}, priority={priority}")
