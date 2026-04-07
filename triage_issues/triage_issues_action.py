@@ -145,7 +145,7 @@ def process_issue_details(issue):
             if organization_name:
                 processed_issue = {'issue_number': issue.number, 'body': issue_body,
                                    'name': organization_name, 'aliases': aliases, 'labels': all_labels, 'url': website,
-                                   'city': city, 'country': country, 'type': 'new', 'issue_object': issue}
+                                   'city': city, 'country': country, 'type': 'new record', 'issue_object': issue}
             else:
                 print(f"Issue #{issue.number} (Add new): 'Name of organization' not found in the relevant section.")
         else:
@@ -229,7 +229,7 @@ def process_issue_details(issue):
             processed_issue = {'issue_number': issue.number, 'ror_id': ror_id,
                                'name': organization_name,
                                'change': description_of_change,
-                               'type': 'update', 'issue_object': issue}
+                               'type': 'update record', 'issue_object': issue}
         else:
             print(f"Could not extract required ROR ID or full description of change for update issue #{issue.number}.")
             if not ror_id:
@@ -300,7 +300,7 @@ def process_single_issue(issue_object, repo_path_str, skip_commented=True, opena
 
     if processed_details:
         try:
-            if processed_details['type'] == 'new':
+            if processed_details['type'] == 'new record':
                 with time_limit(300):
                     print(f'Triaging new record request - issue #{processed_details["issue_number"]}...')
                     triage_input_data = {
@@ -320,7 +320,7 @@ def process_single_issue(issue_object, repo_path_str, skip_commented=True, opena
                     else:
                         print(f"Triage returned no data for new record issue #{issue_object.number}")
 
-            elif processed_details['type'] == 'update':
+            elif processed_details['type'] == 'update record':
                 with time_limit(300):
                     print(f'Triaging update record request - issue #{processed_details["issue_number"]}...')
                     if not OPENAI_API_KEY:
