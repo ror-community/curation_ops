@@ -1,6 +1,8 @@
 import logging
 
 import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 
 from curation_validation.validators.base import BaseValidator, ValidatorContext
 from curation_validation.core.io import read_csv, read_json_dir
@@ -8,12 +10,16 @@ from curation_validation.core.io import read_csv, read_json_dir
 
 GEONAMES_INVALID_ID = "__INVALID_GEONAMES_ID__"
 
+_session = requests.Session()
+_retry = Retry(total=3, backoff_factor=1, status_forcelist=[429, 500, 502, 503, 504])
+_session.mount("https://", HTTPAdapter(max_retries=_retry))
+
 
 def query_geonames_api(geonames_id: str, username: str) -> tuple[str, str]:
-    api_url = "http://api.geonames.org/getJSON"
+    api_url = "https://secure.geonames.org/getJSON"
     params = {"geonameId": geonames_id, "username": username}
     try:
-        response = requests.get(api_url, params=params, timeout=10)
+        response = _session.get(api_url, params=params, timeout=10)
         response.raise_for_status()
         data = response.json()
         if "status" in data:
