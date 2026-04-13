@@ -2,15 +2,25 @@ import logging
 from typing import Optional
 
 import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
+
+
+def _create_session() -> requests.Session:
+    session = requests.Session()
+    retry = Retry(total=3, backoff_factor=1, status_forcelist=[429, 500, 502, 503, 504])
+    session.mount("https://", HTTPAdapter(max_retries=retry))
+    return session
 
 
 class GeoNamesClient:
-    BASE_URL = "http://api.geonames.org/getJSON"
+    BASE_URL = "https://secure.geonames.org/getJSON"
 
     def __init__(self, username: str):
         self.username = username
         self._cache: dict[str, Optional[str]] = {}
         self.lookup_failures: list[dict] = []
+        self._session = _create_session()
 
     def get_country_code(
         self,
@@ -36,7 +46,7 @@ class GeoNamesClient:
         }
 
         try:
-            response = requests.get(self.BASE_URL, params=params, timeout=10)
+            response = self._session.get(self.BASE_URL, params=params, timeout=10)
             response.raise_for_status()
             data = response.json()
 
