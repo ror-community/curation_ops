@@ -92,27 +92,28 @@ async def get_column_issues(
     label_filter: Optional[str] = None
 ) -> list[dict]:
     """Fetch all issues from a project column with their full content."""
-    search_query = """
-    query($searchQuery: String!, $after: String) {
-      search(query: $searchQuery, type: ISSUE, first: 100, after: $after) {
-        pageInfo { hasNextPage endCursor }
-        nodes {
-          ... on Issue {
-            id
-            number
-            body
-            url
-            labels(first: 20) { nodes { name } }
-            projectItems(first: 10) {
-              nodes {
-                project { number }
-                fieldValues(first: 10) {
-                  nodes {
-                    ... on ProjectV2ItemFieldSingleSelectValue {
-                      name
-                      field { ... on ProjectV2SingleSelectField { name } }
-                    }
+    project_items_query = """
+    query($org: String!, $projectNumber: Int!, $after: String) {
+      organization(login: $org) {
+        projectV2(number: $projectNumber) {
+          items(first: 100, after: $after) {
+            pageInfo { hasNextPage endCursor }
+            nodes {
+              fieldValues(first: 10) {
+                nodes {
+                  ... on ProjectV2ItemFieldSingleSelectValue {
+                    name
+                    field { ... on ProjectV2SingleSelectField { name } }
                   }
+                }
+              }
+              content {
+                ... on Issue {
+                  id
+                  number
+                  body
+                  url
+                  labels(first: 20) { nodes { name } }
                 }
               }
             }
@@ -122,10 +123,7 @@ async def get_column_issues(
     }
     """
 
-    owner, name = repo.split('/')
-    search_str = f'repo:{owner}/{name} is:issue is:open'
-    if label_filter:
-        search_str += f' label:"{label_filter}"'
+    owner = repo.split('/')[0]
 
     issues = []
     has_next_page = True
@@ -136,37 +134,37 @@ async def get_column_issues(
         while has_next_page:
             pages += 1
             variables = {
-                "searchQuery": search_str,
+                "org": owner,
+                "projectNumber": project_number,
                 "after": after_cursor
             }
 
-            result = await run_graphql_query_async(session, search_query, variables)
-            search_result = result['data']['search']
+            result = await run_graphql_query_async(session, project_items_query, variables)
+            items_data = result['data']['organization']['projectV2']['items']
 
-            for node in search_result['nodes']:
-                if not node:
+            for item in items_data['nodes']:
+                content = item.get('content')
+                if not content or 'number' not in content:
                     continue
 
-                for project_item in node.get('projectItems', {}).get('nodes', []):
-                    if project_item.get('project', {}).get('number') != project_number:
-                        continue
-
-                    for field_value in project_item.get('fieldValues', {}).get('nodes', []):
-                        if (field_value.get('field', {}).get('name') == 'Status' and
-                                field_value.get('name') == column_name):
-                            labels = [
-                                label['name']
-                                for label in node.get('labels', {}).get('nodes', [])
-                            ]
-                            issues.append({
-                                'number': node['number'],
-                                'body': node.get('body', ''),
-                                'url': node.get('url', ''),
-                                'labels': labels
-                            })
+                for field_value in item.get('fieldValues', {}).get('nodes', []):
+                    if (field_value.get('field', {}).get('name') == 'Status' and
+                            field_value.get('name') == column_name):
+                        labels = [
+                            label['name']
+                            for label in content.get('labels', {}).get('nodes', [])
+                        ]
+                        if label_filter and label_filter not in labels:
                             break
+                        issues.append({
+                            'number': content['number'],
+                            'body': content.get('body', ''),
+                            'url': content.get('url', ''),
+                            'labels': labels
+                        })
+                        break
 
-            page_info = search_result['pageInfo']
+            page_info = items_data['pageInfo']
             has_next_page = page_info['hasNextPage']
             after_cursor = page_info['endCursor']
 
