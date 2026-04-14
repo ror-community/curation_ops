@@ -89,26 +89,27 @@ async def get_column_issues(
     project_number: int,
     column_name: str
 ) -> list[dict]:
-    search_query = """
-    query($searchQuery: String!, $after: String) {
-      search(query: $searchQuery, type: ISSUE, first: 100, after: $after) {
-        pageInfo { hasNextPage endCursor }
-        nodes {
-          ... on Issue {
-            number
-            title
-            body
-            url
-            projectItems(first: 10) {
-              nodes {
-                project { number }
-                fieldValues(first: 10) {
-                  nodes {
-                    ... on ProjectV2ItemFieldSingleSelectValue {
-                      name
-                      field { ... on ProjectV2SingleSelectField { name } }
-                    }
+    project_items_query = """
+    query($org: String!, $projectNumber: Int!, $after: String) {
+      organization(login: $org) {
+        projectV2(number: $projectNumber) {
+          items(first: 100, after: $after) {
+            pageInfo { hasNextPage endCursor }
+            nodes {
+              fieldValues(first: 10) {
+                nodes {
+                  ... on ProjectV2ItemFieldSingleSelectValue {
+                    name
+                    field { ... on ProjectV2SingleSelectField { name } }
                   }
+                }
+              }
+              content {
+                ... on Issue {
+                  number
+                  title
+                  body
+                  url
                 }
               }
             }
@@ -118,8 +119,7 @@ async def get_column_issues(
     }
     """
 
-    owner, name = repo.split('/')
-    search_str = f'repo:{owner}/{name} is:issue is:open'
+    owner = repo.split('/')[0]
 
     issues = []
     has_next_page = True
@@ -130,33 +130,31 @@ async def get_column_issues(
         while has_next_page:
             pages += 1
             variables = {
-                "searchQuery": search_str,
+                "org": owner,
+                "projectNumber": project_number,
                 "after": after_cursor
             }
 
-            result = await run_graphql_query_async(session, search_query, variables)
-            search_result = result['data']['search']
+            result = await run_graphql_query_async(session, project_items_query, variables)
+            items_data = result['data']['organization']['projectV2']['items']
 
-            for node in search_result['nodes']:
-                if not node:
+            for item in items_data['nodes']:
+                content = item.get('content')
+                if not content or 'number' not in content:
                     continue
 
-                for project_item in node.get('projectItems', {}).get('nodes', []):
-                    if project_item.get('project', {}).get('number') != project_number:
-                        continue
+                for field_value in item.get('fieldValues', {}).get('nodes', []):
+                    if (field_value.get('field', {}).get('name') == 'Status' and
+                            field_value.get('name') == column_name):
+                        issues.append({
+                            'number': content['number'],
+                            'title': content.get('title', ''),
+                            'body': content.get('body', ''),
+                            'url': content.get('url', ''),
+                        })
+                        break
 
-                    for field_value in project_item.get('fieldValues', {}).get('nodes', []):
-                        if (field_value.get('field', {}).get('name') == 'Status' and
-                                field_value.get('name') == column_name):
-                            issues.append({
-                                'number': node['number'],
-                                'title': node.get('title', ''),
-                                'body': node.get('body', ''),
-                                'url': node.get('url', ''),
-                            })
-                            break
-
-            page_info = search_result['pageInfo']
+            page_info = items_data['pageInfo']
             has_next_page = page_info['hasNextPage']
             after_cursor = page_info['endCursor']
 
