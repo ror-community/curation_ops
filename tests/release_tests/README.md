@@ -6,7 +6,6 @@ Script for automated release testing of ROR releases.
 - Validates API endpoints by retrieving organization records
 - Compares JSON responses between staging and production environments
 - Tests search functionality using organization names
-- Performs UI testing on a random sample of records
 - Implements rate limiting to prevent API throttling (1000 calls per 300s)
 - Processes requests in parallel (max 5 concurrent requests)
 - Randomly samples and tests unprocessed records
@@ -14,21 +13,7 @@ Script for automated release testing of ROR releases.
 
 ## Installation
 
-### 1. Install Selenium Dependencies
-```bash
-# Ubuntu/Debian:
-sudo apt-get install firefox-geckodriver
-
-# macOS:
-Install homebrew - https://brew.sh
-brew install geckodriver
-
-# Windows:
-# Download geckodriver from https://github.com/mozilla/geckodriver/releases
-# Add to system PATH
-```
-
-### 2. Install Python Dependencies
+### Install Python Dependencies
 ```bash
 pip install -r requirements.txt
 ```
@@ -48,9 +33,7 @@ python script.py -r /path/to/release/files -a all_ror_ids.txt [-e prd|stg] [-v 1
 - `-v, --version`: API version [1|2] (default: 2)
 - `-t, --release_tests_outfile`: Test results output file (default: release_tests.csv)
 - `-j, --jsondiff_outfile`: JSON differences output file (default: jsondiff.csv)
-- `-u, --ui_tests_outfile`: UI test results output file (default: ui_tests.csv)
 
 ## Output Files
 - `release_tests.csv`: Results of API retrieval, comparison, and search tests
 - `jsondiff.csv`: Detailed differences found between JSON responses
-- `ui_tests.csv`: Results of UI retrieval and search testing
