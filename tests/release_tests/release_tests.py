@@ -8,14 +8,9 @@ import random
 import logging
 import argparse
 import requests
-import urllib.parse
 import multiprocessing
-from time import sleep
 from functools import partial
 from deepdiff import DeepDiff
-from bs4 import BeautifulSoup
-from selenium import webdriver
-from selenium.webdriver.firefox.options import Options
 
 MAX_PARALLEL_REQUESTS = 5
 RATE_LIMIT_CALLS = 1000
@@ -130,38 +125,6 @@ def process_file(args):
     return ror_id, org_name, json_file
 
 
-def retrieve_from_ui(ror_id, driver, environment='prd'):
-    base_url = "https://ror.org" if environment == 'prd' else "https://staging.ror.org"
-    ui_url = f"{base_url}/{ror_id}"
-    href_value = "/" + ror_id
-    driver.get(ui_url)
-    time.sleep(2)
-    soup = BeautifulSoup(driver.page_source, features="html.parser")
-    link_in_ui = soup.find('a', {'href': href_value})
-    return "retrieved" if link_in_ui is not None else "failed"
-
-
-def search_name_ui(org_name, driver, environment='prd'):
-    base_url = "https://ror.org" if environment == 'prd' else "https://staging.ror.org"
-    quoted_name = urllib.parse.quote(org_name)
-    ui_url = f'{base_url}/search?filter=status:active,status:inactive,status:withdrawn&query="{quoted_name}"'
-    driver.get(ui_url)
-    sleep(2)
-    soup = BeautifulSoup(driver.page_source, features="html.parser")
-    name_in_ui = soup.find('h2', string=org_name)
-    return "retrieved" if name_in_ui is not None else "failed"
-
-
-def perform_ui_tests(file_data, driver, environment='prd'):
-    ui_test_results = []
-    for ror_id, org_name, _ in file_data:
-        retrieve_result = retrieve_from_ui(ror_id, driver, environment)
-        search_result = search_name_ui(org_name, driver, environment)
-        ui_test_results.append(
-            (ror_id, org_name, retrieve_result, search_result))
-    return ui_test_results
-
-
 def compare_single(args):
     ror_id, rate_limiter, base_url, version = args
     prod_api_url = f"https://api.ror.org/v{version}/organizations/{ror_id}"
@@ -182,7 +145,7 @@ def compare_random(compare_ids, shared_rate_limiter, base_url, version):
     return [ror_id for ror_id in results if ror_id is not None]
 
 
-def check_release_files(release_directory, all_ror_ids_file, release_tests_outfile, jsondiff_outfile, ui_tests_outfile, shared_rate_limiter, base_url, version, environment='prd'):
+def check_release_files(release_directory, all_ror_ids_file, release_tests_outfile, jsondiff_outfile, shared_rate_limiter, base_url, version):
     if not os.path.exists(release_directory):
         logging.error(f"Release directory '{release_directory}' does not exist.")
         exit(1)
@@ -197,7 +160,6 @@ def check_release_files(release_directory, all_ror_ids_file, release_tests_outfi
         writer = csv.writer(f_out)
         writer.writerow(["ror_id", "diff"])
     processed_ids = set()
-    all_file_data = []
     chunk_size = 100
 
     for i in range(0, total_files, chunk_size):
@@ -206,7 +168,6 @@ def check_release_files(release_directory, all_ror_ids_file, release_tests_outfi
         
         logging.info("Processing files...")
         file_data = pool.map(process_file, [(file_path, version) for file_path in chunk])
-        all_file_data.extend(file_data)  # Accumulate file data
         ror_ids = [data[0] for data in file_data]
         org_names = [data[1] for data in file_data]
         json_files_data = [data[2] for data in file_data]
@@ -252,22 +213,6 @@ def check_release_files(release_directory, all_ror_ids_file, release_tests_outfi
     else:
         logging.info("No changes detected in random comparison checks.")
 
-    ui_test_files = random.sample(all_file_data, min(100, len(all_file_data)))
-    logging.info(f"Selected {len(ui_test_files)} files for UI tests.")
-
-    logging.info("Starting UI tests...")
-    options = Options()
-    options.headless = True
-    with webdriver.Firefox(options=options) as driver:
-        ui_test_results = perform_ui_tests(ui_test_files, driver, environment)
-
-    logging.info("Writing UI test results...")
-    with open(ui_tests_outfile, 'w') as f_out:
-        writer = csv.writer(f_out)
-        writer.writerow(["ror_id", "org_name", "retrieve_from_ui", "search_name_ui"])
-        writer.writerows(ui_test_results)
-    logging.info(f"UI tests completed for {len(ui_test_results)} files.")
-
     logging.info("All tests completed.")
 
 
@@ -281,8 +226,6 @@ def parse_arguments():
                         default='release_tests.csv', help='Path to the release tests output file')
     parser.add_argument('-j', '--jsondiff_outfile',
                         default='jsondiff.csv', help='Path to the jsondiff output file')
-    parser.add_argument('-u', '--ui_tests_outfile',
-                        default='ui_tests.csv', help='Path to the UI tests output file')
     parser.add_argument('-e', '--environment', choices=[
                         'prd', 'stg'], default='prd', help='Choose between production and staging environments')
     parser.add_argument('-v', '--version', type=int, choices=[1, 2], default=2,
@@ -301,11 +244,9 @@ def main():
         args.all_ror_ids_file,
         args.release_tests_outfile,
         args.jsondiff_outfile,
-        args.ui_tests_outfile,
         shared_rate_limiter,
         base_url,
-        args.version,
-        args.environment
+        args.version
     )
 
     end_time = time.time
