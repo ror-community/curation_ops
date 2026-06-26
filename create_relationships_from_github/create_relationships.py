@@ -7,6 +7,7 @@ import time
 import asyncio
 import logging
 import argparse
+from dataclasses import dataclass
 import requests
 from github_project_issues import get_column_issues
 
@@ -15,6 +16,37 @@ logging.basicConfig(
     format='%(levelname)s: %(message)s'
 )
 logger = logging.getLogger(__name__)
+
+@dataclass
+class RelationshipRow:
+    issue_number: str
+    issue_url: str
+    issue_title: str
+    record_name: str
+    record_id: str
+    related_id: str
+    related_name: str
+    rel_type: str
+    location: str
+
+    FIELD_LABELS = {
+        'issue_number': 'Issue # from Github',
+        'issue_url': 'Issue URL',
+        'issue_title': 'Issue title from Github',
+        'record_name': 'Name of org in Record ID',
+        'record_id': 'Record ID',
+        'related_id': 'Related ID',
+        'related_name': 'Name of org in Related ID',
+        'rel_type': 'Relationship of Related ID to Record ID',
+        'location': 'Current location of Related ID',
+    }
+
+    @classmethod
+    def header(cls):
+        return list(cls.FIELD_LABELS.values())
+
+    def to_csv_row(self):
+        return {label: getattr(self, attr) for attr, label in self.FIELD_LABELS.items()}
 
 
 def get_ror_display_name(record):
@@ -70,13 +102,36 @@ def dict_from_csv(f):
     return release_ids, ids_k_names_v, names_k_ids_v
 
 
+def flag_circular_relationships(rows):
+    contradictory_pairs = [
+        frozenset({'Parent', 'Child'}),
+        frozenset({'Successor', 'Predecessor'}),
+    ]
+    groups = {}
+    for row in rows:
+        if not row.record_id or not row.related_id:
+            continue
+        groups.setdefault((row.record_id, row.related_id), []).append(row)
+
+    flagged = 0
+    for group_rows in groups.values():
+        types = {row.rel_type for row in group_rows}
+        if any(pair.issubset(types) for pair in contradictory_pairs):
+            for row in group_rows:
+                row.rel_type = 'Error'
+                flagged += 1
+    if flagged:
+        logger.warning(
+            f"Flagged {flagged} row(s) with contradictory/circular relationships.")
+    return rows
+
+
 def extract_relationships(issues, input_file, output_file):
     release_ids, ids_k_names_v, names_k_ids_v = dict_from_csv(input_file)
-    header = ['Issue # from Github', 'Issue URL', 'Issue title from Github', 'Name of org in Record ID', 'Record ID',
-              'Related ID', 'Name of org in Related ID', 'Relationship of Related ID to Record ID', 'Current location of Related ID']
     with open(output_file, 'w') as f_out:
-        writer = csv.writer(f_out)
-        writer.writerow(header)
+        writer = csv.DictWriter(f_out, fieldnames=RelationshipRow.header())
+        writer.writeheader()
+        rows = []
         for issue in issues:
             issue_number = str(issue['number'])
             issue_title = issue['title']
@@ -109,27 +164,27 @@ def extract_relationships(issues, input_file, output_file):
                         related_name = get_ror_name(related_ror_id)
                     locations = ['Release', 'Release'] if related_ror_id in release_ids else [
                         'Production', 'Release']
-                    entry = [issue_number, issue_url, issue_title, org_name, org_ror_id,
-                             related_ror_id, related_name, relationship_type, locations[0]]
                     rel_type_mappings = {'Parent': 'Child', 'Child': 'Parent',
                                          'Successor': 'Predecessor', 'Predecessor': 'Successor', 'Related': 'Related', 'Delete': 'Delete'}
                     if relationship_type == 'Successor-np':
-                        entry = [issue_number, issue_url, issue_title, org_name,
-                                 org_ror_id, related_ror_id, related_name, 'Successor', locations[0]]
-                        writer.writerow(entry)
+                        rows.append(RelationshipRow(issue_number, issue_url, issue_title, org_name,
+                                                    org_ror_id, related_ror_id, related_name, 'Successor', locations[0]))
                     elif relationship_type == 'Predecessor-ns':
-                        entry = [issue_number, issue_url, issue_title, org_name,
-                                 org_ror_id, related_ror_id, related_name, 'Predecessor', locations[0]]
-                        writer.writerow(entry)
+                        rows.append(RelationshipRow(issue_number, issue_url, issue_title, org_name,
+                                                    org_ror_id, related_ror_id, related_name, 'Predecessor', locations[0]))
                     else:
+                        entry = RelationshipRow(issue_number, issue_url, issue_title, org_name, org_ror_id,
+                                                related_ror_id, related_name, relationship_type, locations[0])
                         try:
-                            inverted_entry = [issue_number, issue_url, issue_title, related_name, related_ror_id,
-                                              org_ror_id, org_name, rel_type_mappings[relationship_type], locations[1]]
+                            inverted_entry = RelationshipRow(issue_number, issue_url, issue_title, related_name, related_ror_id,
+                                                             org_ror_id, org_name, rel_type_mappings[relationship_type], locations[1])
                         except KeyError:
-                            inverted_entry = [issue_number, issue_url, issue_title,
-                                              related_name, related_ror_id, org_ror_id, org_name, 'Error', 'Error']
-                        writer.writerow(entry)
-                        writer.writerow(inverted_entry)
+                            inverted_entry = RelationshipRow(issue_number, issue_url, issue_title, related_name,
+                                                             related_ror_id, org_ror_id, org_name, 'Error', 'Error')
+                        rows.append(entry)
+                        rows.append(inverted_entry)
+        flag_circular_relationships(rows)
+        writer.writerows(row.to_csv_row() for row in rows)
 
 
 def parse_arguments():
