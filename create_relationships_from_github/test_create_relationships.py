@@ -76,9 +76,12 @@ def _no_network(monkeypatch):
     monkeypatch.setattr(create_relationships, 'get_ror_name', _boom)
 
 
-def _issue(number, record_id, name, rel_lines):
+def _issue(number, record_id, name, rel_lines, description=''):
     body = f'ROR ID: {record_id}\nName of organization: {name}\n'
-    body += ''.join(f'{rid} ({rtype})\n' for rid, rtype in rel_lines)
+    if description:
+        body += f'Description of change: {description}\n'
+    body += 'Related organizations: ' + ' '.join(
+        f'{rid} ({rtype})' for rid, rtype in rel_lines) + '\n'
     return {
         'number': number,
         'title': f'Issue {number}',
@@ -167,3 +170,36 @@ def test_zero_width_char_not_written_to_output(tmp_path):
 
     with open(output_csv, encoding='utf-8') as f:
         assert ZERO_WIDTH_SPACE not in f.read()
+
+
+def test_declarations_outside_related_organizations_are_ignored(tmp_path):
+    """Only the 'Related organizations:' field declares relationships.
+
+    Free-text fields often restate a relationship informally. Parsing the
+    whole issue body treats that prose as an authoritative declaration.
+    """
+    input_csv = tmp_path / 'input.csv'
+    output_csv = tmp_path / 'output.csv'
+    _write_input_csv(input_csv, [(ID_A, 'Org A'), (ID_B, 'Org B')])
+
+    issue = _issue(101, ID_A, 'Org A', [(ID_B, 'successor-np')],
+                   description=f'Add relationship: {ID_B} (parent)')
+
+    extract_relationships([issue], str(input_csv), str(output_csv))
+    rows = _read_output_rows(str(output_csv))
+
+    assert sorted(_field(r, 'rel_type') for r in rows) == ['Successor']
+
+
+def test_prose_delete_does_not_resurrect_deleted_relationship(tmp_path):
+    input_csv = tmp_path / 'input.csv'
+    output_csv = tmp_path / 'output.csv'
+    _write_input_csv(input_csv, [(ID_A, 'Org A'), (ID_B, 'Org B')])
+
+    issue = _issue(101, ID_A, 'Org A', [(ID_B, 'delete')],
+                   description=f'Remove relationship: {ID_B} (related)')
+
+    extract_relationships([issue], str(input_csv), str(output_csv))
+    rows = _read_output_rows(str(output_csv))
+
+    assert sorted(_field(r, 'rel_type') for r in rows) == ['Delete', 'Delete']
