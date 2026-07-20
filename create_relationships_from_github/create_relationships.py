@@ -7,6 +7,7 @@ import time
 import asyncio
 import logging
 import argparse
+import unicodedata
 from dataclasses import dataclass
 import requests
 from github_project_issues import get_column_issues
@@ -73,6 +74,24 @@ def get_ror_name(ror_id, max_retries=3, retry_delay=5):
             return ""
 
 
+# U+200B ZERO WIDTH SPACE, U+200C/200D ZERO WIDTH (NON-)JOINER,
+# U+2060 WORD JOINER, U+FEFF ZERO WIDTH NO-BREAK SPACE
+ZERO_WIDTH_CHARS_RE = re.compile('[\u200b\u200c\u200d\u2060\ufeff]')
+
+
+def normalize_name(name):
+    """Remove invisible characters and normalize whitespace in an org name.
+
+    Names pasted into GitHub issues sometimes carry zero-width characters
+    (notably U+200B). str.strip() does not remove them, so an otherwise
+    identical name fails the exact-match lookup against the release CSV and
+    the record's ROR ID is silently written as an empty string.
+    """
+    name = ZERO_WIDTH_CHARS_RE.sub('', name)
+    name = unicodedata.normalize('NFKC', name)
+    return ' '.join(name.split())
+
+
 def find_between(s, first, last):
     try:
         start = s.index(first) + len(first)
@@ -98,7 +117,7 @@ def dict_from_csv(f):
             else:
                 name = get_ror_name(ror_id)
             ids_k_names_v[ror_id] = name
-            names_k_ids_v[name] = ror_id
+            names_k_ids_v[normalize_name(name)] = ror_id
     return release_ids, ids_k_names_v, names_k_ids_v
 
 
@@ -145,9 +164,13 @@ def extract_relationships(issues, input_file, output_file):
                 org_ror_id = find_between(issue_text, 'ROR ID:', '\n')
                 org_name = find_between(
                     issue_text, 'Name of organization:', '\n')
-                org_name = org_name.split('*')[0]
+                org_name = normalize_name(org_name.split('*')[0])
                 if not org_ror_id:
                     org_ror_id = names_k_ids_v.get(org_name, '')
+                    if not org_ror_id:
+                        logger.warning(
+                            f"Issue {issue_number}: no ROR ID found for "
+                            f"'{org_name}'. Record ID will be empty.")
                 for relationship in relationships:
                     relationship = relationship.split(' ')
                     relationship = [r.strip() for r in relationship if r != '']

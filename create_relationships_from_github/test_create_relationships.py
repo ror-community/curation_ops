@@ -126,3 +126,44 @@ def test_cross_issue_cycle(tmp_path):
     flagged = [r for r in rows if (_field(r, 'record_id'), _field(r, 'related_id')) in ab_pairs]
     assert len(flagged) == 4
     assert all(_field(r, 'rel_type') == 'Error' for r in flagged)
+
+
+ZERO_WIDTH_SPACE = '\u200b'
+
+
+def test_name_with_zero_width_char_still_resolves_ror_id(tmp_path):
+    """A new record's name carrying an invisible character must still match.
+
+    Names pasted into GitHub issues sometimes carry a zero-width space. When
+    the issue has no ROR ID yet (a new record), the ID is looked up by name;
+    an unmatched name silently yields an empty Record ID.
+    """
+    input_csv = tmp_path / 'input.csv'
+    output_csv = tmp_path / 'output.csv'
+    _write_input_csv(input_csv, [(ID_A, 'Org A*en'), (ID_B, 'Org B*en')])
+
+    issue = _issue(101, '', ZERO_WIDTH_SPACE + 'Org A', [(ID_B, 'parent')])
+
+    extract_relationships([issue], str(input_csv), str(output_csv))
+    rows = _read_output_rows(str(output_csv))
+
+    forward = [r for r in rows if _field(r, 'related_id') == ID_B]
+    assert forward, 'expected a row relating the new record to ID_B'
+    assert _field(forward[0], 'record_id') == ID_A
+
+    inverse = [r for r in rows if _field(r, 'record_id') == ID_B]
+    assert inverse, 'expected the inverse row'
+    assert _field(inverse[0], 'related_id') == ID_A
+
+
+def test_zero_width_char_not_written_to_output(tmp_path):
+    input_csv = tmp_path / 'input.csv'
+    output_csv = tmp_path / 'output.csv'
+    _write_input_csv(input_csv, [(ID_A, 'Org A*en'), (ID_B, 'Org B*en')])
+
+    issue = _issue(101, '', ZERO_WIDTH_SPACE + 'Org A', [(ID_B, 'parent')])
+
+    extract_relationships([issue], str(input_csv), str(output_csv))
+
+    with open(output_csv, encoding='utf-8') as f:
+        assert ZERO_WIDTH_SPACE not in f.read()
