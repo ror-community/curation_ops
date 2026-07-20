@@ -92,6 +92,21 @@ def normalize_name(name):
     return ' '.join(name.split())
 
 
+RELATED_ORGS_RE = re.compile(
+    r'^[ \t]*Related organizations?:(.*)$', re.MULTILINE | re.IGNORECASE)
+
+
+def related_orgs_field(issue_text):
+    """Return only the text of the issue's 'Related organizations:' field.
+
+    Relationships are declared in this field alone. Free-text fields such as
+    'Description of change' often restate a relationship informally, and
+    scanning the whole body treats that prose as an authoritative
+    declaration, producing relationships the curator did not ask for.
+    """
+    return '\n'.join(RELATED_ORGS_RE.findall(issue_text))
+
+
 def find_between(s, first, last):
     try:
         start = s.index(first) + len(first)
@@ -159,7 +174,7 @@ def extract_relationships(issues, input_file, output_file):
             org_name, org_ror_id = '', ''
             rel_pattern = re.compile(
                 r'[https]{0,5}\:\/\/ror\.org\/[a-z0-9]{9}\s+\([a-zA-Z\-]{0,}\)')
-            relationships = rel_pattern.findall(issue_text)
+            relationships = rel_pattern.findall(related_orgs_field(issue_text))
             if relationships:
                 org_ror_id = find_between(issue_text, 'ROR ID:', '\n')
                 org_name = find_between(
