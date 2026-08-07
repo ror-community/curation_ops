@@ -7,7 +7,7 @@ from contextlib import contextmanager
 import openai
 
 OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY')
-OPENAI_MODEL = os.environ.get('OPENAI_MODEL', 'gpt-5')
+OPENAI_MODEL = os.environ.get('OPENAI_MODEL', 'gpt-5.6-luna')
 
 
 class TimeoutError(Exception):
