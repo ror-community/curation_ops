@@ -11,7 +11,7 @@ import openai
 GITHUB_TOKEN = os.environ.get('GITHUB_TOKEN')
 GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY')
 OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY')
-OPENAI_MODEL = os.environ.get('OPENAI_MODEL', 'gpt-5-mini-2025-08-07')
+OPENAI_MODEL = os.environ.get('OPENAI_MODEL', 'gpt-5.6-luna')
 REPO_PATH_STR = os.environ.get('GITHUB_REPOSITORY')
 TARGET_REPO_PATH = os.environ.get('REPO_PATH', REPO_PATH_STR)
 
