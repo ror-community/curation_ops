@@ -4,6 +4,7 @@ from github import GithubException
 
 OPENALEX_BASE_URL = "https://api.openalex.org"
 OPENALEX_MAILTO = "support@ror.org"
+ROR_BASE_URL = "https://api.ror.org/v2/organizations"
 
 P1_THRESHOLD = 100
 P2_THRESHOLD = 1
@@ -77,6 +78,17 @@ def get_affiliation_count_by_ror(client, ror_id, api_key=None):
     except Exception as e:
         print(f"OpenAlex ROR query failed for '{ror_id}': {e}")
         return 0
+
+
+def get_ror_types(client, ror_id):
+    id_part = ror_id.split("/")[-1]
+    try:
+        response = client.get(f"{ROR_BASE_URL}/{id_part}")
+        response.raise_for_status()
+        return response.json().get("types", []) or []
+    except Exception as e:
+        print(f"ROR type lookup failed for '{ror_id}': {e}")
+        return []
 
 
 def extract_all_ror_ids(text):
@@ -198,6 +210,12 @@ def prioritize_issue(issue, issue_type=None, name=None, ror_id=None, issue_body=
     relationship_ror_ids = extract_relationship_ror_ids(issue_body)
 
     with httpx.Client(timeout=30.0) as client:
+        if issue_type == "update record" and ror_id:
+            if "funder" in get_ror_types(client, ror_id):
+                print(f"Issue #{issue.number}: existing ROR record is a funder, auto-P1")
+                apply_priority_and_type_labels(issue, "P1", issue_type)
+                return "P1"
+
         total_count = get_total_affiliation_count(
             client, issue_type, name, ror_id, relationship_ror_ids, api_key
         )
