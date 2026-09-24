@@ -16,6 +16,8 @@ Automates the triaging process for new organization requests and updates to the 
 - For updates:
   - Encodes the requested changes into a specific update format
   - Validates the encoded update
+  - Automatically assigns P1 when the existing ROR record includes the `funder` type
+  - Falls back to affiliation-based priority if the ROR type lookup fails
 - Posts triage results as comments on the respective GitHub issues
 
 Additional scripts provide supporting functionality:
