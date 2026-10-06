@@ -272,7 +272,7 @@ def get_relationships_from_file(file, version):
                 check_related_id_status = get_record_status(check_related_id, version)
                 if (check_record_id and check_related_id):
                     if check_related_id_status == 'active' or \
-                        row['Relationship of Related ID to Record ID'].lower() == 'predecessor' or \
+                        row['Relationship of Related ID to Record ID'].lower() in ('predecessor', 'successor') or \
                         row['Relationship of Related ID to Record ID'].lower() == 'delete':
                         rel_dict['short_record_id'] = check_record_id
                         rel_dict['short_related_id'] = check_related_id
@@ -285,7 +285,7 @@ def get_relationships_from_file(file, version):
                         relationships.append(rel_dict.copy())
                         relationship_count += 1
                     else:
-                        logging.error(f"Related ID from CSV: {check_related_id} has a status other than active and a relationship type other than Predecessor. Relationship row {row_count} cannot be processed")
+                        logging.error(f"Related ID from CSV: {check_related_id} has a status other than active and a relationship type other than Predecessor or Successor. Relationship row {row_count} cannot be processed")
         print(str(row_count)+ " rows found")
         print(str(relationship_count)+ " valid relationships found")
     except IOError as e:
