@@ -1,4 +1,7 @@
+import pytest
+
 from curation_validation.core.normalize import (
+    _normalize_simple_url,
     normalize_url,
     normalize_text,
     normalize_whitespace,
@@ -79,3 +82,71 @@ class TestNormalizeWikipediaUrl:
 
     def test_non_https_returns_unchanged(self):
         assert normalize_wikipedia_url("http://foo") == "http://foo"
+
+
+def _furl_normalize(url):
+    """normalize_url as implemented before the fast path, used as the oracle."""
+    from furl import furl
+
+    if not url or not url.strip():
+        return None
+    try:
+        f = furl(url)
+        f.path.normalize()
+        f.path = ""
+        f.remove(args=True, fragment=True)
+        host = f.host
+        if not host:
+            return None
+        if host.startswith("www."):
+            f.host = host[4:]
+        f.scheme = None
+        return f.url.lower()
+    except Exception:
+        return None
+
+
+class TestNormalizeUrlFastPath:
+    @pytest.mark.parametrize("url", [
+        "https://www.Example.com/a/b?x=1#f", "HTTP://WWW.EXAMPLE.COM", "https://www.www.example.com",
+        "https://example.com/ path", "https://example.com/é?q=中#[x]", "https://example.com\\path",
+        "https://example.com:443/", "https://example.com:8080/x", "https://user@example.com/",
+        "https://bücher.de/", "https://xn--bcher-kva.de/", "https://example.com./", "https://a..b.com/",
+        "https://www./", "https://" + "a" * 63 + ".com/", "https://" + "a" * 64 + ".com/",
+        " https://example.com", "https://example.com\t", "ftp://example.com/", "www.example.com",
+        "example.com", "https://ex_ample.com/", "https://-example-.com", "https://1.2.3.4/x",
+    ])
+    def test_matches_furl(self, url):
+        assert normalize_url(url) == _furl_normalize(url)
+
+    @pytest.mark.parametrize("url,expected", [
+        ("https://www.Example.com/a?b#c", "//example.com"),
+        ("http://example.com", "//example.com"),
+        ("https://www.www.example.com", "//www.example.com"),
+    ])
+    def test_fast_path_results(self, url, expected):
+        assert _normalize_simple_url(url) == expected
+
+    @pytest.mark.parametrize("url", [
+        "https://example.com:443/", "https://user@example.com/", "https://bücher.de/",
+        "https://xn--bcher-kva.de/", "https://example.com./", "https://a..b.com/",
+        "https://" + "a" * 64 + ".com/", " https://example.com", "https://example.com/ path",
+        "ftp://example.com/", "https://ex_ample.com/",
+    ])
+    def test_unusual_urls_use_furl(self, url):
+        assert _normalize_simple_url(url) is None
+
+    def test_randomized_matches_furl(self):
+        import random
+
+        rng = random.Random(7)
+        host_chars = "abcXYZ019-." + "é_@:"
+        tail_chars = "abc/?#&=%20.-_~:@[]\\ \té中"
+        for _ in range(3000):
+            host = "".join(rng.choice(host_chars) for _ in range(rng.randint(1, 15)))
+            if rng.random() < 0.3:
+                host = rng.choice(["www.", "WWW."]) + host
+            url = rng.choice(["http", "https", "HTTPS", "ftp", ""]) + rng.choice(["://", ":/", ""]) + host
+            if rng.random() < 0.7:
+                url += rng.choice("/?#") + "".join(rng.choice(tail_chars) for _ in range(rng.randint(0, 10)))
+            assert normalize_url(url) == _furl_normalize(url), url
