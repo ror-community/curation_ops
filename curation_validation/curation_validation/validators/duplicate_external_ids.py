@@ -1,4 +1,5 @@
 import re
+from collections import defaultdict
 
 from curation_validation.validators.base import BaseValidator, ValidatorContext
 from curation_validation.core.io import read_csv, read_json_dir
@@ -76,6 +77,11 @@ def find_matches(
     input_records: list[dict], data_dump_records: list[dict]
 ) -> list[dict]:
     normalized_data_dump = normalize_data_dump_external_ids(data_dump_records)
+    positions_by_id: dict[str, list[int]] = defaultdict(list)
+    for position, data_dump_record in enumerate(normalized_data_dump):
+        for external_id in extract_external_ids(data_dump_record):
+            positions_by_id[external_id].append(position)
+
     matches = []
     for input_record in input_records:
         input_external_ids = extract_external_ids(input_record)
@@ -83,22 +89,27 @@ def find_matches(
             continue
         input_ror_display_name = get_ror_display_name(input_record)
         issue_url = input_record.get("issue_url", input_record.get("id", ""))
-        for data_dump_record in normalized_data_dump:
+        candidates = {
+            position
+            for external_id in input_external_ids
+            for position in positions_by_id.get(external_id, ())
+        }
+        for position in sorted(candidates):
+            data_dump_record = normalized_data_dump[position]
             data_dump_external_ids = extract_external_ids(data_dump_record)
             common_ids = input_external_ids.intersection(data_dump_external_ids)
-            if common_ids:
-                data_dump_ror_display_name = get_ror_display_name(data_dump_record)
-                for external_id in common_ids:
-                    matches.append(
-                        {
-                            "issue_url": issue_url,
-                            "id": input_record.get("id", ""),
-                            "ror_display_name": input_ror_display_name,
-                            "data_dump_id": data_dump_record.get("id", ""),
-                            "data_dump_ror_display_name": data_dump_ror_display_name,
-                            "overlapping_external_id": external_id,
-                        }
-                    )
+            data_dump_ror_display_name = get_ror_display_name(data_dump_record)
+            for external_id in common_ids:
+                matches.append(
+                    {
+                        "issue_url": issue_url,
+                        "id": input_record.get("id", ""),
+                        "ror_display_name": input_ror_display_name,
+                        "data_dump_id": data_dump_record.get("id", ""),
+                        "data_dump_ror_display_name": data_dump_ror_display_name,
+                        "overlapping_external_id": external_id,
+                    }
+                )
     return matches
 
 

@@ -11,6 +11,7 @@ from curation_validation.validators.duplicate_external_ids import (
     normalize_whitespace,
     process_input_csv,
     extract_external_ids,
+    find_matches,
     normalize_data_dump_external_ids,
     get_ror_display_name,
 )
@@ -906,3 +907,54 @@ class TestDuplicateExternalIdsEdgeCases:
         v = DuplicateExternalIdsValidator()
         results = v.run(ctx)
         assert results == []
+
+
+def _reference_find_matches(input_records, data_dump_records):
+    """The original scan of every data dump record, kept as the oracle for find_matches."""
+    normalized_data_dump = normalize_data_dump_external_ids(data_dump_records)
+    matches = []
+    for input_record in input_records:
+        input_external_ids = extract_external_ids(input_record)
+        if not input_external_ids:
+            continue
+        for data_dump_record in normalized_data_dump:
+            common_ids = input_external_ids.intersection(extract_external_ids(data_dump_record))
+            for external_id in common_ids:
+                matches.append({
+                    "issue_url": input_record.get("issue_url", input_record.get("id", "")),
+                    "id": input_record.get("id", ""),
+                    "ror_display_name": get_ror_display_name(input_record),
+                    "data_dump_id": data_dump_record.get("id", ""),
+                    "data_dump_ror_display_name": get_ror_display_name(data_dump_record),
+                    "overlapping_external_id": external_id,
+                })
+    return matches
+
+
+_ID_POOL = ["0000 0001 2345 6789", "0000  0001 2345 6789", "Q42", " Q42 ", "Q7", "501100000001",
+            "501100000002", "grid.1.2", "", "Q99"]
+
+
+def _random_record(rng, k, prefix):
+    external_ids = []
+    for id_type in rng.sample(["isni", "wikidata", "fundref", "grid"], rng.randint(0, 3)):
+        values = rng.sample(_ID_POOL, rng.randint(1, 3))
+        external_ids.append({"type": id_type, "all": values,
+                             "preferred": rng.choice(values + [None])})
+    return {
+        "id": f"https://ror.org/{prefix}{k}",
+        "names": [{"value": f"{prefix} org {k}", "types": ["ror_display"]}],
+        "external_ids": external_ids,
+    }
+
+
+@pytest.mark.parametrize("seed", range(8))
+def test_find_matches_identical_to_full_scan(seed):
+    import copy
+    import random
+
+    rng = random.Random(seed)
+    inputs = [_random_record(rng, k, "in") for k in range(40)]
+    dump = [_random_record(rng, k, "dump") for k in range(200)]
+    expected = _reference_find_matches(copy.deepcopy(inputs), copy.deepcopy(dump))
+    assert find_matches(inputs, dump) == expected
