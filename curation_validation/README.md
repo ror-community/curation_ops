@@ -55,7 +55,7 @@ Run specific validators:
 curation-validation -c records.csv --test validate_fields --test leading_trailing
 ```
 
-Check for duplicates against the current ROR dataset with GeoNames address validation:
+Check for duplicates against the current ROR dataset (uses the data dump, plus GeoNames for locations not yet in ROR):
 
 ```bash
 curation-validation -c records.csv -u my_geonames_user --test production-duplicates
@@ -79,7 +79,7 @@ curation-validation -c records.csv -d /path/to/ror-data.zip -o reports/
 | `duplicate-urls` | csv, json | Data dump | Finds input records with website URLs already present in ROR |
 | `duplicate-external-ids` | csv, json | Data dump | Finds input records sharing external IDs (ISNI, Wikidata, FundRef) with existing ROR records |
 | `address-validation` | csv, json | GeoNames | Validates city/country against the GeoNames API |
-| `production-duplicates` | csv, json | GeoNames | Searches for input records that may already exist in ROR by name and country |
+| `production-duplicates` | csv, json | Data dump, GeoNames | Finds input records whose names fuzzy-match active ROR records in the same country, using the data dump; GeoNames is only queried for geonames IDs not already in the dump or input JSON |
 | `new-record-integrity` | csv + json | | Verifies that CSV field values appear correctly in corresponding JSON files (new records) |
 | `update-record-integrity` | csv + json | | Verifies that add/delete/replace changes from CSV are reflected in JSON files (updates) |
 

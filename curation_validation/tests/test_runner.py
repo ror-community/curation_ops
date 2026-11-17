@@ -158,3 +158,56 @@ class TestRunValidators:
         captured = capsys.readouterr()
         assert "Unknown" in captured.err or "unknown" in captured.err.lower()
         VALIDATORS.clear()
+
+
+class FakeGeonamesDataValidator(BaseValidator):
+    name = "fake-geonames-data"
+    supported_formats = {"csv"}
+    output_filename = "fake_geonames_data.csv"
+    output_fields = ["error"]
+    requires_data_source = True
+    requires_geonames = True
+
+    def run(self, ctx: ValidatorContext) -> list[dict]:
+        return []
+
+
+class TestGeonamesCheckedBeforeDataLoad:
+    def _csv(self, tmp_path):
+        csv_file = tmp_path / "test.csv"
+        csv_file.write_text("a,b\n1,2\n")
+        return csv_file
+
+    def test_exits_without_loading_data(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(
+            "curation_validation.runner.DataLoader",
+            lambda *a, **k: pytest.fail("data dump should not be loaded"),
+        )
+        VALIDATORS.clear()
+        register_validator(FakeGeonamesDataValidator())
+        try:
+            with pytest.raises(SystemExit):
+                run_validators(
+                    csv_file=self._csv(tmp_path), json_dir=None,
+                    output_dir=tmp_path / "out", data_dump_path=None,
+                    geonames_user=None, tests=["fake-geonames-data"],
+                )
+        finally:
+            VALIDATORS.clear()
+
+    def test_skips_without_loading_data_when_running_all(self, tmp_path, monkeypatch, capsys):
+        monkeypatch.setattr(
+            "curation_validation.runner.DataLoader",
+            lambda *a, **k: pytest.fail("data dump should not be loaded"),
+        )
+        VALIDATORS.clear()
+        register_validator(FakeGeonamesDataValidator())
+        try:
+            assert run_validators(
+                csv_file=self._csv(tmp_path), json_dir=None,
+                output_dir=tmp_path / "out", data_dump_path=None,
+                geonames_user=None, tests=["all"],
+            ) == 0
+        finally:
+            VALIDATORS.clear()
+        assert "Skipping fake-geonames-data" in capsys.readouterr().err

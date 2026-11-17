@@ -129,7 +129,7 @@ class TestAddressValidationMetadata:
 
 
 class TestQueryGeonamesApi:
-    @patch("curation_validation.validators.address_validation.requests.get")
+    @patch("curation_validation.validators.address_validation._session.get")
     def test_returns_city_and_country(self, mock_get):
         mock_resp = MagicMock()
         mock_resp.json.return_value = {"name": "Springfield", "countryName": "United States"}
@@ -140,7 +140,7 @@ class TestQueryGeonamesApi:
         assert city == "Springfield"
         assert country == "United States"
 
-    @patch("curation_validation.validators.address_validation.requests.get")
+    @patch("curation_validation.validators.address_validation._session.get")
     def test_returns_empty_on_request_error(self, mock_get):
         import requests as req
         mock_get.side_effect = req.exceptions.RequestException("timeout")
@@ -149,7 +149,7 @@ class TestQueryGeonamesApi:
         assert city == ""
         assert country == ""
 
-    @patch("curation_validation.validators.address_validation.requests.get")
+    @patch("curation_validation.validators.address_validation._session.get")
     def test_returns_empty_strings_when_keys_missing(self, mock_get):
         mock_resp = MagicMock()
         mock_resp.json.return_value = {}
@@ -160,7 +160,7 @@ class TestQueryGeonamesApi:
         assert city == ""
         assert country == ""
 
-    @patch("curation_validation.validators.address_validation.requests.get")
+    @patch("curation_validation.validators.address_validation._session.get")
     def test_returns_invalid_id_sentinel_on_geonames_error(self, mock_get):
         mock_resp = MagicMock()
         mock_resp.json.return_value = {"status": {"message": "no result found", "value": 15}}
@@ -171,7 +171,7 @@ class TestQueryGeonamesApi:
         assert city == GEONAMES_INVALID_ID
         assert country == GEONAMES_INVALID_ID
 
-    @patch("curation_validation.validators.address_validation.requests.get")
+    @patch("curation_validation.validators.address_validation._session.get")
     def test_passes_correct_params(self, mock_get):
         mock_resp = MagicMock()
         mock_resp.json.return_value = {"name": "X", "countryName": "Y"}
@@ -180,7 +180,7 @@ class TestQueryGeonamesApi:
 
         query_geonames_api("99999", "myuser")
         mock_get.assert_called_once_with(
-            "http://api.geonames.org/getJSON",
+            "https://secure.geonames.org/getJSON",
             params={"geonameId": "99999", "username": "myuser"},
             timeout=10,
         )
