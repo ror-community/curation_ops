@@ -99,7 +99,7 @@ def find_matches(
             data_dump_external_ids = extract_external_ids(data_dump_record)
             common_ids = input_external_ids.intersection(data_dump_external_ids)
             data_dump_ror_display_name = get_ror_display_name(data_dump_record)
-            for external_id in common_ids:
+            for external_id in sorted(common_ids):
                 matches.append(
                     {
                         "issue_url": issue_url,
