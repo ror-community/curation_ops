@@ -919,7 +919,7 @@ def _reference_find_matches(input_records, data_dump_records):
             continue
         for data_dump_record in normalized_data_dump:
             common_ids = input_external_ids.intersection(extract_external_ids(data_dump_record))
-            for external_id in common_ids:
+            for external_id in sorted(common_ids):
                 matches.append({
                     "issue_url": input_record.get("issue_url", input_record.get("id", "")),
                     "id": input_record.get("id", ""),
@@ -958,3 +958,29 @@ def test_find_matches_identical_to_full_scan(seed):
     dump = [_random_record(rng, k, "dump") for k in range(200)]
     expected = _reference_find_matches(copy.deepcopy(inputs), copy.deepcopy(dump))
     assert find_matches(inputs, dump) == expected
+
+
+def test_overlapping_ids_for_one_pair_are_sorted():
+    ids = ["Q9", "0000 0001 2345 6789", "501100000001", "grid.1.2", "Q10"]
+    record = {"id": "https://ror.org/x", "names": [], "external_ids": [{"type": "other", "all": ids}]}
+    matches = find_matches([dict(record, id="in")], [record])
+    assert [m["overlapping_external_id"] for m in matches] == sorted(ids)
+
+
+def test_order_does_not_depend_on_hash_seed(tmp_path):
+    import os
+    import subprocess
+    import sys
+
+    script = (
+        "from curation_validation.validators.duplicate_external_ids import find_matches\n"
+        "ids = ['Q%d' % i for i in range(30)]\n"
+        "r = {'id': 'x', 'names': [], 'external_ids': [{'type': 'wikidata', 'all': ids}]}\n"
+        "print([m['overlapping_external_id'] for m in find_matches([dict(r)], [r])])\n"
+    )
+    outputs = {
+        subprocess.run([sys.executable, "-c", script], capture_output=True, text=True, check=True,
+                       env={**os.environ, "PYTHONHASHSEED": seed}).stdout
+        for seed in ["1", "2", "3"]
+    }
+    assert len(outputs) == 1
