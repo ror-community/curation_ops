@@ -1,10 +1,12 @@
 import logging
+from typing import Optional
 
 import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
 from curation_validation.validators.base import BaseValidator, ValidatorContext
+from curation_validation.core.geonames import fetch_all
 from curation_validation.core.io import read_csv, read_json_dir
 
 
@@ -53,15 +55,26 @@ class AddressValidationValidator(BaseValidator):
 
     def run(self, ctx: ValidatorContext) -> list[dict]:
         if ctx.json_dir is not None:
-            return self._run_json(ctx)
+            entries = self._parse_json(ctx)
         elif ctx.csv_file is not None:
-            return self._run_csv(ctx)
-        return []
+            entries = self._parse_csv(ctx)
+        else:
+            return []
 
-    def _run_json(self, ctx: ValidatorContext) -> list[dict]:
-        records = read_json_dir(ctx.json_dir)
+        results = fetch_all(
+            lambda geonames_id: query_geonames_api(geonames_id, ctx.geonames_user),
+            (entry["geonames_id"] for entry in entries),
+        )
         discrepancies = []
-        for record in records:
+        for entry in entries:
+            discrepancy = _compare(entry, *results[entry["geonames_id"]])
+            if discrepancy:
+                discrepancies.append(discrepancy)
+        return discrepancies
+
+    def _parse_json(self, ctx: ValidatorContext) -> list[dict]:
+        entries = []
+        for record in read_json_dir(ctx.json_dir):
             locations = record.get("locations", [])
             if not locations:
                 continue
@@ -69,125 +82,62 @@ class AddressValidationValidator(BaseValidator):
             geonames_id = location.get("geonames_id")
             if geonames_id is None:
                 continue
-            geonames_id_str = str(geonames_id)
             geonames_details = location.get("geonames_details", {})
-            input_city = geonames_details.get("name", "")
-            input_country = geonames_details.get("country_name", "")
-            ror_display_name = _get_ror_display_name(record)
             ror_id = record.get("id", "")
-            issue_url = ror_id
+            entries.append({
+                "issue_url": ror_id,
+                "ror_display_name": _get_ror_display_name(record),
+                "ror_id": ror_id,
+                "geonames_id": str(geonames_id),
+                "csv_city": geonames_details.get("name", ""),
+                "csv_country": geonames_details.get("country_name", ""),
+            })
+        return entries
 
-            api_city, api_country = query_geonames_api(geonames_id_str, ctx.geonames_user)
-
-            if api_city == GEONAMES_INVALID_ID:
-                discrepancies.append({
-                    "issue_url": issue_url,
-                    "ror_display_name": ror_display_name,
-                    "ror_id": ror_id,
-                    "geonames_id": geonames_id_str,
-                    "csv_city": input_city,
-                    "csv_country": input_country,
-                    "geonames_city": "",
-                    "geonames_country": "",
-                    "issue": f"Invalid Geonames ID - {geonames_id_str} does not exist in GeoNames",
-                })
-                continue
-
-            if not api_city and not api_country:
-                discrepancies.append({
-                    "issue_url": issue_url,
-                    "ror_display_name": ror_display_name,
-                    "ror_id": ror_id,
-                    "geonames_id": geonames_id_str,
-                    "csv_city": input_city,
-                    "csv_country": input_country,
-                    "geonames_city": "",
-                    "geonames_country": "",
-                    "issue": "API error - could not retrieve data",
-                })
-                continue
-
-            city_matches = input_city == api_city
-            country_matches = input_country == api_country
-            if not city_matches or not country_matches:
-                issues = []
-                if not city_matches:
-                    issues.append("city mismatch")
-                if not country_matches:
-                    issues.append("country mismatch")
-                discrepancies.append({
-                    "issue_url": issue_url,
-                    "ror_display_name": ror_display_name,
-                    "ror_id": ror_id,
-                    "geonames_id": geonames_id_str,
-                    "csv_city": input_city,
-                    "csv_country": input_country,
-                    "geonames_city": api_city,
-                    "geonames_country": api_country,
-                    "issue": ", ".join(issues),
-                })
-        return discrepancies
-
-    def _run_csv(self, ctx: ValidatorContext) -> list[dict]:
-        records = read_csv(ctx.csv_file)
-        discrepancies = []
-        for row in records:
+    def _parse_csv(self, ctx: ValidatorContext) -> list[dict]:
+        entries = []
+        for row in read_csv(ctx.csv_file):
             geonames_id = row.get("locations.geonames_id", "").strip()
             if not geonames_id:
                 continue
-            input_city = row.get("city", "").strip()
-            input_country = row.get("country", "").strip()
-            ror_display_name = row.get("names.types.ror_display", "")
-            ror_id = row.get("id", "")
-            issue_url = row.get("html_url", "")
+            entries.append({
+                "issue_url": row.get("html_url", ""),
+                "ror_display_name": row.get("names.types.ror_display", ""),
+                "ror_id": row.get("id", ""),
+                "geonames_id": geonames_id,
+                "csv_city": row.get("city", "").strip(),
+                "csv_country": row.get("country", "").strip(),
+            })
+        return entries
 
-            api_city, api_country = query_geonames_api(geonames_id, ctx.geonames_user)
 
-            if api_city == GEONAMES_INVALID_ID:
-                discrepancies.append({
-                    "issue_url": issue_url,
-                    "ror_display_name": ror_display_name,
-                    "ror_id": ror_id,
-                    "geonames_id": geonames_id,
-                    "csv_city": input_city,
-                    "csv_country": input_country,
-                    "geonames_city": "",
-                    "geonames_country": "",
-                    "issue": f"Invalid Geonames ID - {geonames_id} does not exist in GeoNames",
-                })
-                continue
+def _compare(entry: dict, api_city: str, api_country: str) -> Optional[dict]:
+    if api_city == GEONAMES_INVALID_ID:
+        return {
+            **entry,
+            "geonames_city": "",
+            "geonames_country": "",
+            "issue": f"Invalid Geonames ID - {entry['geonames_id']} does not exist in GeoNames",
+        }
 
-            if not api_city and not api_country:
-                discrepancies.append({
-                    "issue_url": issue_url,
-                    "ror_display_name": ror_display_name,
-                    "ror_id": ror_id,
-                    "geonames_id": geonames_id,
-                    "csv_city": input_city,
-                    "csv_country": input_country,
-                    "geonames_city": "",
-                    "geonames_country": "",
-                    "issue": "API error - could not retrieve data",
-                })
-                continue
+    if not api_city and not api_country:
+        return {
+            **entry,
+            "geonames_city": "",
+            "geonames_country": "",
+            "issue": "API error - could not retrieve data",
+        }
 
-            city_matches = input_city == api_city
-            country_matches = input_country == api_country
-            if not city_matches or not country_matches:
-                issues = []
-                if not city_matches:
-                    issues.append("city mismatch")
-                if not country_matches:
-                    issues.append("country mismatch")
-                discrepancies.append({
-                    "issue_url": issue_url,
-                    "ror_display_name": ror_display_name,
-                    "ror_id": ror_id,
-                    "geonames_id": geonames_id,
-                    "csv_city": input_city,
-                    "csv_country": input_country,
-                    "geonames_city": api_city,
-                    "geonames_country": api_country,
-                    "issue": ", ".join(issues),
-                })
-        return discrepancies
+    issues = []
+    if entry["csv_city"] != api_city:
+        issues.append("city mismatch")
+    if entry["csv_country"] != api_country:
+        issues.append("country mismatch")
+    if not issues:
+        return None
+    return {
+        **entry,
+        "geonames_city": api_city,
+        "geonames_country": api_country,
+        "issue": ", ".join(issues),
+    }

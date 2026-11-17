@@ -63,6 +63,8 @@ def parse_args(args: list[str] | None = None) -> argparse.Namespace:
 
 
 def main() -> int:
+    # Show progress as it happens when output is piped (e.g. GitHub Actions logs).
+    sys.stdout.reconfigure(line_buffering=True)
     args = parse_args()
 
     csv_file = Path(args.csv) if args.csv else None

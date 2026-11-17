@@ -1,9 +1,25 @@
 import logging
-from typing import Optional
+from collections.abc import Callable, Iterable
+from concurrent.futures import ThreadPoolExecutor
+from typing import Optional, TypeVar
 
 import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
+
+# Concurrent GeoNames requests per lookup batch.
+MAX_WORKERS = 5
+
+T = TypeVar("T")
+
+
+def fetch_all(fetch: Callable[[str], T], geonames_ids: Iterable[str]) -> dict[str, T]:
+    """Call fetch once per distinct geonames ID, MAX_WORKERS at a time."""
+    unique_ids = list(dict.fromkeys(geonames_ids))
+    if not unique_ids:
+        return {}
+    with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
+        return dict(zip(unique_ids, executor.map(fetch, unique_ids)))
 
 
 def _create_session() -> requests.Session:

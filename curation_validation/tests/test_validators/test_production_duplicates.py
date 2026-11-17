@@ -6,6 +6,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from thefuzz import fuzz
 
+from curation_validation.core.geonames import MAX_WORKERS
 from curation_validation.core.loader import DataSource
 from curation_validation.core.normalize import normalize_text
 from curation_validation.validators.base import ValidatorContext
@@ -19,7 +20,6 @@ from curation_validation.validators.production_duplicates import (
     parse_csv_names,
     resolve_countries,
     FUZZY_THRESHOLD,
-    MAX_WORKERS,
 )
 
 GEONAMES_CLIENT = "curation_validation.validators.production_duplicates.GeoNamesClient"
