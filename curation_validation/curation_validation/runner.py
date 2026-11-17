@@ -73,6 +73,19 @@ def run_validators(
         print("No validators to run with the available inputs")
         return 0
 
+    # Check the GeoNames requirement before the (slow) data dump load it may trigger.
+    pending = []
+    for validator in runnable:
+        if validator.requires_geonames and geonames_user is None:
+            reason = f"{validator.name} requires --geonames-user"
+            if run_all:
+                print(f"Skipping {validator.name}: {reason}", file=sys.stderr)
+                continue
+            print(f"Error: {reason}", file=sys.stderr)
+            sys.exit(1)
+        pending.append(validator)
+    runnable = pending
+
     needs_data = any(v.requires_data_source for v in runnable)
     data_source: Optional[DataSource] = None
 

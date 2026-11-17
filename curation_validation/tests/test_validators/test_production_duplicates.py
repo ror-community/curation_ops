@@ -1,230 +1,204 @@
 import csv
 import json
-from pathlib import Path
+import random
 from unittest.mock import MagicMock, patch
 
 import pytest
+from thefuzz import fuzz
 
+from curation_validation.core.loader import DataSource
+from curation_validation.core.normalize import normalize_text
 from curation_validation.validators.base import ValidatorContext
 from curation_validation.validators.production_duplicates import (
     ProductionDuplicatesValidator,
-    get_country_code_from_result,
-    get_all_names_from_result,
-    parse_csv_names,
+    build_geonames_country_index,
     clean_name,
+    find_production_duplicates,
+    get_all_names_from_result,
+    get_country_code_from_result,
+    parse_csv_names,
+    resolve_countries,
     FUZZY_THRESHOLD,
     MAX_WORKERS,
 )
 
+GEONAMES_CLIENT = "curation_validation.validators.production_duplicates.GeoNamesClient"
 
-def _make_json_ctx(tmp_path, records, geonames_user="testuser"):
+# geonames IDs used by the default data source, with their country codes.
+NYC, BERLIN, PARIS, TOKYO = 5128581, 2950159, 2988507, 1850147
+
+
+def _ror_record(ror_id, display_name, country_code, geonames_id=None, aliases=None,
+                labels=None, acronyms=None, status="active"):
+    names = [{"value": display_name, "types": ["ror_display", "label"]}]
+    for alias in aliases or []:
+        names.append({"value": alias, "types": ["alias"]})
+    for label in labels or []:
+        names.append({"value": label, "types": ["label"]})
+    for acronym in acronyms or []:
+        names.append({"value": acronym, "types": ["acronym"]})
+    location = {"geonames_details": {"country_code": country_code}}
+    if geonames_id is not None:
+        location["geonames_id"] = geonames_id
+    return {"id": ror_id, "status": status, "names": names, "locations": [location]}
+
+
+def _data_source(*records):
+    anchors = [
+        _ror_record("https://ror.org/anchorus", "Anchor US", "US", NYC),
+        _ror_record("https://ror.org/anchorde", "Anchor DE", "DE", BERLIN),
+        _ror_record("https://ror.org/anchorfr", "Anchor FR", "FR", PARIS),
+        _ror_record("https://ror.org/anchorjp", "Anchor JP", "JP", TOKYO),
+    ]
+    return DataSource(anchors + list(records))
+
+
+def _input_json(display_name, geonames_id, aliases=None, labels=None, acronyms=None,
+                country_code=None, ror_id=""):
+    record = _ror_record(ror_id, display_name, country_code, geonames_id, aliases, labels, acronyms)
+    if country_code is None:
+        del record["locations"][0]["geonames_details"]
+    record["id"] = ror_id
+    return record
+
+
+def _make_json_ctx(tmp_path, records, data_source, geonames_user="testuser"):
     json_dir = tmp_path / "json"
     json_dir.mkdir(parents=True, exist_ok=True)
     for i, record in enumerate(records):
-        ror_id = record.get("id") or f"https://ror.org/0{i:08d}"
-        filename = ror_id.rsplit("/", 1)[-1] + ".json"
-        (json_dir / filename).write_text(json.dumps(record), encoding="utf-8")
+        (json_dir / f"rec{i:04d}.json").write_text(json.dumps(record), encoding="utf-8")
     return ValidatorContext(
         csv_file=None,
         json_dir=json_dir,
         output_dir=tmp_path / "output",
-        data_source=None,
+        data_source=data_source,
         geonames_user=geonames_user,
     )
 
 
-def _make_csv_ctx(tmp_path, rows, geonames_user="testuser"):
+def _csv_row(display_name, geonames_id, aliases="", labels="", html_url=""):
+    return {
+        "html_url": html_url,
+        "names.types.ror_display": display_name,
+        "names.types.alias": aliases,
+        "names.types.label": labels,
+        "locations.geonames_id": str(geonames_id),
+    }
+
+
+def _make_csv_ctx(tmp_path, rows, data_source, geonames_user="testuser"):
     csv_file = tmp_path / "input.csv"
     if not rows:
         csv_file.write_text("", encoding="utf-8")
     else:
-        fieldnames = list(rows[0].keys())
         with open(csv_file, "w", newline="", encoding="utf-8") as f:
-            writer = csv.DictWriter(f, fieldnames=fieldnames)
+            writer = csv.DictWriter(f, fieldnames=list(rows[0].keys()))
             writer.writeheader()
             writer.writerows(rows)
     return ValidatorContext(
         csv_file=csv_file,
         json_dir=None,
         output_dir=tmp_path / "output",
-        data_source=None,
+        data_source=data_source,
         geonames_user=geonames_user,
     )
 
 
-def _ror_api_result(ror_id, display_name, country_code, aliases=None, labels=None):
-    names = [{"value": display_name, "types": ["ror_display"]}]
-    if aliases:
-        for alias in aliases:
-            names.append({"value": alias, "types": ["alias"]})
-    if labels:
-        for label in labels:
-            names.append({"value": label, "types": ["label"]})
-    return {
-        "id": ror_id,
-        "names": names,
-        "locations": [
-            {
-                "geonames_details": {
-                    "country_code": country_code,
-                }
-            }
-        ],
-    }
-
-
 class TestProductionDuplicatesMetadata:
     def test_name(self):
-        v = ProductionDuplicatesValidator()
-        assert v.name == "production-duplicates"
+        assert ProductionDuplicatesValidator().name == "production-duplicates"
 
     def test_supported_formats(self):
-        v = ProductionDuplicatesValidator()
-        assert v.supported_formats == {"csv", "json"}
+        assert ProductionDuplicatesValidator().supported_formats == {"csv", "json"}
 
     def test_requires_geonames(self):
-        v = ProductionDuplicatesValidator()
-        assert v.requires_geonames is True
+        assert ProductionDuplicatesValidator().requires_geonames is True
+
+    def test_requires_data_source(self):
+        assert ProductionDuplicatesValidator().requires_data_source is True
 
     def test_output_filename(self):
-        v = ProductionDuplicatesValidator()
-        assert v.output_filename == "production_duplicates.csv"
+        assert ProductionDuplicatesValidator().output_filename == "production_duplicates.csv"
 
     def test_output_fields(self):
-        v = ProductionDuplicatesValidator()
-        expected = [
+        assert ProductionDuplicatesValidator().output_fields == [
             "issue_url",
             "input_name",
             "matched_ror_id",
             "matched_name",
             "match_ratio",
         ]
-        assert v.output_fields == expected
 
     def test_can_run_without_geonames(self, tmp_path):
-        v = ProductionDuplicatesValidator()
-        ctx = ValidatorContext(
-            csv_file=None,
-            json_dir=None,
-            output_dir=tmp_path,
-            data_source=None,
-            geonames_user=None,
-        )
-        can, msg = v.can_run(ctx)
+        ctx = ValidatorContext(None, None, tmp_path, _data_source(), None)
+        can, msg = ProductionDuplicatesValidator().can_run(ctx)
         assert can is False
         assert "geonames" in msg.lower()
 
-    def test_can_run_with_geonames(self, tmp_path):
-        v = ProductionDuplicatesValidator()
-        ctx = ValidatorContext(
-            csv_file=None,
-            json_dir=None,
-            output_dir=tmp_path,
-            data_source=None,
-            geonames_user="testuser",
-        )
-        can, _ = v.can_run(ctx)
+    def test_can_run_without_data_source(self, tmp_path):
+        ctx = ValidatorContext(None, None, tmp_path, None, "testuser")
+        can, msg = ProductionDuplicatesValidator().can_run(ctx)
+        assert can is False
+        assert "data-dump" in msg
+
+    def test_can_run_with_geonames_and_data_source(self, tmp_path):
+        ctx = ValidatorContext(None, None, tmp_path, _data_source(), "testuser")
+        can, _ = ProductionDuplicatesValidator().can_run(ctx)
         assert can is True
 
 
 class TestGetCountryCodeFromResult:
     def test_returns_country_code(self):
-        result = _ror_api_result("https://ror.org/001", "Org", "US")
-        assert get_country_code_from_result(result) == "US"
+        assert get_country_code_from_result(_ror_record("x", "Org", "US")) == "US"
 
     def test_returns_none_when_no_locations(self):
-        result = {"locations": []}
-        assert get_country_code_from_result(result) is None
+        assert get_country_code_from_result({"locations": []}) is None
 
     def test_returns_none_when_locations_key_missing(self):
-        result = {}
-        assert get_country_code_from_result(result) is None
+        assert get_country_code_from_result({}) is None
 
     def test_returns_none_when_no_geonames_details(self):
-        result = {"locations": [{}]}
-        assert get_country_code_from_result(result) is None
+        assert get_country_code_from_result({"locations": [{}]}) is None
 
     def test_returns_none_when_no_country_code(self):
-        result = {"locations": [{"geonames_details": {}}]}
-        assert get_country_code_from_result(result) is None
+        assert get_country_code_from_result({"locations": [{"geonames_details": {}}]}) is None
 
 
 class TestGetAllNamesFromResult:
-    def test_returns_display_name(self):
-        result = _ror_api_result("https://ror.org/001", "Main Org", "US")
-        names = get_all_names_from_result(result)
-        assert "Main Org" in names
-
-    def test_returns_aliases(self):
-        result = _ror_api_result(
-            "https://ror.org/001", "Main Org", "US", aliases=["Alias One"]
-        )
-        names = get_all_names_from_result(result)
-        assert "Main Org" in names
-        assert "Alias One" in names
-
-    def test_returns_labels(self):
-        result = _ror_api_result(
-            "https://ror.org/001", "Main Org", "US", labels=["Label One"]
-        )
-        names = get_all_names_from_result(result)
-        assert "Label One" in names
+    def test_returns_display_alias_and_label(self):
+        record = _ror_record("x", "Main Org", "US", aliases=["Alias One"], labels=["Label One"])
+        assert get_all_names_from_result(record) == ["Main Org", "Alias One", "Label One"]
 
     def test_excludes_acronyms(self):
-        result = {
-            "names": [
-                {"value": "Main Org", "types": ["ror_display"]},
-                {"value": "MO", "types": ["acronym"]},
-            ]
-        }
-        names = get_all_names_from_result(result)
-        assert "Main Org" in names
-        assert "MO" not in names
+        record = _ror_record("x", "Main Org", "US", acronyms=["MO"])
+        assert get_all_names_from_result(record) == ["Main Org"]
 
     def test_returns_empty_when_no_names(self):
-        result = {"names": []}
-        assert get_all_names_from_result(result) == []
+        assert get_all_names_from_result({"names": []}) == []
 
     def test_returns_empty_when_names_key_missing(self):
-        result = {}
-        assert get_all_names_from_result(result) == []
+        assert get_all_names_from_result({}) == []
 
 
 class TestParseCsvNames:
     def test_parses_display_name(self):
-        row = {"names.types.ror_display": "University of Test"}
-        names = parse_csv_names(row)
-        assert "University of Test" in names
+        assert parse_csv_names({"names.types.ror_display": "University of Test"}) == ["University of Test"]
 
-    def test_parses_aliases(self):
+    def test_parses_aliases_and_labels(self):
         row = {
             "names.types.ror_display": "University of Test",
             "names.types.alias": "UTest; Test University",
-        }
-        names = parse_csv_names(row)
-        assert "University of Test" in names
-        assert "UTest" in names
-        assert "Test University" in names
-
-    def test_parses_labels(self):
-        row = {
-            "names.types.ror_display": "University of Test",
             "names.types.label": "Universite de Test; Test Uni",
         }
-        names = parse_csv_names(row)
-        assert "Universite de Test" in names
-        assert "Test Uni" in names
+        assert parse_csv_names(row) == [
+            "University of Test", "UTest", "Test University", "Universite de Test", "Test Uni",
+        ]
 
     def test_returns_empty_for_empty_row(self):
-        row = {}
-        assert parse_csv_names(row) == []
+        assert parse_csv_names({}) == []
 
     def test_skips_empty_values(self):
-        row = {
-            "names.types.ror_display": "",
-            "names.types.alias": "",
-            "names.types.label": "",
-        }
+        row = {"names.types.ror_display": "", "names.types.alias": "", "names.types.label": ""}
         assert parse_csv_names(row) == []
 
 
@@ -250,771 +224,396 @@ class TestConstants:
         assert MAX_WORKERS == 5
 
 
+class TestBuildGeonamesCountryIndex:
+    def test_indexes_all_locations_of_all_statuses(self):
+        records = [
+            _ror_record("a", "A", "US", NYC),
+            _ror_record("b", "B", "DE", BERLIN, status="inactive"),
+            {"id": "c", "locations": [
+                {"geonames_id": PARIS, "geonames_details": {"country_code": "FR"}},
+                {"geonames_id": TOKYO, "geonames_details": {"country_code": "JP"}},
+            ]},
+        ]
+        assert build_geonames_country_index(records) == {
+            str(NYC): "US", str(BERLIN): "DE", str(PARIS): "FR", str(TOKYO): "JP",
+        }
+
+    def test_skips_locations_without_id_or_country(self):
+        records = [{"locations": [{"geonames_id": 1}, {"geonames_details": {"country_code": "US"}}]}]
+        assert build_geonames_country_index(records) == {}
+
+
+class TestResolveCountries:
+    def _info(self, geonames_id, country_code=None, issue_url="issue"):
+        return {"issue_url": issue_url, "names": ["X"], "geonames_id": str(geonames_id),
+                "country_code": country_code}
+
+    @patch(GEONAMES_CLIENT)
+    def test_ids_in_data_dump_need_no_api_call(self, mock_cls):
+        records = _data_source().get_all_records()
+        countries = resolve_countries([self._info(NYC), self._info(BERLIN)], records, "user")
+        assert countries[str(NYC)] == "US"
+        assert countries[str(BERLIN)] == "DE"
+        mock_cls.assert_not_called()
+
+    @patch(GEONAMES_CLIENT)
+    def test_embedded_country_code_needs_no_api_call(self, mock_cls):
+        countries = resolve_countries([self._info(424242, "NZ")], [], "user")
+        assert countries["424242"] == "NZ"
+        mock_cls.assert_not_called()
+
+    @patch(GEONAMES_CLIENT)
+    def test_data_dump_takes_precedence_over_embedded_country(self, mock_cls):
+        records = _data_source().get_all_records()
+        countries = resolve_countries([self._info(NYC, "CA")], records, "user")
+        assert countries[str(NYC)] == "US"
+
+    @patch(GEONAMES_CLIENT)
+    def test_unknown_ids_fall_back_to_geonames_once_each(self, mock_cls):
+        client = MagicMock()
+        client.get_country_code.side_effect = lambda gid, record_identifier="": {"111": "BR", "222": None}[gid]
+        mock_cls.return_value = client
+        infos = [self._info(111, issue_url="i1"), self._info(111, issue_url="i2"), self._info(222, issue_url="i3")]
+
+        countries = resolve_countries(infos, [], "user")
+
+        mock_cls.assert_called_once_with("user")
+        assert countries["111"] == "BR"
+        assert countries["222"] is None
+        calls = sorted(call.args[0] for call in client.get_country_code.call_args_list)
+        assert calls == ["111", "222"]
+        client.get_country_code.assert_any_call("111", record_identifier="i1")
+
+
 class TestProductionDuplicatesJSON:
-    @patch("curation_validation.validators.production_duplicates.RORAPIClient")
-    @patch("curation_validation.validators.production_duplicates.GeoNamesClient")
-    def test_finds_duplicate_matching_country(self, mock_geonames_cls, mock_ror_cls, tmp_path):
-        mock_geonames = MagicMock()
-        mock_geonames.get_country_code.return_value = "US"
-        mock_geonames_cls.return_value = mock_geonames
+    @patch(GEONAMES_CLIENT)
+    def test_finds_duplicate_matching_country(self, mock_cls, tmp_path):
+        ds = _data_source(_ror_record("https://ror.org/existing001", "University of Testing", "US"))
+        ctx = _make_json_ctx(tmp_path, [_input_json("University of Testing", NYC)], ds)
 
-        mock_ror = MagicMock()
-        mock_ror.search_all.return_value = [
-            _ror_api_result("https://ror.org/existing001", "University of Testing", "US")
-        ]
-        mock_ror_cls.return_value = mock_ror
+        results = ProductionDuplicatesValidator().run(ctx)
 
-        input_records = [
-            {
-                "id": "",
-                "names": [{"value": "University of Testing", "types": ["ror_display"]}],
-                "locations": [{"geonames_id": 5128581}],
-            }
-        ]
-        ctx = _make_json_ctx(tmp_path, input_records)
-        v = ProductionDuplicatesValidator()
-        results = v.run(ctx)
+        assert results == [{
+            "issue_url": "University of Testing",
+            "input_name": "University of Testing",
+            "matched_ror_id": "https://ror.org/existing001",
+            "matched_name": "University of Testing",
+            "match_ratio": 100,
+        }]
+        mock_cls.assert_not_called()
 
-        assert len(results) >= 1
-        assert results[0]["matched_ror_id"] == "https://ror.org/existing001"
-        assert results[0]["input_name"] == "University of Testing"
-        assert int(results[0]["match_ratio"]) >= FUZZY_THRESHOLD
+    def test_filters_by_country_mismatch(self, tmp_path):
+        ds = _data_source(_ror_record("https://ror.org/existing001", "University of Testing", "GB"))
+        ctx = _make_json_ctx(tmp_path, [_input_json("University of Testing", NYC)], ds)
+        assert ProductionDuplicatesValidator().run(ctx) == []
 
-    @patch("curation_validation.validators.production_duplicates.RORAPIClient")
-    @patch("curation_validation.validators.production_duplicates.GeoNamesClient")
-    def test_filters_by_country_mismatch(self, mock_geonames_cls, mock_ror_cls, tmp_path):
-        mock_geonames = MagicMock()
-        mock_geonames.get_country_code.return_value = "US"
-        mock_geonames_cls.return_value = mock_geonames
+    def test_country_comes_from_first_location_of_ror_record(self, tmp_path):
+        existing = _ror_record("https://ror.org/existing001", "University of Testing", "GB")
+        existing["locations"].append({"geonames_details": {"country_code": "US"}})
+        ctx = _make_json_ctx(tmp_path, [_input_json("University of Testing", NYC)], _data_source(existing))
+        assert ProductionDuplicatesValidator().run(ctx) == []
 
-        mock_ror = MagicMock()
-        mock_ror.search_all.return_value = [
-            _ror_api_result("https://ror.org/existing001", "University of Testing", "GB")
-        ]
-        mock_ror_cls.return_value = mock_ror
+    def test_below_threshold_not_reported(self, tmp_path):
+        ds = _data_source(_ror_record("https://ror.org/x", "Completely Different Organization Name XYZ", "US"))
+        ctx = _make_json_ctx(tmp_path, [_input_json("University of Testing", NYC)], ds)
+        assert ProductionDuplicatesValidator().run(ctx) == []
 
-        input_records = [
-            {
-                "id": "",
-                "names": [{"value": "University of Testing", "types": ["ror_display"]}],
-                "locations": [{"geonames_id": 5128581}],
-            }
-        ]
-        ctx = _make_json_ctx(tmp_path, input_records)
-        v = ProductionDuplicatesValidator()
-        results = v.run(ctx)
+    def test_fuzzy_match_reports_thefuzz_score(self, tmp_path):
+        ds = _data_source(_ror_record("https://ror.org/x", "University of Testin", "US"))
+        ctx = _make_json_ctx(tmp_path, [_input_json("University of Testing", NYC)], ds)
+        results = ProductionDuplicatesValidator().run(ctx)
+        expected = fuzz.ratio(normalize_text("University of Testing"), normalize_text("University of Testin"))
+        assert [r["match_ratio"] for r in results] == [expected]
 
-        assert len(results) == 0
-
-    @patch("curation_validation.validators.production_duplicates.RORAPIClient")
-    @patch("curation_validation.validators.production_duplicates.GeoNamesClient")
-    def test_below_threshold_not_reported(self, mock_geonames_cls, mock_ror_cls, tmp_path):
-        mock_geonames = MagicMock()
-        mock_geonames.get_country_code.return_value = "US"
-        mock_geonames_cls.return_value = mock_geonames
-
-        mock_ror = MagicMock()
-        mock_ror.search_all.return_value = [
-            _ror_api_result("https://ror.org/existing001", "Completely Different Organization Name XYZ", "US")
-        ]
-        mock_ror_cls.return_value = mock_ror
-
-        input_records = [
-            {
-                "id": "",
-                "names": [{"value": "University of Testing", "types": ["ror_display"]}],
-                "locations": [{"geonames_id": 5128581}],
-            }
-        ]
-        ctx = _make_json_ctx(tmp_path, input_records)
-        v = ProductionDuplicatesValidator()
-        results = v.run(ctx)
-
-        assert len(results) == 0
-
-    @patch("curation_validation.validators.production_duplicates.RORAPIClient")
-    @patch("curation_validation.validators.production_duplicates.GeoNamesClient")
-    def test_matches_against_aliases(self, mock_geonames_cls, mock_ror_cls, tmp_path):
-        mock_geonames = MagicMock()
-        mock_geonames.get_country_code.return_value = "DE"
-        mock_geonames_cls.return_value = mock_geonames
-
-        mock_ror = MagicMock()
-        mock_ror.search_all.return_value = [
-            _ror_api_result(
-                "https://ror.org/existing001",
-                "Different Display Name",
-                "DE",
-                aliases=["Technische Universitat Berlin"],
-            )
-        ]
-        mock_ror_cls.return_value = mock_ror
-
-        input_records = [
-            {
-                "id": "",
-                "names": [{"value": "Technische Universitat Berlin", "types": ["ror_display"]}],
-                "locations": [{"geonames_id": 2950159}],
-            }
-        ]
-        ctx = _make_json_ctx(tmp_path, input_records)
-        v = ProductionDuplicatesValidator()
-        results = v.run(ctx)
-
-        assert len(results) >= 1
-        assert results[0]["matched_name"] == "Technische Universitat Berlin"
-
-    @patch("curation_validation.validators.production_duplicates.RORAPIClient")
-    @patch("curation_validation.validators.production_duplicates.GeoNamesClient")
-    def test_no_api_results_no_findings(self, mock_geonames_cls, mock_ror_cls, tmp_path):
-        mock_geonames = MagicMock()
-        mock_geonames.get_country_code.return_value = "US"
-        mock_geonames_cls.return_value = mock_geonames
-
-        mock_ror = MagicMock()
-        mock_ror.search_all.return_value = []
-        mock_ror_cls.return_value = mock_ror
-
-        input_records = [
-            {
-                "id": "",
-                "names": [{"value": "Very Unique Name", "types": ["ror_display"]}],
-                "locations": [{"geonames_id": 5128581}],
-            }
-        ]
-        ctx = _make_json_ctx(tmp_path, input_records)
-        v = ProductionDuplicatesValidator()
-        results = v.run(ctx)
-
-        assert len(results) == 0
-
-    @patch("curation_validation.validators.production_duplicates.RORAPIClient")
-    @patch("curation_validation.validators.production_duplicates.GeoNamesClient")
-    def test_deduplicates_findings(self, mock_geonames_cls, mock_ror_cls, tmp_path):
-        mock_geonames = MagicMock()
-        mock_geonames.get_country_code.return_value = "US"
-        mock_geonames_cls.return_value = mock_geonames
-
-        mock_ror = MagicMock()
-        mock_ror.search_all.return_value = [
-            _ror_api_result(
-                "https://ror.org/existing001",
-                "University of Testing",
-                "US",
-                aliases=["University of Testing"],
-            )
-        ]
-        mock_ror_cls.return_value = mock_ror
-
-        input_records = [
-            {
-                "id": "",
-                "names": [
-                    {"value": "University of Testing", "types": ["ror_display"]},
-                    {"value": "University of Testing", "types": ["alias"]},
-                ],
-                "locations": [{"geonames_id": 5128581}],
-            }
-        ]
-        ctx = _make_json_ctx(tmp_path, input_records)
-        v = ProductionDuplicatesValidator()
-        results = v.run(ctx)
-
-        seen = set()
-        for r in results:
-            key = (r["input_name"], r["matched_ror_id"])
-            assert key not in seen, f"Duplicate finding: {key}"
-            seen.add(key)
-
-    @patch("curation_validation.validators.production_duplicates.RORAPIClient")
-    @patch("curation_validation.validators.production_duplicates.GeoNamesClient")
-    def test_output_format_fields(self, mock_geonames_cls, mock_ror_cls, tmp_path):
-        mock_geonames = MagicMock()
-        mock_geonames.get_country_code.return_value = "US"
-        mock_geonames_cls.return_value = mock_geonames
-
-        mock_ror = MagicMock()
-        mock_ror.search_all.return_value = [
-            _ror_api_result("https://ror.org/existing001", "University of Testing", "US")
-        ]
-        mock_ror_cls.return_value = mock_ror
-
-        input_records = [
-            {
-                "id": "",
-                "names": [{"value": "University of Testing", "types": ["ror_display"]}],
-                "locations": [{"geonames_id": 5128581}],
-            }
-        ]
-        ctx = _make_json_ctx(tmp_path, input_records)
-        v = ProductionDuplicatesValidator()
-        results = v.run(ctx)
-
-        assert len(results) >= 1
-        result = results[0]
-        assert "issue_url" in result
-        assert "input_name" in result
-        assert "matched_ror_id" in result
-        assert "matched_name" in result
-        assert "match_ratio" in result
-
-    @patch("curation_validation.validators.production_duplicates.RORAPIClient")
-    @patch("curation_validation.validators.production_duplicates.GeoNamesClient")
-    def test_extracts_geonames_id_from_json(self, mock_geonames_cls, mock_ror_cls, tmp_path):
-        mock_geonames = MagicMock()
-        mock_geonames.get_country_code.return_value = "FR"
-        mock_geonames_cls.return_value = mock_geonames
-
-        mock_ror = MagicMock()
-        mock_ror.search_all.return_value = [
-            _ror_api_result("https://ror.org/existing001", "Universite de Paris", "FR")
-        ]
-        mock_ror_cls.return_value = mock_ror
-
-        input_records = [
-            {
-                "id": "",
-                "names": [{"value": "Universite de Paris", "types": ["ror_display"]}],
-                "locations": [{"geonames_id": 2988507}],
-            }
-        ]
-        ctx = _make_json_ctx(tmp_path, input_records)
-        v = ProductionDuplicatesValidator()
-        results = v.run(ctx)
-
-        mock_geonames.get_country_code.assert_called()
-        call_args = mock_geonames.get_country_code.call_args_list[0]
-        assert "2988507" in str(call_args)
-
-    @patch("curation_validation.validators.production_duplicates.RORAPIClient")
-    @patch("curation_validation.validators.production_duplicates.GeoNamesClient")
-    def test_geonames_lookup_fails_skips_record(self, mock_geonames_cls, mock_ror_cls, tmp_path):
-        mock_geonames = MagicMock()
-        mock_geonames.get_country_code.return_value = None
-        mock_geonames_cls.return_value = mock_geonames
-
-        mock_ror = MagicMock()
-        mock_ror_cls.return_value = mock_ror
-
-        input_records = [
-            {
-                "id": "",
-                "names": [{"value": "University of Testing", "types": ["ror_display"]}],
-                "locations": [{"geonames_id": 9999999}],
-            }
-        ]
-        ctx = _make_json_ctx(tmp_path, input_records)
-        v = ProductionDuplicatesValidator()
-        results = v.run(ctx)
-
-        assert len(results) == 0
-
-    @patch("curation_validation.validators.production_duplicates.RORAPIClient")
-    @patch("curation_validation.validators.production_duplicates.GeoNamesClient")
-    def test_empty_json_dir(self, mock_geonames_cls, mock_ror_cls, tmp_path):
-        mock_geonames = MagicMock()
-        mock_geonames_cls.return_value = mock_geonames
-        mock_ror = MagicMock()
-        mock_ror_cls.return_value = mock_ror
-
-        json_dir = tmp_path / "json"
-        json_dir.mkdir(parents=True, exist_ok=True)
-        ctx = ValidatorContext(
-            csv_file=None,
-            json_dir=json_dir,
-            output_dir=tmp_path / "output",
-            data_source=None,
-            geonames_user="testuser",
+    def test_matches_against_aliases_and_labels(self, tmp_path):
+        ds = _data_source(
+            _ror_record("https://ror.org/a", "Different Display Name", "DE", aliases=["Technische Universitat Berlin"]),
+            _ror_record("https://ror.org/b", "Other Display Name", "DE", labels=["Technische Universität Berlin"]),
         )
-        v = ProductionDuplicatesValidator()
-        results = v.run(ctx)
-        assert results == []
+        ctx = _make_json_ctx(tmp_path, [_input_json("Technische Universitat Berlin", BERLIN)], ds)
+        results = ProductionDuplicatesValidator().run(ctx)
+        assert {(r["matched_ror_id"], r["matched_name"]) for r in results} == {
+            ("https://ror.org/a", "Technische Universitat Berlin"),
+            ("https://ror.org/b", "Technische Universität Berlin"),
+        }
 
-    @patch("curation_validation.validators.production_duplicates.RORAPIClient")
-    @patch("curation_validation.validators.production_duplicates.GeoNamesClient")
-    def test_multiple_input_records(self, mock_geonames_cls, mock_ror_cls, tmp_path):
-        mock_geonames = MagicMock()
-        mock_geonames.get_country_code.return_value = "US"
-        mock_geonames_cls.return_value = mock_geonames
+    def test_does_not_match_acronyms_of_ror_records(self, tmp_path):
+        ds = _data_source(_ror_record("https://ror.org/a", "Something Else", "US", acronyms=["Testing Univ Org"]))
+        ctx = _make_json_ctx(tmp_path, [_input_json("Testing Univ Org", NYC)], ds)
+        assert ProductionDuplicatesValidator().run(ctx) == []
 
-        mock_ror = MagicMock()
+    @pytest.mark.parametrize("status", ["inactive", "withdrawn"])
+    def test_ignores_non_active_records(self, status, tmp_path):
+        ds = _data_source(_ror_record("https://ror.org/x", "University of Testing", "US", status=status))
+        ctx = _make_json_ctx(tmp_path, [_input_json("University of Testing", NYC)], ds)
+        assert ProductionDuplicatesValidator().run(ctx) == []
 
-        def search_side_effect(name):
-            if "Testing" in name:
-                return [
-                    _ror_api_result("https://ror.org/existing001", "University of Testing", "US")
-                ]
-            return []
-
-        mock_ror.search_all.side_effect = search_side_effect
-        mock_ror_cls.return_value = mock_ror
-
-        input_records = [
-            {
-                "id": "",
-                "names": [{"value": "University of Testing", "types": ["ror_display"]}],
-                "locations": [{"geonames_id": 5128581}],
-            },
-            {
-                "id": "",
-                "names": [{"value": "Completely Novel Organization", "types": ["ror_display"]}],
-                "locations": [{"geonames_id": 5128581}],
-            },
+    def test_reports_first_matching_name_of_each_record_once(self, tmp_path):
+        ds = _data_source(_ror_record(
+            "https://ror.org/x", "University of Testin", "US", aliases=["University of Testing"],
+        ))
+        ctx = _make_json_ctx(tmp_path, [_input_json("University of Testing", NYC)], ds)
+        results = ProductionDuplicatesValidator().run(ctx)
+        assert [(r["matched_name"], r["match_ratio"]) for r in results] == [
+            ("University of Testin", fuzz.ratio("university of testing", "university of testin")),
         ]
-        ctx = _make_json_ctx(tmp_path, input_records)
-        v = ProductionDuplicatesValidator()
-        results = v.run(ctx)
 
-        matched_names = [r["input_name"] for r in results]
-        assert "University of Testing" in matched_names
-        assert "Completely Novel Organization" not in matched_names
+    def test_deduplicates_on_input_name_and_ror_id(self, tmp_path):
+        ds = _data_source(_ror_record(
+            "https://ror.org/x", "University of Testing", "US", aliases=["University of Testing"],
+        ))
+        record = _input_json("University of Testing", NYC, aliases=["University of Testing"])
+        ctx = _make_json_ctx(tmp_path, [record], ds)
+        results = ProductionDuplicatesValidator().run(ctx)
+        assert len(results) == 1
 
-    @patch("curation_validation.validators.production_duplicates.RORAPIClient")
-    @patch("curation_validation.validators.production_duplicates.GeoNamesClient")
-    def test_json_extracts_multiple_names(self, mock_geonames_cls, mock_ror_cls, tmp_path):
-        mock_geonames = MagicMock()
-        mock_geonames.get_country_code.return_value = "DE"
-        mock_geonames_cls.return_value = mock_geonames
+    def test_same_name_in_two_input_records_reported_once_for_first(self, tmp_path):
+        ds = _data_source(_ror_record("https://ror.org/x", "Shared Name Institute", "US"))
+        records = [_input_json("Shared Name Institute", NYC), _input_json("Shared Name Institute", NYC)]
+        ctx = _make_json_ctx(tmp_path, records, ds)
+        assert len(ProductionDuplicatesValidator().run(ctx)) == 1
 
-        search_calls = []
+    def test_uses_embedded_country_for_ids_not_in_dump(self, tmp_path):
+        ds = _data_source(_ror_record("https://ror.org/x", "Auckland Testing Trust", "NZ"))
+        record = _input_json("Auckland Testing Trust", 2193733, country_code="NZ")
+        ctx = _make_json_ctx(tmp_path, [record], ds)
+        with patch(GEONAMES_CLIENT) as mock_cls:
+            results = ProductionDuplicatesValidator().run(ctx)
+        mock_cls.assert_not_called()
+        assert [r["matched_ror_id"] for r in results] == ["https://ror.org/x"]
 
-        def track_search(name):
-            search_calls.append(name)
-            return []
+    @patch(GEONAMES_CLIENT)
+    def test_geonames_fallback_for_ids_not_found_locally(self, mock_cls, tmp_path):
+        client = MagicMock()
+        client.get_country_code.return_value = "NZ"
+        mock_cls.return_value = client
+        ds = _data_source(_ror_record("https://ror.org/x", "Auckland Testing Trust", "NZ"))
+        ctx = _make_json_ctx(tmp_path, [_input_json("Auckland Testing Trust", 2193733)], ds)
 
-        mock_ror = MagicMock()
-        mock_ror.search_all.side_effect = track_search
-        mock_ror_cls.return_value = mock_ror
+        results = ProductionDuplicatesValidator().run(ctx)
 
-        input_records = [
-            {
-                "id": "",
-                "names": [
-                    {"value": "Technische Universitat Berlin", "types": ["ror_display"]},
-                    {"value": "TU Berlin", "types": ["alias"]},
-                    {"value": "Technical University of Berlin", "types": ["label"]},
-                    {"value": "TUB", "types": ["acronym"]},
-                ],
-                "locations": [{"geonames_id": 2950159}],
-            }
+        client.get_country_code.assert_called_once_with("2193733", record_identifier="Auckland Testing Trust")
+        assert [r["matched_ror_id"] for r in results] == ["https://ror.org/x"]
+
+    @patch(GEONAMES_CLIENT)
+    def test_geonames_lookup_fails_skips_record(self, mock_cls, tmp_path):
+        client = MagicMock()
+        client.get_country_code.return_value = None
+        mock_cls.return_value = client
+        ds = _data_source(_ror_record("https://ror.org/x", "University of Testing", "US"))
+        ctx = _make_json_ctx(tmp_path, [_input_json("University of Testing", 9999999)], ds)
+        assert ProductionDuplicatesValidator().run(ctx) == []
+
+    def test_empty_json_dir(self, tmp_path):
+        ctx = _make_json_ctx(tmp_path, [], _data_source())
+        assert ProductionDuplicatesValidator().run(ctx) == []
+
+    def test_multiple_input_records(self, tmp_path):
+        ds = _data_source(_ror_record("https://ror.org/x", "University of Testing", "US"))
+        records = [
+            _input_json("University of Testing", NYC),
+            _input_json("Completely Novel Organization", NYC),
         ]
-        ctx = _make_json_ctx(tmp_path, input_records)
-        v = ProductionDuplicatesValidator()
-        v.run(ctx)
+        ctx = _make_json_ctx(tmp_path, records, ds)
+        matched_names = [r["input_name"] for r in ProductionDuplicatesValidator().run(ctx)]
+        assert matched_names == ["University of Testing"]
 
-        searched = set(search_calls)
-        assert "Technische Universitat Berlin" in searched
-        assert "TU Berlin" in searched
-        assert "Technical University of Berlin" in searched
-        assert "TUB" not in searched
-
-    @patch("curation_validation.validators.production_duplicates.RORAPIClient")
-    @patch("curation_validation.validators.production_duplicates.GeoNamesClient")
-    def test_issue_url_from_json_id(self, mock_geonames_cls, mock_ror_cls, tmp_path):
-        mock_geonames = MagicMock()
-        mock_geonames.get_country_code.return_value = "US"
-        mock_geonames_cls.return_value = mock_geonames
-
-        mock_ror = MagicMock()
-        mock_ror.search_all.return_value = [
-            _ror_api_result("https://ror.org/existing001", "Test University", "US")
+    def test_searches_display_alias_label_but_not_acronym(self, tmp_path):
+        ds = _data_source(
+            _ror_record("https://ror.org/a", "Technische Universitat Berlin", "DE"),
+            _ror_record("https://ror.org/b", "TU Berlin", "DE"),
+            _ror_record("https://ror.org/c", "Technical University of Berlin", "DE"),
+            _ror_record("https://ror.org/d", "TUB", "DE"),
+        )
+        record = _input_json(
+            "Technische Universitat Berlin", BERLIN, aliases=["TU Berlin"],
+            labels=["Technical University of Berlin"], acronyms=["TUB"],
+        )
+        ctx = _make_json_ctx(tmp_path, [record], ds)
+        results = ProductionDuplicatesValidator().run(ctx)
+        assert [r["matched_ror_id"] for r in results] == [
+            "https://ror.org/a", "https://ror.org/b", "https://ror.org/c",
         ]
-        mock_ror_cls.return_value = mock_ror
 
-        input_records = [
-            {
-                "id": "",
-                "names": [{"value": "Test University", "types": ["ror_display"]}],
-                "locations": [{"geonames_id": 5128581}],
-            }
-        ]
-        ctx = _make_json_ctx(tmp_path, input_records)
-        v = ProductionDuplicatesValidator()
-        results = v.run(ctx)
+    def test_issue_url_falls_back_to_id_without_display_name(self, tmp_path):
+        ds = _data_source(_ror_record("https://ror.org/x", "Test University", "US"))
+        record = _input_json("ignored", NYC, ror_id="https://ror.org/input1")
+        record["names"] = [{"value": "Test University", "types": ["label"]}]
+        ctx = _make_json_ctx(tmp_path, [record], ds)
+        results = ProductionDuplicatesValidator().run(ctx)
+        assert results[0]["issue_url"] == "https://ror.org/input1"
 
-        assert len(results) >= 1
-        assert "issue_url" in results[0]
+    def test_update_record_matches_itself_in_production(self, tmp_path):
+        existing = _ror_record("https://ror.org/x", "Test University", "US", NYC)
+        ctx = _make_json_ctx(tmp_path, [existing], _data_source(existing))
+        results = ProductionDuplicatesValidator().run(ctx)
+        assert [r["matched_ror_id"] for r in results] == ["https://ror.org/x"]
 
 
 class TestProductionDuplicatesCSV:
-    @patch("curation_validation.validators.production_duplicates.RORAPIClient")
-    @patch("curation_validation.validators.production_duplicates.GeoNamesClient")
-    def test_finds_duplicate_matching_country_csv(self, mock_geonames_cls, mock_ror_cls, tmp_path):
-        mock_geonames = MagicMock()
-        mock_geonames.get_country_code.return_value = "US"
-        mock_geonames_cls.return_value = mock_geonames
+    def test_finds_duplicate_matching_country_csv(self, tmp_path):
+        ds = _data_source(_ror_record("https://ror.org/existing001", "University of Testing", "US"))
+        rows = [_csv_row("University of Testing", NYC, html_url="https://github.com/x/1")]
+        results = ProductionDuplicatesValidator().run(_make_csv_ctx(tmp_path, rows, ds))
+        assert results == [{
+            "issue_url": "https://github.com/x/1",
+            "input_name": "University of Testing",
+            "matched_ror_id": "https://ror.org/existing001",
+            "matched_name": "University of Testing",
+            "match_ratio": 100,
+        }]
 
-        mock_ror = MagicMock()
-        mock_ror.search_all.return_value = [
-            _ror_api_result("https://ror.org/existing001", "University of Testing", "US")
+    def test_filters_by_country_mismatch_csv(self, tmp_path):
+        ds = _data_source(_ror_record("https://ror.org/x", "University of Testing", "JP"))
+        rows = [_csv_row("University of Testing", NYC)]
+        assert ProductionDuplicatesValidator().run(_make_csv_ctx(tmp_path, rows, ds)) == []
+
+    def test_below_threshold_not_reported_csv(self, tmp_path):
+        ds = _data_source(_ror_record("https://ror.org/x", "Completely Different Organization Name XYZ", "US"))
+        rows = [_csv_row("University of Testing", NYC)]
+        assert ProductionDuplicatesValidator().run(_make_csv_ctx(tmp_path, rows, ds)) == []
+
+    def test_csv_matches_semicolon_separated_aliases_and_labels(self, tmp_path):
+        ds = _data_source(
+            _ror_record("https://ror.org/a", "Northern Coastal Observatory", "US"),
+            _ror_record("https://ror.org/b", "Mountain Bioscience Laboratory", "US"),
+            _ror_record("https://ror.org/c", "Desert Ecology Station", "US"),
+        )
+        rows = [_csv_row("Main University", NYC,
+                         aliases="Northern Coastal Observatory; Mountain Bioscience Laboratory",
+                         labels="Desert Ecology Station")]
+        results = ProductionDuplicatesValidator().run(_make_csv_ctx(tmp_path, rows, ds))
+        assert [(r["input_name"], r["matched_ror_id"]) for r in results] == [
+            ("Northern Coastal Observatory", "https://ror.org/a"),
+            ("Mountain Bioscience Laboratory", "https://ror.org/b"),
+            ("Desert Ecology Station", "https://ror.org/c"),
         ]
-        mock_ror_cls.return_value = mock_ror
 
+    def test_csv_strips_language_marker_but_reports_raw_input_name(self, tmp_path):
+        ds = _data_source(_ror_record("https://ror.org/x", "University of Paris", "FR"))
+        rows = [_csv_row("Universite de Paris", PARIS, labels="University of Paris*en")]
+        results = ProductionDuplicatesValidator().run(_make_csv_ctx(tmp_path, rows, ds))
+        assert [(r["input_name"], r["match_ratio"]) for r in results] == [("University of Paris*en", 100)]
+
+    @patch(GEONAMES_CLIENT)
+    def test_csv_geonames_lookup_fails_skips_record(self, mock_cls, tmp_path):
+        mock_cls.return_value.get_country_code.return_value = None
+        ds = _data_source(_ror_record("https://ror.org/x", "University of Testing", "US"))
+        rows = [_csv_row("University of Testing", 9999999)]
+        assert ProductionDuplicatesValidator().run(_make_csv_ctx(tmp_path, rows, ds)) == []
+
+    @patch(GEONAMES_CLIENT)
+    def test_csv_geonames_fallback(self, mock_cls, tmp_path):
+        mock_cls.return_value.get_country_code.return_value = "US"
+        ds = _data_source(_ror_record("https://ror.org/x", "University of Testing", "US"))
+        rows = [_csv_row("University of Testing", 9999999, html_url="https://github.com/x/1")]
+        results = ProductionDuplicatesValidator().run(_make_csv_ctx(tmp_path, rows, ds))
+        mock_cls.return_value.get_country_code.assert_called_once_with(
+            "9999999", record_identifier="https://github.com/x/1"
+        )
+        assert [r["matched_ror_id"] for r in results] == ["https://ror.org/x"]
+
+    def test_csv_multiple_rows_in_input_order(self, tmp_path):
+        ds = _data_source(
+            _ror_record("https://ror.org/a", "University of Testing", "US"),
+            _ror_record("https://ror.org/b", "Berlin Testing Institute", "DE"),
+        )
         rows = [
-            {
-                "names.types.ror_display": "University of Testing",
-                "names.types.alias": "",
-                "names.types.label": "",
-                "locations.geonames_id": "5128581",
-            }
+            _csv_row("Berlin Testing Institute", BERLIN),
+            _csv_row("Completely Novel Organization", NYC),
+            _csv_row("University of Testing", NYC),
         ]
-        ctx = _make_csv_ctx(tmp_path, rows)
-        v = ProductionDuplicatesValidator()
-        results = v.run(ctx)
-
-        assert len(results) >= 1
-        assert results[0]["matched_ror_id"] == "https://ror.org/existing001"
-        assert results[0]["input_name"] == "University of Testing"
-
-    @patch("curation_validation.validators.production_duplicates.RORAPIClient")
-    @patch("curation_validation.validators.production_duplicates.GeoNamesClient")
-    def test_filters_by_country_mismatch_csv(self, mock_geonames_cls, mock_ror_cls, tmp_path):
-        mock_geonames = MagicMock()
-        mock_geonames.get_country_code.return_value = "US"
-        mock_geonames_cls.return_value = mock_geonames
-
-        mock_ror = MagicMock()
-        mock_ror.search_all.return_value = [
-            _ror_api_result("https://ror.org/existing001", "University of Testing", "JP")
-        ]
-        mock_ror_cls.return_value = mock_ror
-
-        rows = [
-            {
-                "names.types.ror_display": "University of Testing",
-                "names.types.alias": "",
-                "names.types.label": "",
-                "locations.geonames_id": "5128581",
-            }
-        ]
-        ctx = _make_csv_ctx(tmp_path, rows)
-        v = ProductionDuplicatesValidator()
-        results = v.run(ctx)
-
-        assert len(results) == 0
-
-    @patch("curation_validation.validators.production_duplicates.RORAPIClient")
-    @patch("curation_validation.validators.production_duplicates.GeoNamesClient")
-    def test_below_threshold_not_reported_csv(self, mock_geonames_cls, mock_ror_cls, tmp_path):
-        mock_geonames = MagicMock()
-        mock_geonames.get_country_code.return_value = "US"
-        mock_geonames_cls.return_value = mock_geonames
-
-        mock_ror = MagicMock()
-        mock_ror.search_all.return_value = [
-            _ror_api_result("https://ror.org/existing001", "Completely Different Organization Name XYZ", "US")
-        ]
-        mock_ror_cls.return_value = mock_ror
-
-        rows = [
-            {
-                "names.types.ror_display": "University of Testing",
-                "names.types.alias": "",
-                "names.types.label": "",
-                "locations.geonames_id": "5128581",
-            }
-        ]
-        ctx = _make_csv_ctx(tmp_path, rows)
-        v = ProductionDuplicatesValidator()
-        results = v.run(ctx)
-
-        assert len(results) == 0
-
-    @patch("curation_validation.validators.production_duplicates.RORAPIClient")
-    @patch("curation_validation.validators.production_duplicates.GeoNamesClient")
-    def test_csv_parses_semicolon_separated_aliases(self, mock_geonames_cls, mock_ror_cls, tmp_path):
-        mock_geonames = MagicMock()
-        mock_geonames.get_country_code.return_value = "US"
-        mock_geonames_cls.return_value = mock_geonames
-
-        search_calls = []
-
-        def track_search(name):
-            search_calls.append(name)
-            return []
-
-        mock_ror = MagicMock()
-        mock_ror.search_all.side_effect = track_search
-        mock_ror_cls.return_value = mock_ror
-
-        rows = [
-            {
-                "names.types.ror_display": "Main University",
-                "names.types.alias": "Alias One; Alias Two",
-                "names.types.label": "Label One",
-                "locations.geonames_id": "5128581",
-            }
-        ]
-        ctx = _make_csv_ctx(tmp_path, rows)
-        v = ProductionDuplicatesValidator()
-        v.run(ctx)
-
-        searched = set(search_calls)
-        assert "Main University" in searched
-        assert "Alias One" in searched
-        assert "Alias Two" in searched
-        assert "Label One" in searched
-
-    @patch("curation_validation.validators.production_duplicates.RORAPIClient")
-    @patch("curation_validation.validators.production_duplicates.GeoNamesClient")
-    def test_csv_handles_asterisk_in_names(self, mock_geonames_cls, mock_ror_cls, tmp_path):
-        mock_geonames = MagicMock()
-        mock_geonames.get_country_code.return_value = "FR"
-        mock_geonames_cls.return_value = mock_geonames
-
-        search_calls = []
-
-        def track_search(name):
-            search_calls.append(name)
-            return []
-
-        mock_ror = MagicMock()
-        mock_ror.search_all.side_effect = track_search
-        mock_ror_cls.return_value = mock_ror
-
-        rows = [
-            {
-                "names.types.ror_display": "Universite de Paris",
-                "names.types.alias": "",
-                "names.types.label": "Universite de Paris*fr; University of Paris*en",
-                "locations.geonames_id": "2988507",
-            }
-        ]
-        ctx = _make_csv_ctx(tmp_path, rows)
-        v = ProductionDuplicatesValidator()
-        v.run(ctx)
-
-        searched = set(search_calls)
-        assert "Universite de Paris" in searched
-        assert "University of Paris" in searched
-        for call in search_calls:
-            assert "*" not in call
-
-    @patch("curation_validation.validators.production_duplicates.RORAPIClient")
-    @patch("curation_validation.validators.production_duplicates.GeoNamesClient")
-    def test_csv_geonames_lookup_fails_skips_record(self, mock_geonames_cls, mock_ror_cls, tmp_path):
-        mock_geonames = MagicMock()
-        mock_geonames.get_country_code.return_value = None
-        mock_geonames_cls.return_value = mock_geonames
-
-        mock_ror = MagicMock()
-        mock_ror_cls.return_value = mock_ror
-
-        rows = [
-            {
-                "names.types.ror_display": "University of Testing",
-                "names.types.alias": "",
-                "names.types.label": "",
-                "locations.geonames_id": "9999999",
-            }
-        ]
-        ctx = _make_csv_ctx(tmp_path, rows)
-        v = ProductionDuplicatesValidator()
-        results = v.run(ctx)
-
-        assert len(results) == 0
-
-    @patch("curation_validation.validators.production_duplicates.RORAPIClient")
-    @patch("curation_validation.validators.production_duplicates.GeoNamesClient")
-    def test_csv_multiple_rows(self, mock_geonames_cls, mock_ror_cls, tmp_path):
-        mock_geonames = MagicMock()
-        mock_geonames.get_country_code.return_value = "US"
-        mock_geonames_cls.return_value = mock_geonames
-
-        mock_ror = MagicMock()
-
-        def search_side_effect(name):
-            if "Testing" in name:
-                return [
-                    _ror_api_result("https://ror.org/existing001", "University of Testing", "US")
-                ]
-            return []
-
-        mock_ror.search_all.side_effect = search_side_effect
-        mock_ror_cls.return_value = mock_ror
-
-        rows = [
-            {
-                "names.types.ror_display": "University of Testing",
-                "names.types.alias": "",
-                "names.types.label": "",
-                "locations.geonames_id": "5128581",
-            },
-            {
-                "names.types.ror_display": "Completely Novel Organization",
-                "names.types.alias": "",
-                "names.types.label": "",
-                "locations.geonames_id": "5128581",
-            },
-        ]
-        ctx = _make_csv_ctx(tmp_path, rows)
-        v = ProductionDuplicatesValidator()
-        results = v.run(ctx)
-
-        matched_names = [r["input_name"] for r in results]
-        assert "University of Testing" in matched_names
-        assert "Completely Novel Organization" not in matched_names
-
-    @patch("curation_validation.validators.production_duplicates.RORAPIClient")
-    @patch("curation_validation.validators.production_duplicates.GeoNamesClient")
-    def test_csv_output_fields(self, mock_geonames_cls, mock_ror_cls, tmp_path):
-        mock_geonames = MagicMock()
-        mock_geonames.get_country_code.return_value = "US"
-        mock_geonames_cls.return_value = mock_geonames
-
-        mock_ror = MagicMock()
-        mock_ror.search_all.return_value = [
-            _ror_api_result("https://ror.org/existing001", "University of Testing", "US")
-        ]
-        mock_ror_cls.return_value = mock_ror
-
-        rows = [
-            {
-                "names.types.ror_display": "University of Testing",
-                "names.types.alias": "",
-                "names.types.label": "",
-                "locations.geonames_id": "5128581",
-            }
-        ]
-        ctx = _make_csv_ctx(tmp_path, rows)
-        v = ProductionDuplicatesValidator()
-        results = v.run(ctx)
-
-        assert len(results) >= 1
-        result = results[0]
-        assert "issue_url" in result
-        assert "input_name" in result
-        assert "matched_ror_id" in result
-        assert "matched_name" in result
-        assert "match_ratio" in result
+        results = ProductionDuplicatesValidator().run(_make_csv_ctx(tmp_path, rows, ds))
+        assert [r["matched_ror_id"] for r in results] == ["https://ror.org/b", "https://ror.org/a"]
 
 
 class TestProductionDuplicatesEdgeCases:
     def test_returns_empty_when_no_input(self, tmp_path):
-        ctx = ValidatorContext(
-            csv_file=None,
-            json_dir=None,
-            output_dir=tmp_path,
-            data_source=None,
-            geonames_user="testuser",
+        ctx = ValidatorContext(None, None, tmp_path, None, "testuser")
+        assert ProductionDuplicatesValidator().run(ctx) == []
+
+    def test_prefers_json_over_csv(self, tmp_path):
+        ds = _data_source(
+            _ror_record("https://ror.org/j", "JSON Org Name", "US"),
+            _ror_record("https://ror.org/c", "CSV Org Name", "US"),
         )
-        v = ProductionDuplicatesValidator()
-        results = v.run(ctx)
-        assert results == []
+        ctx = _make_json_ctx(tmp_path, [_input_json("JSON Org Name", NYC)], ds)
+        csv_ctx = _make_csv_ctx(tmp_path, [_csv_row("CSV Org Name", NYC)], ds)
+        ctx.csv_file = csv_ctx.csv_file
+        results = ProductionDuplicatesValidator().run(ctx)
+        assert [r["input_name"] for r in results] == ["JSON Org Name"]
 
-    @patch("curation_validation.validators.production_duplicates.RORAPIClient")
-    @patch("curation_validation.validators.production_duplicates.GeoNamesClient")
-    def test_prefers_json_over_csv(self, mock_geonames_cls, mock_ror_cls, tmp_path):
-        mock_geonames = MagicMock()
-        mock_geonames.get_country_code.return_value = "US"
-        mock_geonames_cls.return_value = mock_geonames
+    def test_record_with_no_locations(self, tmp_path):
+        record = _input_json("No Location Org", NYC)
+        record["locations"] = []
+        ctx = _make_json_ctx(tmp_path, [record], _data_source())
+        assert ProductionDuplicatesValidator().run(ctx) == []
 
-        mock_ror = MagicMock()
-        mock_ror.search_all.return_value = [
-            _ror_api_result("https://ror.org/existing001", "JSON Org", "US")
-        ]
-        mock_ror_cls.return_value = mock_ror
+    def test_record_with_only_acronym(self, tmp_path):
+        record = _input_json("ignored", NYC)
+        record["names"] = [{"value": "ACR", "types": ["acronym"]}]
+        ctx = _make_json_ctx(tmp_path, [record], _data_source(_ror_record("x", "ACR", "US")))
+        assert ProductionDuplicatesValidator().run(ctx) == []
 
-        json_dir = tmp_path / "json"
-        json_dir.mkdir(parents=True, exist_ok=True)
-        json_record = {
-            "id": "",
-            "names": [{"value": "JSON Org", "types": ["ror_display"]}],
-            "locations": [{"geonames_id": 5128581}],
-        }
-        (json_dir / "rec.json").write_text(json.dumps(json_record), encoding="utf-8")
+    def test_csv_no_geonames_id(self, tmp_path):
+        ds = _data_source(_ror_record("https://ror.org/x", "University of Testing", "US"))
+        rows = [_csv_row("University of Testing", "")]
+        assert ProductionDuplicatesValidator().run(_make_csv_ctx(tmp_path, rows, ds)) == []
 
-        csv_file = tmp_path / "input.csv"
-        fieldnames = [
-            "names.types.ror_display",
-            "names.types.alias",
-            "names.types.label",
-            "locations.geonames_id",
-        ]
-        with open(csv_file, "w", newline="", encoding="utf-8") as f:
-            writer = csv.DictWriter(f, fieldnames=fieldnames)
-            writer.writeheader()
-            writer.writerow({
-                "names.types.ror_display": "CSV Org",
-                "names.types.alias": "",
-                "names.types.label": "",
-                "locations.geonames_id": "5128581",
-            })
+    def test_name_that_normalizes_to_empty_is_skipped(self, tmp_path):
+        ds = _data_source(_ror_record("https://ror.org/x", "!!!", "US"))
+        ctx = _make_json_ctx(tmp_path, [_input_json("???", NYC)], ds)
+        assert ProductionDuplicatesValidator().run(ctx) == []
 
-        ctx = ValidatorContext(
-            csv_file=csv_file,
-            json_dir=json_dir,
-            output_dir=tmp_path / "output",
-            data_source=None,
-            geonames_user="testuser",
-        )
-        v = ProductionDuplicatesValidator()
-        results = v.run(ctx)
 
-        assert len(results) >= 1
-        assert results[0]["input_name"] == "JSON Org"
+def _brute_force(record_infos, records, countries):
+    """Compare every input name with every name of every active same-country record."""
+    found = {}
+    for info in record_infos:
+        country = countries.get(info["geonames_id"])
+        if not country:
+            continue
+        for input_name in info["names"]:
+            normalized = normalize_text(clean_name(input_name))
+            if not normalized:
+                continue
+            for record in records:
+                if record.get("status") != "active" or get_country_code_from_result(record) != country:
+                    continue
+                for name in get_all_names_from_result(record):
+                    score = fuzz.ratio(normalized, normalize_text(name))
+                    if score >= FUZZY_THRESHOLD:
+                        found.setdefault((input_name, record["id"]), (name, score))
+                        break
+    return found
 
-    @patch("curation_validation.validators.production_duplicates.RORAPIClient")
-    @patch("curation_validation.validators.production_duplicates.GeoNamesClient")
-    def test_record_with_no_locations(self, mock_geonames_cls, mock_ror_cls, tmp_path):
-        mock_geonames = MagicMock()
-        mock_geonames_cls.return_value = mock_geonames
-        mock_ror = MagicMock()
-        mock_ror_cls.return_value = mock_ror
 
-        input_records = [
-            {
-                "id": "",
-                "names": [{"value": "No Location Org", "types": ["ror_display"]}],
-                "locations": [],
-            }
-        ]
-        ctx = _make_json_ctx(tmp_path, input_records)
-        v = ProductionDuplicatesValidator()
-        results = v.run(ctx)
+@pytest.mark.parametrize("seed", range(5))
+def test_matches_brute_force_search(seed):
+    rng = random.Random(seed)
+    words = ["University", "Institute", "of", "Testing", "Research", "National", "Centre",
+             "Center", "Hospital", "Berlin", "Paris", "Société", "大学", "College"]
+    countries_pool = ["US", "DE", "FR"]
 
-        assert results == []
+    def name():
+        return " ".join(rng.choice(words) for _ in range(rng.randint(2, 4)))
 
-    @patch("curation_validation.validators.production_duplicates.RORAPIClient")
-    @patch("curation_validation.validators.production_duplicates.GeoNamesClient")
-    def test_record_with_no_names(self, mock_geonames_cls, mock_ror_cls, tmp_path):
-        mock_geonames = MagicMock()
-        mock_geonames.get_country_code.return_value = "US"
-        mock_geonames_cls.return_value = mock_geonames
-        mock_ror = MagicMock()
-        mock_ror_cls.return_value = mock_ror
+    records = []
+    for k in range(300):
+        records.append(_ror_record(
+            f"https://ror.org/r{k}", name(), rng.choice(countries_pool),
+            aliases=[name() for _ in range(rng.randint(0, 2))],
+            status=rng.choice(["active", "active", "active", "inactive"]),
+        ))
+    geonames_ids = {"1": "US", "2": "DE", "3": "FR", "4": None}
+    infos = [
+        {"issue_url": f"i{k}", "names": [name() + rng.choice(["", "*en"]) for _ in range(rng.randint(1, 3))],
+         "geonames_id": rng.choice(list(geonames_ids))}
+        for k in range(60)
+    ]
 
-        input_records = [
-            {
-                "id": "",
-                "names": [{"value": "ACR", "types": ["acronym"]}],
-                "locations": [{"geonames_id": 5128581}],
-            }
-        ]
-        ctx = _make_json_ctx(tmp_path, input_records)
-        v = ProductionDuplicatesValidator()
-        results = v.run(ctx)
+    results = find_production_duplicates(infos, records, geonames_ids)
 
-        assert results == []
-
-    @patch("curation_validation.validators.production_duplicates.RORAPIClient")
-    @patch("curation_validation.validators.production_duplicates.GeoNamesClient")
-    def test_csv_no_geonames_id(self, mock_geonames_cls, mock_ror_cls, tmp_path):
-        mock_geonames = MagicMock()
-        mock_geonames_cls.return_value = mock_geonames
-        mock_ror = MagicMock()
-        mock_ror_cls.return_value = mock_ror
-
-        rows = [
-            {
-                "names.types.ror_display": "University of Testing",
-                "names.types.alias": "",
-                "names.types.label": "",
-                "locations.geonames_id": "",
-            }
-        ]
-        ctx = _make_csv_ctx(tmp_path, rows)
-        v = ProductionDuplicatesValidator()
-        results = v.run(ctx)
-
-        assert results == []
+    assert {(r["input_name"], r["matched_ror_id"]): (r["matched_name"], r["match_ratio"]) for r in results} \
+        == _brute_force(infos, records, geonames_ids)
+    assert len(results) == len({(r["input_name"], r["matched_ror_id"]) for r in results})

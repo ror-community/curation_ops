@@ -457,19 +457,24 @@ class TestCsvJsonValidatorSkipping:
                 tests=["update-record-integrity"],
             )
 
-    def test_csv_json_validators_skipped_when_running_all(self, tmp_path):
+    def test_csv_json_validators_skipped_when_running_all(self, tmp_path, capsys):
         csv_file = make_csv(tmp_path)
         output_dir = tmp_path / "out"
+        data_dump = tmp_path / "dump.json"
+        data_dump.write_text("[]")
 
         exit_code = run_validators(
             csv_file=csv_file,
             json_dir=None,
             output_dir=output_dir,
-            data_dump_path=None,
+            data_dump_path=str(data_dump),
             geonames_user=None,
             tests=["all"],
         )
         assert exit_code == 0
+        out = capsys.readouterr().out
+        assert "Skipping new-record-integrity: requires both --csv and --json-dir" in out
+        assert "Skipping update-record-integrity: requires both --csv and --json-dir" in out
 
 
 class TestOutputFileNaming:

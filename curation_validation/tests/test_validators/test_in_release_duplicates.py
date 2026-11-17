@@ -767,3 +767,111 @@ class TestInReleaseDuplicatesEdgeCases:
         results = v.run(ctx)
         url_results = [r for r in results if r["match_type"] == "url"]
         assert len(url_results) == 3
+
+
+def _reference_find_duplicates(parsed_records):
+    """The original all-pairs implementation, kept as the oracle for find_duplicates."""
+    findings = []
+    seen_name_pairs = set()
+    for i, record1 in enumerate(parsed_records):
+        for j, record2 in enumerate(parsed_records):
+            if i >= j:
+                continue
+            url_matched, url1, url2 = check_url_matches(record1["urls"], record2["urls"])
+            if url_matched:
+                findings.append({
+                    "record1_issue_url": record1.get("issue_url", ""),
+                    "record2_issue_url": record2.get("issue_url", ""),
+                    "record1_display_name": record1["display_name"],
+                    "record1_url": url1 or "",
+                    "record2_display_name": record2["display_name"],
+                    "record2_url": url2 or "",
+                    "match_type": "url",
+                    "similarity_score": 100,
+                })
+            for name1, name2, similarity in check_name_matches(record1["names"], record2["names"]):
+                name_pair_key = tuple(sorted([name1, name2]))
+                if name_pair_key in seen_name_pairs:
+                    continue
+                seen_name_pairs.add(name_pair_key)
+                findings.append({
+                    "record1_issue_url": record1.get("issue_url", ""),
+                    "record2_issue_url": record2.get("issue_url", ""),
+                    "record1_display_name": record1["display_name"],
+                    "record1_url": record1["url"],
+                    "record2_display_name": record2["display_name"],
+                    "record2_url": record2["url"],
+                    "match_type": "name_exact" if similarity == 100 else "name_fuzzy",
+                    "similarity_score": similarity,
+                })
+    return findings
+
+
+_NAME_POOL = [
+    "University of Testing", "University of Testing*en", "Universite de Testing*fr",
+    "University of Testin", "Univ. of Testing", "Testing University",
+    "National Research Institute", "National Research Institutes", "Nat Research Inst",
+    "Hospital Distrital de Aveiro", "Hospital Distrital de Viseu", "Ministry of Health",
+    "Ministry of Healths", "!!!", "***", "*en", "  ", "東京大学", "東京大學", "Société Générale",
+    "Societe Generale",
+]
+_URL_POOL = [
+    "", "https://example.com", "http://www.example.com/about", "https://example.org",
+    "https://facebook.com/a", "https://www.facebook.com/b", "not a url", "https://test.edu",
+]
+
+
+def _random_records(rng, count):
+    rows = []
+    for k in range(count):
+        names = rng.sample(_NAME_POOL, rng.randint(1, 4))
+        if rng.random() < 0.2:
+            names.append(names[0])  # duplicate name inside one record
+        rows.append({
+            "names.types.ror_display": names[0],
+            "names.types.alias": "; ".join(names[1:2]),
+            "names.types.label": "; ".join(names[2:]),
+            "links.type.website": rng.choice(_URL_POOL),
+            "html_url": f"https://github.com/ror-community/ror-updates/issues/{k}",
+        })
+    return [parse_csv_record(row, i) for i, row in enumerate(rows)]
+
+
+class TestFindDuplicatesMatchesReference:
+    @pytest.mark.parametrize("seed", range(10))
+    def test_identical_output_and_order(self, seed):
+        import random
+
+        parsed = _random_records(random.Random(seed), 40)
+        assert find_duplicates(parsed) == _reference_find_duplicates(parsed)
+
+    def test_identical_with_small_blocks(self, monkeypatch):
+        import random
+
+        from curation_validation.core import fuzzy
+
+        parsed = _random_records(random.Random(99), 30)
+        expected = _reference_find_duplicates(parsed)
+        monkeypatch.setattr(fuzzy, "MAX_BLOCK_CELLS", 5)
+        assert find_duplicates(parsed) == expected
+
+    def test_identical_for_json_records_with_multiple_urls(self):
+        records = [
+            {"index": 0, "display_name": "A", "names": ["Alpha Org"], "url": "https://a.com",
+             "urls": ["https://a.com", "https://shared.com"], "issue_url": "a"},
+            {"index": 1, "display_name": "B", "names": ["Beta Org"], "url": "https://b.com",
+             "urls": ["https://b.com", "https://www.shared.com/x", "https://a.com"], "issue_url": "b"},
+            {"index": 2, "display_name": "C", "names": ["Alpha Org."], "url": "",
+             "urls": ["", "https://shared.com"], "issue_url": "c"},
+        ]
+        assert find_duplicates(records) == _reference_find_duplicates(records)
+
+    def test_third_record_with_same_name_is_suppressed_like_before(self):
+        parsed = [
+            parse_csv_record(_csv_row("Same Name Org", ""), 0),
+            parse_csv_record(_csv_row("Same Name Org", ""), 1),
+            parse_csv_record(_csv_row("Same Name Org", ""), 2),
+        ]
+        results = find_duplicates(parsed)
+        assert results == _reference_find_duplicates(parsed)
+        assert len(results) == 1
