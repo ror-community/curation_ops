@@ -1,6 +1,6 @@
 from unittest.mock import patch, Mock
 
-from curation_validation.core.geonames import GeoNamesClient
+from curation_validation.core.geonames import GeoNamesClient, fetch_all
 
 
 def _response(payload):
@@ -51,3 +51,20 @@ class TestGeoNamesClient:
         assert client.lookup_failures == [
             {"geonames_id": "123", "record_identifier": "issue-1", "error": "timeout"}
         ]
+
+
+class TestFetchAll:
+    def test_calls_once_per_distinct_id_and_keeps_first_seen_order(self):
+        calls = []
+
+        def fetch(geonames_id):
+            calls.append(geonames_id)
+            return geonames_id * 2
+
+        result = fetch_all(fetch, ["b", "a", "b", "c", "a"])
+        assert result == {"b": "bb", "a": "aa", "c": "cc"}
+        assert list(result) == ["b", "a", "c"]
+        assert sorted(calls) == ["a", "b", "c"]
+
+    def test_empty(self):
+        assert fetch_all(lambda geonames_id: geonames_id, []) == {}

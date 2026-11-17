@@ -516,3 +516,35 @@ class TestAddressValidationEdgeCases:
         v = AddressValidationValidator()
         v.run(ctx)
         mock_api.assert_called_once_with("12345", "testuser")
+
+
+class TestGeonamesLookupBatching:
+    @patch("curation_validation.validators.address_validation.query_geonames_api")
+    def test_each_geonames_id_is_queried_once(self, mock_api, tmp_path):
+        mock_api.side_effect = lambda geonames_id, username: {
+            "1": ("Springfield", "United States"),
+            "2": ("Paris", "France"),
+        }[geonames_id]
+        locations = [(1, "Wrong", "United States"), (2, "Paris", "France"),
+                     (1, "Springfield", "United States"), (1, "Other", "United States")]
+        records = [
+            _json_record(ror_id=f"https://ror.org/0000000{i}", geonames_id=gid, city=city, country=country)
+            for i, (gid, city, country) in enumerate(locations)
+        ]
+        results = AddressValidationValidator().run(_make_json_ctx(tmp_path, records))
+
+        assert sorted(call.args for call in mock_api.call_args_list) == [("1", "testuser"), ("2", "testuser")]
+        assert [(r["ror_id"], r["csv_city"], r["issue"]) for r in results] == [
+            ("https://ror.org/00000000", "Wrong", "city mismatch"),
+            ("https://ror.org/00000003", "Other", "city mismatch"),
+        ]
+
+    @patch("curation_validation.validators.address_validation.query_geonames_api")
+    def test_shared_invalid_id_reported_for_every_row(self, mock_api, tmp_path):
+        mock_api.return_value = (GEONAMES_INVALID_ID, GEONAMES_INVALID_ID)
+        rows = [_csv_row(ror_id=f"r{i}", geonames_id="999") for i in range(3)]
+        results = AddressValidationValidator().run(_make_csv_ctx(tmp_path, rows))
+
+        mock_api.assert_called_once_with("999", "testuser")
+        assert [r["ror_id"] for r in results] == ["r0", "r1", "r2"]
+        assert all(r["issue"] == "Invalid Geonames ID - 999 does not exist in GeoNames" for r in results)

@@ -1,16 +1,13 @@
 from collections import defaultdict
-from concurrent.futures import ThreadPoolExecutor
 from typing import Optional
 
 from curation_validation.validators.base import BaseValidator, ValidatorContext
 from curation_validation.core.fuzzy import ratio_matches
 from curation_validation.core.io import read_csv, read_json_dir
-from curation_validation.core.geonames import GeoNamesClient
+from curation_validation.core.geonames import GeoNamesClient, fetch_all
 from curation_validation.core.normalize import normalize_text
 
 FUZZY_THRESHOLD = 85
-# Concurrent GeoNames lookups for geonames IDs that cannot be resolved locally.
-MAX_WORKERS = 5
 
 
 def get_country_code_from_result(result: dict) -> Optional[str]:
@@ -98,12 +95,12 @@ def resolve_countries(
 
     if missing:
         client = GeoNamesClient(geonames_user)
-        with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
-            resolved = executor.map(
-                lambda item: client.get_country_code(item[0], record_identifier=item[1]),
-                missing.items(),
-            )
-            countries.update(zip(missing, resolved))
+        countries.update(fetch_all(
+            lambda geonames_id: client.get_country_code(
+                geonames_id, record_identifier=missing[geonames_id]
+            ),
+            missing,
+        ))
 
     return countries
 
