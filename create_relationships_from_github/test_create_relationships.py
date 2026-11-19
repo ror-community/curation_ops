@@ -19,12 +19,13 @@ def _row(record_id, related_id, rel_type, location='Release'):
                            related_id, 'related_name', rel_type, location)
 
 
-def _write_input_csv(path, ids_and_names):
+def _write_input_csv(path, ids_and_names, statuses=None):
+    statuses = statuses or {}
     with open(path, 'w', newline='', encoding='utf-8') as f:
         writer = csv.writer(f)
-        writer.writerow(['id', 'names.types.ror_display'])
+        writer.writerow(['id', 'names.types.ror_display', 'status'])
         for ror_id, name in ids_and_names:
-            writer.writerow([ror_id, name])
+            writer.writerow([ror_id, name, statuses.get(ror_id, 'active')])
 
 
 def _field(csv_row, attr):
@@ -203,3 +204,44 @@ def test_prose_delete_does_not_resurrect_deleted_relationship(tmp_path):
     rows = _read_output_rows(str(output_csv))
 
     assert sorted(_field(r, 'rel_type') for r in rows) == ['Delete', 'Delete']
+
+
+def _pairs(rows):
+    return sorted((_field(r, 'record_id'), _field(r, 'rel_type'), _field(r, 'related_id'))
+                  for r in rows)
+
+
+def test_inactive_new_record_gets_no_structural_inverse_rows(tmp_path):
+    """Validation rejects active -> inactive parent/child/related links.
+
+    A record created inactive keeps its own links, but the active records it
+    points to must not get rows pointing back at it.
+    """
+    input_csv = tmp_path / 'input.csv'
+    output_csv = tmp_path / 'output.csv'
+    _write_input_csv(input_csv, [(ID_A, 'Org A'), (ID_B, 'Org B'), (ID_C, 'Org C')],
+                     statuses={ID_A: 'inactive'})
+
+    issue = _issue(101, '', 'Org A', [(ID_B, 'parent'), (ID_C, 'related')])
+
+    extract_relationships([issue], str(input_csv), str(output_csv))
+    rows = _read_output_rows(str(output_csv))
+
+    assert _pairs(rows) == [(ID_A, 'Parent', ID_B), (ID_A, 'Related', ID_C)]
+
+
+def test_inactive_new_record_keeps_successor_and_delete_inverses(tmp_path):
+    input_csv = tmp_path / 'input.csv'
+    output_csv = tmp_path / 'output.csv'
+    _write_input_csv(input_csv, [(ID_A, 'Org A'), (ID_B, 'Org B'), (ID_C, 'Org C')],
+                     statuses={ID_A: 'inactive'})
+
+    issue = _issue(101, ID_A, 'Org A', [(ID_B, 'successor'), (ID_C, 'delete')])
+
+    extract_relationships([issue], str(input_csv), str(output_csv))
+    rows = _read_output_rows(str(output_csv))
+
+    assert _pairs(rows) == sorted([
+        (ID_A, 'Successor', ID_B), (ID_B, 'Predecessor', ID_A),
+        (ID_A, 'Delete', ID_C), (ID_C, 'Delete', ID_A),
+    ])

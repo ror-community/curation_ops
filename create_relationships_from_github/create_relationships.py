@@ -92,6 +92,8 @@ def normalize_name(name):
     return ' '.join(name.split())
 
 
+INACTIVE_STATUSES = ('inactive', 'withdrawn')
+
 RELATED_ORGS_RE = re.compile(
     r'^[ \t]*Related organizations?:(.*)$', re.MULTILINE | re.IGNORECASE)
 
@@ -119,13 +121,14 @@ def find_between(s, first, last):
 
 
 def dict_from_csv(f):
-    ids_k_names_v, names_k_ids_v = {}, {}
+    ids_k_names_v, names_k_ids_v, statuses = {}, {}, {}
     release_ids = []
     with open(f, encoding='utf-8-sig') as f_in:
         reader = csv.DictReader(f_in)
         for row in reader:
             ror_id = row['id']
             release_ids.append(ror_id)
+            statuses[ror_id] = row.get('status', '')
             ror_display = row['names.types.ror_display']
             if ror_display and "==" not in ror_display:
                 name = ror_display.split('*')[0]
@@ -133,7 +136,7 @@ def dict_from_csv(f):
                 name = get_ror_name(ror_id)
             ids_k_names_v[ror_id] = name
             names_k_ids_v[normalize_name(name)] = ror_id
-    return release_ids, ids_k_names_v, names_k_ids_v
+    return release_ids, ids_k_names_v, names_k_ids_v, statuses
 
 
 def flag_circular_relationships(rows):
@@ -161,7 +164,7 @@ def flag_circular_relationships(rows):
 
 
 def extract_relationships(issues, input_file, output_file):
-    release_ids, ids_k_names_v, names_k_ids_v = dict_from_csv(input_file)
+    release_ids, ids_k_names_v, names_k_ids_v, statuses = dict_from_csv(input_file)
     with open(output_file, 'w') as f_out:
         writer = csv.DictWriter(f_out, fieldnames=RelationshipRow.header())
         writer.writeheader()
@@ -186,6 +189,10 @@ def extract_relationships(issues, input_file, output_file):
                         logger.warning(
                             f"Issue {issue_number}: no ROR ID found for "
                             f"'{org_name}'. Record ID will be empty.")
+                # Validation rejects parent/child/related links from an active
+                # record to an inactive one, so a record created inactive keeps
+                # its own structural links but gets no inverse rows.
+                record_inactive = statuses.get(org_ror_id) in INACTIVE_STATUSES
                 for relationship in relationships:
                     relationship = relationship.split(' ')
                     relationship = [r.strip() for r in relationship if r != '']
@@ -220,7 +227,12 @@ def extract_relationships(issues, input_file, output_file):
                             inverted_entry = RelationshipRow(issue_number, issue_url, issue_title, related_name,
                                                              related_ror_id, org_ror_id, org_name, 'Error', 'Error')
                         rows.append(entry)
-                        rows.append(inverted_entry)
+                        if record_inactive and relationship_type in ('Parent', 'Child', 'Related'):
+                            logger.info(
+                                f"Issue {issue_number}: {org_ror_id} is inactive, so its "
+                                f"{relationship_type.lower()} link to {related_ror_id} is one-sided.")
+                        else:
+                            rows.append(inverted_entry)
         flag_circular_relationships(rows)
         writer.writerows(row.to_csv_row() for row in rows)
 

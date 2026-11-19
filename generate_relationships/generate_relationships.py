@@ -271,9 +271,12 @@ def get_relationships_from_file(file, version):
                 # check that related ID is an active record
                 check_related_id_status = get_record_status(check_related_id, version)
                 if (check_record_id and check_related_id):
+                    # Only active -> inactive structural links are invalid; links
+                    # between two inactive records pass validation.
                     if check_related_id_status == 'active' or \
                         row['Relationship of Related ID to Record ID'].lower() in ('predecessor', 'successor') or \
-                        row['Relationship of Related ID to Record ID'].lower() == 'delete':
+                        row['Relationship of Related ID to Record ID'].lower() == 'delete' or \
+                        get_record_status(check_record_id, version) in ('inactive', 'withdrawn'):
                         rel_dict['short_record_id'] = check_record_id
                         rel_dict['short_related_id'] = check_related_id
                         rel_dict['record_name'] = row['Name of org in Record ID']
