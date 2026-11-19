@@ -84,6 +84,20 @@ class RelationshipGenerationTests(unittest.TestCase):
                     self.assertIn("has a status other than active", result.stdout)
                     self.assertEqual(generated["05ecg5h20"]["relationships"], [])
 
+    def test_structural_links_between_inactive_records_are_applied(self):
+        for version in (1, 2):
+            for relationship in ("Parent", "Child", "Related"):
+                with self.subTest(version=version, relationship=relationship):
+                    result, generated = self.run_generator(version, {
+                        "04k0yqc48": "inactive", "00bhc0620": "inactive",
+                    }, [("04k0yqc48", "00bhc0620", relationship)])
+                    self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                    expected_type = relationship if version == 1 else relationship.lower()
+                    self.assertEqual(generated["04k0yqc48"]["relationships"], [{
+                        "id": "https://ror.org/00bhc0620",
+                        "label": "00bhc0620", "type": expected_type,
+                    }])
+
 
 if __name__ == "__main__":
     unittest.main()
